@@ -103,8 +103,8 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
         </div>
         <div className="shop-preview">
           <img
-            src="/shopkeeper.jpg"
-            alt="Pixel art of Nyx, a Black fairy shopkeeper, welcoming you from behind her counter."
+            src="/shopkeeperv2.jpg"
+            alt="Pixel art of Nyx welcoming you from behind her shop counter."
           />
           <div className="shop-detail" aria-live="polite">
             <p className="eyebrow">NYX'S PICK / {reward.cost} PTS</p>

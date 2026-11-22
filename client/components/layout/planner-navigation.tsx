@@ -10,7 +10,6 @@ import {
   ListTodo,
   NotebookPen,
   Repeat2,
-  Sparkles,
   Swords,
   UserRound,
   type LucideIcon,
@@ -144,12 +143,12 @@ export function PlannerNavigation({
               if (expanded && narrowScreen) closeMenu();
             }}
           >
-            <span className="brand-mark">
-              <Sparkles aria-hidden="true" size={24} />
-            </span>
-            <span className="sidebar-brand-text">
-              CYBER<span>PLANNER</span>
-              <small>LIFE MANAGEMENT SYSTEM</small>
+            <span className="brand-logo-frame">
+              <img
+                className="brand-logo"
+                src="/cyberplanner-logo.png"
+                alt=""
+              />
             </span>
           </Link>
           <button

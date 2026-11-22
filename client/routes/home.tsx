@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import {
   Navigate,
@@ -71,6 +71,27 @@ export default function Home() {
   const toggleFetcher = useFetcher<PlannerActionResult>();
   const [today, setToday] = useState(page.authenticated ? page.today : "");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [celebration, setCelebration] = useState(0);
+  const pendingCelebration = useRef(false);
+  const toggleInFlight = useRef(false);
+
+  useEffect(() => {
+    if (toggleFetcher.state !== "idle") {
+      toggleInFlight.current = true;
+    } else if (toggleInFlight.current) {
+      toggleInFlight.current = false;
+      if (pendingCelebration.current && toggleFetcher.data?.ok && location.pathname === "/") {
+        setCelebration((previous) => previous + 1);
+      }
+      pendingCelebration.current = false;
+    }
+  }, [toggleFetcher.state, toggleFetcher.data, location.pathname]);
+
+  useEffect(() => {
+    if (!celebration) return;
+    const timer = setTimeout(() => setCelebration(0), 1800);
+    return () => clearTimeout(timer);
+  }, [celebration]);
 
   useEffect(() => {
     if (!page.authenticated) return;
@@ -126,6 +147,10 @@ export default function Home() {
     .filter((task) => task.completed)
     .map((task) => `${task.source}:${task.externalId}`);
   function toggleTask(taskId: string) {
+    const completed = taskId.startsWith("google:") || taskId.startsWith("gmail:")
+      ? !externalChecked.includes(taskId)
+      : !checked.includes(taskId);
+    pendingCelebration.current = isDashboard && completed;
     if (taskId.startsWith("google:") || taskId.startsWith("gmail:")) {
       const separator = taskId.indexOf(":");
       const source = taskId.slice(0, separator);
@@ -136,7 +161,7 @@ export default function Home() {
           source,
           externalId,
           date: selected,
-          completed: String(!externalChecked.includes(taskId)),
+          completed: String(completed),
         },
         { method: "post" },
       );
@@ -147,7 +172,7 @@ export default function Home() {
         intent: "toggle_builtin",
         taskId,
         date: selected,
-        completed: String(!checked.includes(taskId)),
+        completed: String(completed),
       },
       { method: "post" },
     );
@@ -167,6 +192,11 @@ export default function Home() {
 
   return (
     <div className={`app-shell authenticated-shell ${menuOpen ? "menu-expanded" : ""}`}>
+      {isDashboard && celebration > 0 && (
+        <div className="task-celebration" key={celebration} aria-hidden="true">
+          <img src="/witchyaction.png" alt="" />
+        </div>
+      )}
       <PlannerNavigation
         selected={selected}
         section={section}
@@ -305,9 +335,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="hero-art" aria-hidden="true">
-                <div className="orbit orbit-one" />
-                <div className="orbit orbit-two" />
-                <Sparkles className="hero-star" aria-hidden="true" />
+                <img className="hero-broom" src="/witchybroom.png" alt="" />
                 <span className="hero-art-label">
                   LIFE IS THE
                   <br />
