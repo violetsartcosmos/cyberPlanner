@@ -1,54 +1,9 @@
+import { useEffect, useId, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { Moon, RefreshCw, Sparkles, Sun } from "lucide-react";
 import type { ExternalTask } from "../../../shared/planner/types";
 import { dailyQuests, morningRoutine, nightRoutine } from "../../../shared/planner/definitions";
 import { Checklist } from "./checklist";
-import { JournalEditor } from "./journal-editor";
-import { MissionCalendar } from "./mission-calendar";
-import { WeeklyProtocolPanel } from "./dashboard-widgets";
-
-type CalendarSectionProps = {
-  date: Date;
-  selected: string;
-  today: string;
-  checks: Record<string, string[]>;
-  journalDates: string[];
-  showJournal: boolean;
-  journal: string;
-  onSelect: (date: string) => void;
-  onToday: () => void;
-  onAddJournal: () => void;
-};
-
-export function CalendarSection({
-  date,
-  selected,
-  today,
-  checks,
-  journalDates,
-  showJournal,
-  journal,
-  onSelect,
-  onToday,
-  onAddJournal,
-}: CalendarSectionProps) {
-  return (
-    <>
-      <MissionCalendar
-        date={date}
-        selected={selected}
-        today={today}
-        checks={checks}
-        journalDates={journalDates}
-        onSelect={onSelect}
-        onToday={onToday}
-        onAddJournal={onAddJournal}
-      />
-      {showJournal && (
-        <JournalEditor key={selected} selected={selected} journal={journal} />
-      )}
-    </>
-  );
-}
 
 type ChecklistSectionProps = {
   selected: string;
@@ -98,37 +53,90 @@ export function RoutinesSection({
   onToggle,
 }: ChecklistSectionProps) {
   const earnedPrefix = `builtin:${selected}:`;
+  const [activeRoutine, setActiveRoutine] = useState<"morning" | "night">(
+    () => new Date().getHours() < 12 ? "morning" : "night",
+  );
+  const period = useRef(activeRoutine);
+  const tabId = useId();
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    function updatePeriod() {
+      const now = new Date();
+      const nextPeriod = now.getHours() < 12 ? "morning" : "night";
+      if (nextPeriod !== period.current) {
+        period.current = nextPeriod;
+        setActiveRoutine(nextPeriod);
+      }
+      const nextChange = new Date(now);
+      if (nextPeriod === "morning") {
+        nextChange.setHours(12, 0, 0, 0);
+      } else {
+        nextChange.setHours(24, 0, 0, 0);
+      }
+      clearTimeout(timer);
+      timer = setTimeout(updatePeriod, nextChange.getTime() - now.getTime());
+    }
+    updatePeriod();
+    window.addEventListener("focus", updatePeriod);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", updatePeriod);
+    };
+  }, []);
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    let next: "morning" | "night";
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      next = activeRoutine === "morning" ? "night" : "morning";
+    } else if (event.key === "Home") {
+      next = "morning";
+    } else if (event.key === "End") {
+      next = "night";
+    } else {
+      return;
+    }
+    event.preventDefault();
+    setActiveRoutine(next);
+    document.getElementById(`${tabId}-${next}`)?.focus();
+  }
 
   return (
-    <div className="routine-grid">
-      <Checklist
-        title="Morning routine"
-        eyebrow="RISE & SHINE"
-        icon={<Sun aria-hidden="true" size={19} />}
-        sectionHref={`/routines?date=${selected}`}
-        items={morningRoutine}
-        prefix="morning"
-        checked={checked}
-        earnedIds={earnedTaskKeys
-          .filter((key) => key.startsWith(`${earnedPrefix}morning-`))
-          .map((key) => key.slice(earnedPrefix.length))}
-        disabled={disabled}
-        onToggle={onToggle}
-      />
-      <Checklist
-        title="Nightly routine"
-        eyebrow="WIND DOWN"
-        icon={<Moon aria-hidden="true" size={19} />}
-        sectionHref={`/routines?date=${selected}`}
-        items={nightRoutine}
-        prefix="night"
-        checked={checked}
-        earnedIds={earnedTaskKeys
-          .filter((key) => key.startsWith(`${earnedPrefix}night-`))
-          .map((key) => key.slice(earnedPrefix.length))}
-        disabled={disabled}
-        onToggle={onToggle}
-      />
+    <div className="routine-tabs">
+      <div className="routine-tab-list" role="tablist" aria-label="Routines">
+        {(["morning", "night"] as const).map((routine) => (
+          <button
+            key={routine}
+            id={`${tabId}-${routine}`}
+            type="button"
+            role="tab"
+            aria-selected={activeRoutine === routine}
+            aria-controls={`${tabId}-panel`}
+            tabIndex={activeRoutine === routine ? 0 : -1}
+            onClick={() => setActiveRoutine(routine)}
+            onKeyDown={handleTabKeyDown}
+          >
+            {routine === "morning" ? <Sun aria-hidden="true" size={15} /> : <Moon aria-hidden="true" size={15} />}
+            {routine === "morning" ? "Morning" : "Night"}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id={`${tabId}-panel`} aria-labelledby={`${tabId}-${activeRoutine}`}>
+        <Checklist
+          title={activeRoutine === "morning" ? "Morning routine" : "Nightly routine"}
+          eyebrow={activeRoutine === "morning" ? "RISE & SHINE" : "WIND DOWN"}
+          icon={activeRoutine === "morning" ? <Sun aria-hidden="true" size={19} /> : <Moon aria-hidden="true" size={19} />}
+          sectionHref={`/routines?date=${selected}`}
+          items={activeRoutine === "morning" ? morningRoutine : nightRoutine}
+          prefix={activeRoutine}
+          checked={checked}
+          earnedIds={earnedTaskKeys
+            .filter((key) => key.startsWith(`${earnedPrefix}${activeRoutine}-`))
+            .map((key) => key.slice(earnedPrefix.length))}
+          disabled={disabled}
+          onToggle={onToggle}
+        />
+      </div>
     </div>
   );
 }
@@ -166,27 +174,5 @@ export function SyncedTasksSection({
       disabled={disabled}
       onToggle={onToggle}
     />
-  );
-}
-
-type WeeklyProtocolSectionProps = {
-  selected: string;
-  weekday: number;
-};
-
-export function WeeklyProtocolSection({
-  selected,
-  weekday,
-}: WeeklyProtocolSectionProps) {
-  return (
-    <>
-      <WeeklyProtocolPanel selected={selected} weekday={weekday} />
-      <div className="side-quote">
-        <Sparkles aria-hidden="true" size={14} /> PROGRESS, NOT
-        PERFECTION.
-        <br />
-        <small>YOU ARE ALREADY DOING ENOUGH.</small>
-      </div>
-    </>
   );
 }

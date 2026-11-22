@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import {
+  Navigate,
   useFetcher,
   useLoaderData,
   useLocation,
@@ -12,23 +13,23 @@ import {
   navigationSections,
   PlannerNavigation,
 } from "../components/layout/planner-navigation";
-import { GoogleIntegrationPanel } from "../components/google/integration-panel";
+import { CalendarSection } from "../components/calendar/calendar-section";
+import { GoogleIntegrationPanel } from "../components/calendar/integration-panel";
+import { WeeklyProtocolPanel } from "../components/calendar/weekly-protocol";
 import { NotesEditor } from "../components/planner/notes-editor";
 import { Profile } from "../components/planner/profile";
 import { QuestBoard } from "../components/planner/quest-board";
 import { LevelHeader } from "../components/planner/level-header";
 import {
+  DailyAffirmation,
   DailyProgressPanel,
-  ReminderPanel,
 } from "../components/planner/dashboard-widgets";
 import {
-  CalendarSection,
   DailyQuestsSection,
   RoutinesSection,
   SyncedTasksSection,
-  WeeklyProtocolSection,
 } from "../components/planner/navigation-sections";
-import { RewardShop } from "../components/rewards/shop";
+import { RewardShop } from "../components/shop/shop";
 import { SignInPanel } from "../components/auth/sign-in-panel";
 import { dailyQuests } from "../../shared/planner/definitions";
 import type { PlannerActionResult, PlannerPage } from "../../shared/planner/types";
@@ -74,20 +75,35 @@ export default function Home() {
 
   useEffect(() => {
     if (!page.authenticated) return;
-    const localToday = dateKey(new Date());
-    setToday(localToday);
-    if (!new URLSearchParams(window.location.search).has("date")) {
-      if (localToday !== page.today) {
-        navigate(`${location.pathname}?date=${localToday}${location.hash}`, { replace: true });
+    const serverToday = page.today;
+    let timer: ReturnType<typeof setTimeout>;
+    function updateToday() {
+      const now = new Date();
+      const localToday = dateKey(now);
+      setToday(localToday);
+      if (!new URLSearchParams(window.location.search).has("date")) {
+        if (localToday !== serverToday) {
+          navigate(`${location.pathname}?date=${localToday}${location.hash}`, { replace: true });
+        }
       }
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      clearTimeout(timer);
+      timer = setTimeout(updateToday, midnight.getTime() - now.getTime());
     }
+    updateToday();
+    window.addEventListener("focus", updateToday);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", updateToday);
+    };
   }, [navigate, page, location.pathname, location.hash]);
 
   useEffect(() => {
-    if (location.pathname === "/calendar" && location.hash === "#journal") {
-      document.getElementById("journal-entry")?.focus();
+    if (location.pathname === "/calendar" && (location.hash === "#weekly" || location.hash === "#google")) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView();
     }
-  }, [location.pathname, location.hash, page]);
+  }, [location.pathname, location.hash]);
 
   if (!page.authenticated) {
     return (
@@ -139,15 +155,15 @@ export default function Home() {
   }
 
   function selectDate(next: string) {
-    navigate(`${location.pathname}?date=${next}`);
+    const hash = section === "calendar" && location.hash === "#journal" ? "#journal" : "";
+    navigate(`${location.pathname}?date=${next}${hash}`);
   }
 
-  function addJournal() {
-    if (section === "calendar") {
-      document.getElementById("journal-entry")?.focus();
-    } else {
-      navigate(`/calendar?date=${selected}#journal`);
-    }
+  if (section === "weekly" || section === "google") {
+    return <Navigate to={`/calendar?date=${selected}#${section}`} replace />;
+  }
+  if (section === "reminder") {
+    return <Navigate to={`/?date=${selected}`} replace />;
   }
 
   return (
@@ -178,10 +194,6 @@ export default function Home() {
                 <p className="intro-copy">
                   A little progress is still progress. Let's make today count.
                 </p>
-              </div>
-              <div className="intro-tag">
-                <Sparkles aria-hidden="true" size={14} /> BE AGGRESSIVELY KIND{" "}
-                <small>TO YOURSELF, ALWAYS.</small>
               </div>
             </div>
             <section className="mobile-welcome">
@@ -228,6 +240,7 @@ export default function Home() {
               </button>
             </form>
           </div>
+          {isDashboard && <DailyAffirmation today={today || page.today} />}
         </header>
         {toggleFetcher.data?.error && (
           <div className="storage-error" role="alert">
@@ -257,18 +270,27 @@ export default function Home() {
                 today={today || page.today}
                 checks={page.checks}
                 journalDates={page.journalDates}
-                showJournal={section === "calendar"}
+                showJournal={section === "calendar" && location.hash === "#journal"}
                 journal={page.journal}
                 onSelect={selectDate}
                 onToday={() => selectDate(today || page.today)}
-                onAddJournal={addJournal}
               />
             )}
-            {show("weekly") && (
-              <WeeklyProtocolSection selected={selected} weekday={weekday} />
+            {section === "calendar" && (
+              <>
+                <WeeklyProtocolPanel selected={selected} weekday={weekday} />
+                <GoogleIntegrationPanel email={page.email} selected={selected} />
+              </>
             )}
-            {show("reminder") && (
-            <ReminderPanel selected={selected} />
+            {isDashboard && (
+            <DailyQuestsSection
+              selected={selected}
+              weekday={weekday}
+              checked={checked}
+              earnedTaskKeys={page.earnedTaskKeys}
+              disabled={toggleFetcher.state !== "idle"}
+              onToggle={toggleTask}
+            />
             )}
           </aside>
 
@@ -307,7 +329,7 @@ export default function Home() {
             {show("notes") && (
             <NotesEditor selected={selected} note={page.note} />
             )}
-            {show("quests") && (
+            {section === "quests" && (
             <DailyQuestsSection
               selected={selected}
               weekday={weekday}
@@ -317,7 +339,7 @@ export default function Home() {
               onToggle={toggleTask}
             />
             )}
-            {show("routines") && (
+            {section === "routines" && (
             <RoutinesSection
               selected={selected}
               checked={checked}
@@ -348,11 +370,17 @@ export default function Home() {
               points={page.todayPoints}
             />
             )}
-            {show("rewards") && (
-            <RewardShop balance={page.balance} selected={selected} redemptions={page.redemptions} />
+            {isDashboard && (
+            <RoutinesSection
+              selected={selected}
+              checked={checked}
+              earnedTaskKeys={page.earnedTaskKeys}
+              disabled={toggleFetcher.state !== "idle"}
+              onToggle={toggleTask}
+            />
             )}
-            {show("google") && (
-            <GoogleIntegrationPanel email={page.email} selected={selected} />
+            {section === "rewards" && (
+            <RewardShop balance={page.balance} selected={selected} redemptions={page.redemptions} />
             )}
           </aside>
         </div>

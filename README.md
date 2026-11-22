@@ -23,7 +23,11 @@ The profile displays level, lifetime XP, activity, and achievements. Every 100 X
 
 Existing daily quests, routines, and synced tasks are Side Quests worth 10 points each. On the Quest Board, create additional Side Quests, Main Quests, and End-Game Bosses with your own rarity and point value. Completing a custom quest awards its points and equal XP once; deleting it does not remove earned points or XP.
 
-On the calendar page, select a date and choose **Add journal** to write or edit that day's journal entry. Journal entries are stored separately from notes; the calendar marks dates with entries. Use **Today** beneath the month or week heading to return to the current date.
+On the dashboard or calendar page, select a date and choose **Add journal** to open the editor in place for that day's entry. Journal entries are stored separately from notes; the calendar marks dates with entries. Use **Today** beneath the month or week heading to return to the current date. Weekly protocol and Google sync are also on the calendar page.
+
+The dashboard shows daily quests beneath the calendar and routine tabs beneath daily progress. Routines default to morning before noon and night from noon, using your device's local time; you can switch tabs at any time. The dashboard affirmation is selected based on the current local date.
+
+Visit **Shop** in the sidebar, select a reward in the inventory, and choose **Redeem** to spend points at Nyx's counter. Purchases require confirmation and cannot be refunded.
 
 ## Commands
 

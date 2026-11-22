@@ -1,73 +1,31 @@
-import { ArrowUpRight, ChevronRight, Heart, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Link } from "react-router";
-import { dailyQuests } from "../../../shared/planner/definitions";
-import { weekdays } from "../../../shared/planner/utils";
 
-type WeeklyProtocolPanelProps = {
-  selected: string;
-  weekday: number;
-};
+const affirmations = [
+  "You are enough, exactly as you are.",
+  "Small steps are still progress.",
+  "You deserve kindness, especially from yourself.",
+  "Showing up for yourself is a win.",
+  "You are allowed to grow at your own pace.",
+  "Your effort matters, even on difficult days.",
+  "You can begin again whenever you need to.",
+  "You are worthy of rest and care.",
+  "One quest at a time is enough.",
+  "You bring something special to this world.",
+  "Your progress does not have to be perfect.",
+  "You are stronger than you think.",
+] as const;
 
-export function WeeklyProtocolPanel({ selected, weekday }: WeeklyProtocolPanelProps) {
-  return (
-    <section className="panel week-panel">
-      <Link className="section-label section-link" to={`/weekly?date=${selected}`}>
-        <span>02 / WEEKLY PROTOCOL</span>
-        <Sparkles aria-hidden="true" size={12} />
-      </Link>
-      <h2>Every day has a mission.</h2>
-      <p>Small steps, one day at a time.</p>
-      <div className="week-list">
-        {dailyQuests.map((day, index) => (
-          <div
-            key={day.title}
-            className={index === weekday ? "active-weekday" : ""}
-          >
-            <span>{weekdays[index].toUpperCase()}</span>
-            <strong>{day.title}</strong>
-            <b>
-              {index === weekday ? (
-                <ChevronRight aria-hidden="true" size={12} />
-              ) : null}
-            </b>
-          </div>
-        ))}
-      </div>
-    </section>
+export function DailyAffirmation({ today }: { today: string }) {
+  const seed = Array.from(today).reduce(
+    (hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0,
+    2166136261,
   );
-}
-
-type ReminderPanelProps = {
-  selected: string;
-};
-
-export function ReminderPanel({ selected }: ReminderPanelProps) {
   return (
-    <section className="panel motivation-panel">
-      <Link className="section-label section-link" to={`/reminder?date=${selected}`}>
-        <span>03 / A LITTLE REMINDER</span>
-        <Sparkles aria-hidden="true" size={12} />
-      </Link>
-      <Heart
-        className="motivation-heart"
-        aria-hidden="true"
-        fill="currentColor"
-        size={40}
-      />
-      <h2>
-        You're doing
-        <br />
-        <em>amazing.</em>
-      </h2>
-      <p>
-        Showing up for yourself is the real win. Keep going, one quest
-        at a time.
-      </p>
-      <div className="motivation-bottom">
-        SELF-KINDNESS IS A SUPERPOWER
-        <ArrowUpRight aria-hidden="true" size={12} />
-      </div>
-    </section>
+    <div className="intro-tag">
+      <Sparkles aria-hidden="true" size={14} /> DAILY AFFIRMATION
+      <small>{affirmations[seed % affirmations.length]}</small>
+    </div>
   );
 }
 

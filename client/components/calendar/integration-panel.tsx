@@ -16,8 +16,8 @@ export function GoogleIntegrationPanel({
   const importFetcher = useFetcher<PlannerActionResult>();
 
   return (
-    <section className="panel google-panel">
-      <Link className="section-label section-link" to={`/google?date=${selected}`}>
+    <section className="panel google-panel" id="google">
+      <Link className="section-label section-link" to={`/calendar?date=${selected}#google`}>
         <span>05 / GOOGLE SYNC</span>
         <RefreshCw aria-hidden="true" size={12} />
       </Link>

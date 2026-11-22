@@ -24,6 +24,7 @@ type MissionCalendarProps = {
   onSelect: (date: string) => void;
   onToday: () => void;
   onAddJournal: () => void;
+  journalOpen: boolean;
 };
 
 export function MissionCalendar({
@@ -35,6 +36,7 @@ export function MissionCalendar({
   onSelect,
   onToday,
   onAddJournal,
+  journalOpen,
 }: MissionCalendarProps) {
   const [view, setView] = useState<"week" | "month">("month");
 
@@ -153,7 +155,7 @@ export function MissionCalendar({
         })}
       </div>
       <p className="calendar-legend"><span aria-hidden="true" /> JOURNAL ENTRY</p>
-      <button className="today-button" type="button" onClick={onAddJournal}>
+      <button className="today-button" type="button" onClick={onAddJournal} aria-expanded={journalOpen} aria-controls={journalOpen ? "journal" : undefined}>
         ADD JOURNAL
       </button>
     </section>
