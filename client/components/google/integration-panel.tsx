@@ -1,0 +1,109 @@
+import { useFetcher } from "react-router";
+import type { PlannerActionResult } from "../../../shared/planner/types";
+
+type GoogleIntegrationPanelProps = {
+  email: string;
+  selected: string;
+};
+
+export function GoogleIntegrationPanel({
+  email,
+  selected,
+}: GoogleIntegrationPanelProps) {
+  const syncFetcher = useFetcher<PlannerActionResult>();
+  const searchFetcher = useFetcher<PlannerActionResult>();
+  const importFetcher = useFetcher<PlannerActionResult>();
+
+  return (
+    <section className="panel google-panel">
+      <div className="section-label">
+        <span>05 / GOOGLE SYNC</span>
+        <span>↻</span>
+      </div>
+      <h2>Bring in your tasks.</h2>
+      <p>Signed in as {email}. Google Tasks syncs when you ask it to.</p>
+      <syncFetcher.Form method="post">
+        <input type="hidden" name="intent" value="sync_google_tasks" />
+        <input type="hidden" name="date" value={selected} />
+        <button
+          className="google-action"
+          type="submit"
+          disabled={syncFetcher.state !== "idle"}
+        >
+          {syncFetcher.state === "idle"
+            ? "SYNC GOOGLE TASKS"
+            : "SYNCING..."}
+        </button>
+      </syncFetcher.Form>
+      {syncFetcher.data?.message && (
+        <p className="inline-status">{syncFetcher.data.message}</p>
+      )}
+      {syncFetcher.data?.error && (
+        <p className="inline-error" role="alert">
+          {syncFetcher.data.error}
+        </p>
+      )}
+      <div className="email-capture">
+        <h3>Create a task from an email</h3>
+        <p>
+          Search Gmail, then choose individual messages to add. The app stores
+          the subject, sender, and Gmail link—not the message body. Google
+          grants read-only access to the mailbox.
+        </p>
+        <searchFetcher.Form method="post">
+          <input type="hidden" name="intent" value="search_gmail" />
+          <label className="sr-only" htmlFor="gmail-query">
+            Gmail search
+          </label>
+          <input
+            id="gmail-query"
+            name="query"
+            type="search"
+            placeholder="in:inbox newer_than:14d"
+            required
+            maxLength={256}
+          />
+          <button
+            className="google-action"
+            type="submit"
+            disabled={searchFetcher.state !== "idle"}
+          >
+            SEARCH EMAIL
+          </button>
+        </searchFetcher.Form>
+        {searchFetcher.data?.error && (
+          <p className="inline-error" role="alert">
+            {searchFetcher.data.error}
+          </p>
+        )}
+        {importFetcher.data?.message && (
+          <p className="inline-status">{importFetcher.data.message}</p>
+        )}
+        {importFetcher.data?.error && (
+          <p className="inline-error" role="alert">
+            {importFetcher.data.error}
+          </p>
+        )}
+        {searchFetcher.data?.emails?.map((message) => (
+          <div className="email-result" key={message.id}>
+            <strong>{message.subject}</strong>
+            <small>{message.from}</small>
+            <p>{message.snippet}</p>
+            <importFetcher.Form method="post">
+              <input type="hidden" name="intent" value="import_gmail" />
+              <input type="hidden" name="messageId" value={message.id} />
+              <input type="hidden" name="date" value={selected} />
+              <button
+                className="google-action"
+                type="submit"
+                disabled={importFetcher.state !== "idle"}
+              >
+                ADD TO {selected}
+              </button>
+            </importFetcher.Form>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}

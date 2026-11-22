@@ -1,0 +1,118 @@
+import assert from "node:assert/strict";
+import { once } from "node:events";
+import { resolve } from "node:path";
+import test from "node:test";
+import { serve } from "@hono/node-server";
+import { createCookieSessionStorage } from "react-router";
+import { createServer } from "vite";
+
+test("API routes preserve authentication and reject cross-origin submissions", async () => {
+  Object.assign(process.env, {
+    NODE_ENV: "test",
+    DATABASE_URL: "postgresql://test:test@localhost:5432/disposable",
+    SESSION_SECRET: "temporary-api-test-session-secret",
+    GOOGLE_CLIENT_ID: "test-client",
+    GOOGLE_CLIENT_SECRET: "test-secret",
+    GOOGLE_REDIRECT_URI: "http://localhost:5173/auth/callback",
+    GOOGLE_ALLOWED_EMAIL: "api@example.test",
+    GOOGLE_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32).toString("base64"),
+  });
+  const vite = await createServer({
+    configFile: false,
+    appType: "custom",
+    server: { middlewareMode: true, hmr: false, ws: false },
+  });
+  try {
+    const { app } = await vite.ssrLoadModule("/server/app.ts");
+    const page = await app.request("http://localhost/api/planner?authError=denied");
+    assert.equal(page.status, 200);
+    assert.equal(page.headers.get("cache-control"), "no-store");
+    assert.deepEqual(await page.json(), {
+      authenticated: false, missingConfiguration: [], authError: "denied",
+    });
+
+    const storage = createCookieSessionStorage({
+      cookie: {
+        name: "cyberplanner_session", httpOnly: true, path: "/", sameSite: "lax",
+        secure: false, secrets: [process.env.SESSION_SECRET],
+      },
+    });
+    const session = await storage.getSession();
+    session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
+    const cookie = await storage.commitSession(session);
+    const submit = (origin, includeCookie = true) => app.request("http://localhost/api/planner", {
+      method: "POST",
+      headers: { Origin: origin, ...(includeCookie ? { Cookie: cookie } : {}) },
+      body: new URLSearchParams({ intent: "not-an-action" }),
+    });
+    const denied = await submit("http://attacker.example");
+    assert.equal(denied.status, 403);
+    const anonymous = await submit("http://localhost", false);
+    assert.deepEqual(await anonymous.json(), {
+      ok: false, error: "Sign in with your configured Google account first.",
+    });
+    const signedIn = await submit("http://localhost");
+    assert.deepEqual(await signedIn.json(), { ok: false, error: "Unknown planner action." });
+
+    const signIn = await app.request("http://localhost/auth/google");
+    assert.equal(signIn.status, 302);
+    const authorization = new URL(signIn.headers.get("location"));
+    assert.equal(authorization.hostname, "accounts.google.com");
+    assert.ok(authorization.searchParams.get("state"));
+    assert.match(signIn.headers.get("set-cookie"), /cyberplanner_session=/);
+    for (const [state, includeCookie] of [
+      [authorization.searchParams.get("state"), false],
+      ["incorrect-state", true],
+    ]) {
+      const callback = await app.request(`http://localhost/auth/callback?code=fake&state=${state}`, {
+        headers: includeCookie ? { Cookie: signIn.headers.get("set-cookie") } : {},
+      });
+      assert.equal(callback.status, 302);
+      assert.match(callback.headers.get("location"), /state%20validation%20failed/);
+    }
+    const callback = await app.request("http://localhost/auth/callback?error=access_denied");
+    assert.equal(callback.status, 302);
+    assert.match(callback.headers.get("location"), /^\/\?authError=/);
+    assert.equal((await app.request("http://localhost/api/not-found")).status, 404);
+
+    const api = serve({ fetch: app.fetch, port: 0 });
+    await once(api, "listening");
+    const address = api.address();
+    assert.ok(address && typeof address !== "string");
+    process.env.PORT = String(address.port);
+    let client;
+    try {
+      client = await createServer({
+        configFile: "vite.config.ts",
+        logLevel: "silent",
+        server: { port: 0, strictPort: false, ws: false },
+      });
+      await client.listen();
+      const clientAddress = client.httpServer.address();
+      assert.ok(clientAddress && typeof clientAddress !== "string");
+      const origin = `http://localhost:${clientAddress.port}`;
+      const html = await fetch(origin);
+      assert.equal(html.status, 200);
+      assert.match(await html.text(), /CyberPlanner/);
+      const proxied = await fetch(`${origin}/api/planner`);
+      assert.equal((await proxied.json()).authenticated, false);
+      const action = await fetch(`${origin}/api/planner`, {
+        method: "POST",
+        headers: { Origin: origin, Cookie: cookie },
+        body: new URLSearchParams({ intent: "not-an-action" }),
+      });
+      assert.deepEqual(await action.json(), { ok: false, error: "Unknown planner action." });
+      const login = await fetch(`${origin}/auth/google`, { redirect: "manual" });
+      assert.equal(login.status, 302);
+      assert.equal(new URL(login.headers.get("location")).hostname, "accounts.google.com");
+      const backendPath = resolve("server/planner/service.ts").replaceAll("\\", "/");
+      const backendModule = await fetch(`${origin}/@fs/${backendPath}`);
+      assert.notEqual(backendModule.status, 200);
+    } finally {
+      if (client) await client.close();
+      await new Promise((resolve, reject) => api.close((error) => error ? reject(error) : resolve()));
+    }
+  } finally {
+    await vite.close();
+  }
+});

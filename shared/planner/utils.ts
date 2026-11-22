@@ -1,11 +1,5 @@
-import { dailyQuests, morningRoutine, nightRoutine } from "./planner";
+import { dailyQuests, morningRoutine, nightRoutine } from "./definitions";
 
-export type PlannerData = {
-  checks: Record<string, string[]>;
-  notes: Record<string, string>;
-};
-
-export const STORAGE_KEY = "cyberplanner-v1";
 export const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function dateKey(date: Date) {
@@ -15,6 +9,10 @@ export function dateKey(date: Date) {
 export function parseDate(key: string) {
   const [year, month, day] = key.split("-").map(Number);
   return new Date(year, month - 1, day, 12);
+}
+
+export function isValidDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && dateKey(parseDate(value)) === value;
 }
 
 export function addDays(date: Date, amount: number) {
@@ -53,30 +51,8 @@ export function dayProgress(date: Date, checked: string[]) {
   const completed = checked.filter((id) => {
     const [prefix, index] = id.split("-");
     const items = groups[prefix];
-    return items && /^\d+$/.test(index ?? "") && Number(index) < items.length;
+    return items && index !== undefined && /^\d+$/.test(index) && Number(index) < items.length;
   }).length;
   return { completed, total, percent: Math.round((completed / total) * 100) };
 }
 
-export function isPlannerData(value: unknown): value is PlannerData {
-  if (!value || typeof value !== "object") return false;
-  const data = value as Record<string, unknown>;
-  if (
-    !data.checks ||
-    typeof data.checks !== "object" ||
-    Array.isArray(data.checks)
-  )
-    return false;
-  if (
-    !data.notes ||
-    typeof data.notes !== "object" ||
-    Array.isArray(data.notes)
-  )
-    return false;
-  return (
-    Object.values(data.checks).every(
-      (items) =>
-        Array.isArray(items) && items.every((item) => typeof item === "string"),
-    ) && Object.values(data.notes).every((note) => typeof note === "string")
-  );
-}

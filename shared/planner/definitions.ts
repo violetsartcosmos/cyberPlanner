@@ -107,16 +107,26 @@ export const nightRoutine = [
 ] as const;
 
 export const rewards = [
-  "Snacks",
-  "Game time",
-  "TV time",
-  "Scroll time",
-  "Buy something small",
-  "Order pizza or food",
-  "Paint",
-  "Self-care",
-  "Movie night",
-  "Planner supplies",
-  "Day trip",
-  "Stickers",
+  { id: "snacks", title: "Snacks", cost: 50, icon: "✦" },
+  { id: "game-time", title: "Game time", cost: 100, icon: "◈" },
+  { id: "tv-time", title: "TV time", cost: 80, icon: "♥" },
+  { id: "scroll-time", title: "Scroll time", cost: 50, icon: "✧" },
+  {
+    id: "small-treat",
+    title: "Buy something small",
+    cost: 300,
+    icon: "☼",
+  },
+  {
+    id: "takeout",
+    title: "Order pizza or food",
+    cost: 400,
+    icon: "♪",
+  },
+  { id: "paint", title: "Paint", cost: 150, icon: "▣" },
+  { id: "self-care", title: "Self-care", cost: 150, icon: "★" },
+  { id: "movie-night", title: "Movie night", cost: 200, icon: "✿" },
+  { id: "planner-supplies", title: "Planner supplies", cost: 250, icon: "◆" },
+  { id: "day-trip", title: "Day trip", cost: 800, icon: "☻" },
+  { id: "stickers", title: "Stickers", cost: 100, icon: "✺" },
 ] as const;

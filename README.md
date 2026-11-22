@@ -1,42 +1,66 @@
 # CyberPlanner
 
-A cyberpunk-inspired life planner that turns a weekly whiteboard into a gentle daily quest. The dashboard combines a calendar, a rotating set of daily tasks, morning and nightly routines, notes, reward ideas, and an XP-style progress tracker. Select any calendar date to see and check off that day's tasks. Each completed task is worth 10 XP for that date; this is a visual progress counter, not a currency or a reward redemption system.
+A personal planner for daily quests, routines, notes, Google Tasks, and Gmail follow-ups. Complete tasks to earn points and redeem them for rewards.
 
-Switch the mission calendar between **Week** and **Month** to browse dates. The weekly view shows completed and total tasks for each day, while the monthly view marks dates with progress. Use the arrows to move between weeks or months, and select a date to view its quests, routines, and notes. The mobile layout opens in weekly view; desktop opens in monthly view.
-
-Checks and notes are stored separately for each date in this browser's local storage. They stay on this device and browser, are not synced, and can be lost if browser data is cleared. The app will show an error if it cannot read or save its local data.
+CyberPlanner is designed for one Google account. It stores planner data and an encrypted Google refresh token in PostgreSQL; Gmail message bodies are not stored.
 
 ## Getting started
 
-Requires Node.js 22.22 or newer and npm.
+You need Node.js 22.22 or newer, PostgreSQL, and a Google Cloud project. Follow the [setup guide](docs/setup.md) for database creation, OAuth credentials, and secrets.
 
-```sh
-npm install
+Once configured, run:
+
+```powershell
+npm run db:migrate
 npm run dev
 ```
 
-Open the local address printed in the terminal (usually http://localhost:5173). Run `npm run typecheck` to check types and `npm run build` to create a production build.
+Open [localhost:5173](http://localhost:5173) and sign in.
 
-## Weekly quests
+## Commands
 
-- **Monday — Reset & trash:** take out trash, clean the fridge, pay bills, wipe down the kitchen.
-- **Tuesday — Laundry & clothes:** wash clothes, fold clothes, put clothes away, set out weekly clothes.
-- **Wednesday — Bathroom:** clean the toilet, mirror, and shower; restock supplies.
-- **Thursday — Floors & surfaces:** wipe counters, sweep or vacuum, clean the desk, random clean.
-- **Friday — Life admin & restock:** make a grocery list, check the budget, plan the week, order essentials.
-- **Saturday — Deep reset:** make or change the bed, refresh towels, clean the car and main room, declutter one area.
-- **Sunday — Prep & self-care:** prep the bag and outfits, meal prep, plan the week, self-care.
+Run commands in the project folder.
 
-## Morning routine
+| Command | Purpose |
+| --- | --- |
+| `npm install` | Install dependencies and generate Prisma Client. |
+| `npm run dev` | Start the loopback-only API on localhost:3000 and React development server on localhost:5173. The client proxies API and sign-in requests to the API. |
+| `npm run build` | Build the browser client and API server. |
+| `npm run start` | Serve the production client and API together at localhost:3000; build first. |
+| `npm run db:migrate` | Apply committed database migrations. |
+| `npm run db:studio` | Open Prisma Studio to browse and edit the configured database; also available as `npx prisma studio`. |
+| `npx prisma generate` | Regenerate Prisma Client after changing the schema. |
+| `npx prisma migrate dev --name describe_your_change` | Create and apply a migration on a development database; review reset prompts carefully. |
+| `npm run typecheck` | Check TypeScript. |
+| `npm run test:server` | Test API authentication, request validation, and form validation without a database. |
+| `npm run test:database` | Run integration tests against a separate, empty, disposable database specified by `TEST_DATABASE_URL`. |
 
-Stretch and PT; affirmations; water; meds; lights; music; brush teeth; wash face; shower; hair; lotion; get dressed (shirt, pants or dress, socks, shoes); breakfast; make bed; prep bag (laptop, task list, and lunch).
+For production, use HTTPS and your host's secret settings, apply migrations as a release step, and start the built server. The included [Dockerfile](Dockerfile) starts the server but does not apply migrations.
 
-## Nightly routine
+## Project layout
 
-Dim lights; calm playlist; brain dump; clothes; dishes; trash; prep bag; prep clothes; task prep; shower; brush teeth; meds; PJs; read; yoga and PT; music; journaling.
+- [client](client): React pages, components, styles, and static assets.
+- [server](server): API, authentication, and database logic grouped by feature.
+- [shared/planner](shared/planner): task definitions, request types, and date utilities shared by client and server.
+- [prisma](prisma): database schema and migrations.
+- [tests](tests): integration tests.
 
-## Reward ideas
+Edit built-in tasks and rewards in [definitions.ts](shared/planner/definitions.ts).
 
-Snacks, game time, TV time, scroll time, buying something small, ordering pizza or food, painting, self-care, movie night, planner supplies, a day trip, and stickers.
+## Libraries
 
-The lists are transcribed from the supplied whiteboard photos; a few phrases have been expanded for clarity. They can be edited in `app/planner.ts`.
+Direct dependencies and their purposes:
+
+| Library | Purpose |
+| --- | --- |
+| [React and React DOM](https://react.dev/learn) | User interface. |
+| [React Router](https://reactrouter.com/) | Client-side navigation and server-side session cookies. |
+| [Hono](https://hono.dev/) and [@hono/node-server](https://github.com/honojs/node-server) | API routing, request protection, and HTTP serving. |
+| [Prisma](https://www.prisma.io/docs/orm) (`prisma`, `@prisma/client`, `@prisma/adapter-pg`) and [pg](https://node-postgres.com/) | PostgreSQL queries, migrations, and driver. |
+| [googleapis](https://github.com/googleapis/google-api-nodejs-client) | Google OAuth, Tasks, and Gmail. |
+| [dotenv](https://github.com/motdotla/dotenv#readme) | Local environment configuration. |
+| [TypeScript](https://www.typescriptlang.org/docs/) and [type definitions](https://github.com/DefinitelyTyped/DefinitelyTyped) | Type checking. |
+| [Vite](https://vite.dev/guide/), [Sass](https://sass-lang.com/documentation/), and [Tailwind CSS](https://tailwindcss.com/docs) | Build and styling tools. |
+| [tsx](https://tsx.is/) and [concurrently](https://github.com/open-cli-tools/concurrently) | Run the development API and client together. |
+
+Exact versions are recorded in [package-lock.json](package-lock.json).

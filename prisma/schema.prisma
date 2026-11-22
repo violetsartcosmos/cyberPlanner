@@ -1,0 +1,58 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../server/generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model PlannerDay {
+  day    DateTime @id @db.Date
+  checks Json     @default("[]")
+  note   String   @default("")
+
+  @@map("planner_days")
+}
+
+model GoogleConnection {
+  singleton             Boolean  @id @default(true)
+  email                 String
+  encryptedRefreshToken String   @map("encrypted_refresh_token")
+  updatedAt             DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("google_connections")
+}
+
+model ExternalTask {
+  source      String
+  externalId  String    @map("external_id")
+  taskListId  String?   @map("task_list_id")
+  title       String
+  dueDate     DateTime? @map("due_date") @db.Date
+  completed   Boolean   @default(false)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  emailFrom   String?   @map("email_from")
+  emailUrl    String?   @map("email_url")
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@id([source, externalId])
+  @@index([dueDate], map: "external_tasks_due_date_idx", where: { isDeleted: false })
+  @@map("external_tasks")
+}
+
+model PointLedger {
+  id         BigInt    @id @default(autoincrement())
+  amount     Int
+  entryType  String    @map("entry_type")
+  taskKey    String?   @map("task_key")
+  taskDate   DateTime? @map("task_date") @db.Date
+  rewardId   String?   @map("reward_id")
+  rewardName String?   @map("reward_name")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([taskKey], map: "point_ledger_task_award_idx", where: { entryType: "earn" })
+  @@map("point_ledger")
+}

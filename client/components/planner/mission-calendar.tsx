@@ -6,14 +6,13 @@ import {
   monthDates,
   weekdays,
   weekDates,
-  type PlannerData,
-} from "../planner-utils";
+} from "../../../shared/planner/utils";
 
 type MissionCalendarProps = {
   date: Date;
   selected: string;
   today: string;
-  checks: PlannerData["checks"];
+  checks: Record<string, string[]>;
   onSelect: (date: string) => void;
   onToday: () => void;
 };
@@ -63,7 +62,7 @@ export function MissionCalendar({
         </div>
         <span className="calendar-symbol">▦</span>
       </div>
-      <div className="calendar-views" aria-label="Calendar view">
+      <div className="calendar-views" role="group" aria-label="Calendar view">
         <button
           type="button"
           aria-pressed={view === "week"}
@@ -80,11 +79,21 @@ export function MissionCalendar({
         </button>
       </div>
       <div className="month-nav">
-        <button onClick={() => navigate(-1)} aria-label={`Previous ${view}`}>
+        <button
+          className="icon-button"
+          type="button"
+          onClick={() => navigate(-1)}
+          aria-label={`Previous ${view}`}
+        >
           ‹
         </button>
-        <strong>{range}</strong>
-        <button onClick={() => navigate(1)} aria-label={`Next ${view}`}>
+        <strong aria-live="polite">{range}</strong>
+        <button
+          className="icon-button"
+          type="button"
+          onClick={() => navigate(1)}
+          aria-label={`Next ${view}`}
+        >
           ›
         </button>
       </div>
@@ -108,6 +117,7 @@ export function MissionCalendar({
           return (
             <button
               key={key}
+              type="button"
               className={`calendar-day ${view === "month" && day.getMonth() !== date.getMonth() ? "outside" : ""} ${key === selected ? "selected" : ""} ${key === today ? "is-today" : ""} ${progress.completed ? "has-progress" : ""}`}
               onClick={() => onSelect(key)}
               aria-label={`${label}, ${progress.completed} of ${progress.total} tasks complete`}
@@ -128,7 +138,7 @@ export function MissionCalendar({
           );
         })}
       </div>
-      <button className="today-button" onClick={onToday}>
+      <button className="today-button" type="button" onClick={onToday}>
         ↗ BACK TO TODAY
       </button>
     </section>

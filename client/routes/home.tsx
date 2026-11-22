@@ -1,45 +1,121 @@
-import type { Route } from "./+types/home";
-import { Checklist } from "../components/checklist";
-import { MissionCalendar } from "../components/mission-calendar";
-import { dailyQuests, morningRoutine, nightRoutine, rewards } from "../planner";
+import { useEffect, useState } from "react";
 import {
+  useFetcher,
+  useLoaderData,
+  useNavigate,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+} from "react-router";
+import { Checklist } from "../components/planner/checklist";
+import { GoogleIntegrationPanel } from "../components/google/integration-panel";
+import { MissionCalendar } from "../components/planner/mission-calendar";
+import { NotesEditor } from "../components/planner/notes-editor";
+import { RewardShop } from "../components/rewards/shop";
+import { SignInPanel } from "../components/auth/sign-in-panel";
+import { dailyQuests, morningRoutine, nightRoutine } from "../../shared/planner/definitions";
+import type { PlannerActionResult, PlannerPage } from "../../shared/planner/types";
+import {
+  dateKey,
   dayProgress,
   parseDate,
   weekdayIndex,
   weekdays,
-} from "../planner-utils";
-import { usePlanner } from "../use-planner";
+} from "../../shared/planner/utils";
 
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "CyberPlanner | Your life, your quest" },
-    {
-      name: "description",
-      content: "A little structure for a more intentional life.",
-    },
-  ];
+export async function loader({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const response = await fetch(`/api/planner${url.search}`, { signal: request.signal });
+  if (!response.ok) throw new Error(`Could not load the planner (${response.status}).`);
+  return response.json() as Promise<PlannerPage>;
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const response = await fetch("/api/planner", {
+    method: "POST",
+    body: await request.formData(),
+    signal: request.signal,
+  });
+  if (!response.ok) throw new Error(`Could not submit the planner action (${response.status}).`);
+  return response.json() as Promise<PlannerActionResult>;
 }
 
 export default function Home() {
-  const {
-    selected,
-    setSelected,
-    today,
-    data,
-    storageError,
-    toggle,
-    setNote,
-    goToToday,
-  } = usePlanner();
+  const page = useLoaderData<typeof loader>();
+  const navigate = useNavigate();
+  const toggleFetcher = useFetcher<PlannerActionResult>();
+  const [today, setToday] = useState(page.authenticated ? page.today : "");
 
-  if (!selected)
-    return <main className="loading">INITIALIZING YOUR PLANNER...</main>;
+  useEffect(() => {
+    if (!page.authenticated) return;
+    const localToday = dateKey(new Date());
+    setToday(localToday);
+    if (!new URLSearchParams(window.location.search).has("date")) {
+      if (localToday !== page.today) {
+        navigate(`/?date=${localToday}`, { replace: true });
+      }
+    }
+  }, [navigate, page]);
 
+  if (!page.authenticated) {
+    return (
+      <SignInPanel
+        missingConfiguration={page.missingConfiguration}
+        authError={page.authError}
+      />
+    );
+  }
+
+  const selected = page.selected;
   const date = parseDate(selected);
   const weekday = weekdayIndex(date);
   const quest = dailyQuests[weekday];
-  const checked = data.checks[selected] ?? [];
+  const checked = page.checks[selected] ?? [];
   const { total, completed, percent } = dayProgress(date, checked);
+  const externalIds = page.tasks.map(
+    (task) => `${task.source}:${task.externalId}`,
+  );
+  const externalChecked = page.tasks
+    .filter((task) => task.completed)
+    .map((task) => `${task.source}:${task.externalId}`);
+  const externalEarned = page.tasks
+    .filter((task) =>
+      page.earnedTaskKeys.includes(
+        `external:${task.source}:${task.externalId}`,
+      ),
+    )
+    .map((task) => `${task.source}:${task.externalId}`);
+
+  function toggleTask(taskId: string) {
+    if (taskId.startsWith("google:") || taskId.startsWith("gmail:")) {
+      const separator = taskId.indexOf(":");
+      const source = taskId.slice(0, separator);
+      const externalId = taskId.slice(separator + 1);
+      toggleFetcher.submit(
+        {
+          intent: "toggle_external",
+          source,
+          externalId,
+          date: selected,
+          completed: String(!externalChecked.includes(taskId)),
+        },
+        { method: "post" },
+      );
+      return;
+    }
+    toggleFetcher.submit(
+      {
+        intent: "toggle_builtin",
+        taskId,
+        date: selected,
+        completed: String(!checked.includes(taskId)),
+      },
+      { method: "post" },
+    );
+  }
+
+  function selectDate(next: string) {
+    navigate(`/?date=${next}`);
+  }
 
   return (
     <div className="app-shell">
@@ -55,6 +131,9 @@ export default function Home() {
           <span className="status">
             <i /> SYSTEM ONLINE
           </span>
+          <span className="wallet-balance" aria-label={`${page.balance} points`}>
+            ✦ {page.balance} PTS
+          </span>
           <span className="top-date">
             {date
               .toLocaleDateString("en-US", {
@@ -64,6 +143,11 @@ export default function Home() {
               })
               .toUpperCase()}
           </span>
+          <form method="post" action="/auth/logout">
+            <button className="logout-button" type="submit">
+              SIGN OUT
+            </button>
+          </form>
         </div>
       </header>
 
@@ -85,10 +169,9 @@ export default function Home() {
             <small>TO YOURSELF, ALWAYS.</small>
           </div>
         </div>
-
-        {storageError && (
+        {toggleFetcher.data?.error && (
           <div className="storage-error" role="alert">
-            {storageError}
+            {toggleFetcher.data.error}
           </div>
         )}
 
@@ -110,7 +193,7 @@ export default function Home() {
             <span>
               <b>{completed}</b> / {total} tasks complete
             </span>
-            <span>✦ {completed * 10} XP</span>
+            <span>✦ {page.todayPoints} PTS EARNED</span>
           </div>
         </section>
 
@@ -119,10 +202,10 @@ export default function Home() {
             <MissionCalendar
               date={date}
               selected={selected}
-              today={today}
-              checks={data.checks}
-              onSelect={setSelected}
-              onToday={goToToday}
+              today={today || page.today}
+              checks={page.checks}
+              onSelect={selectDate}
+              onToday={() => selectDate(today || page.today)}
             />
             <section className="panel week-panel">
               <div className="section-label">
@@ -192,15 +275,22 @@ export default function Home() {
                   <span>YOUR MOMENTUM</span>
                   <b>{percent}%</b>
                 </div>
-                <div className="progress-track">
+                <div
+                  className="progress-track"
+                  role="progressbar"
+                  aria-label="Daily quest completion"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={percent}
+                >
                   <div style={{ width: `${percent}%` }} />
                 </div>
               </div>
               <div className="xp-total">
                 <span>✦</span>
                 <div>
-                  <strong>{completed * 10} XP</strong>
-                  <small>FOR THIS DAY</small>
+                  <strong>{page.todayPoints} PTS</strong>
+                  <small>EARNED THIS DAY</small>
                 </div>
               </div>
             </section>
@@ -211,7 +301,11 @@ export default function Home() {
               items={quest.tasks}
               prefix="daily"
               checked={checked}
-              onToggle={toggle}
+              earnedIds={page.earnedTaskKeys
+                .filter((key) => key.startsWith(`builtin:${selected}:`))
+                .map((key) => key.slice(`builtin:${selected}:`.length))}
+              disabled={toggleFetcher.state !== "idle"}
+              onToggle={toggleTask}
             />
             <div className="routine-grid">
               <Checklist
@@ -221,7 +315,13 @@ export default function Home() {
                 items={morningRoutine}
                 prefix="morning"
                 checked={checked}
-                onToggle={toggle}
+                earnedIds={page.earnedTaskKeys
+                  .filter((key) =>
+                    key.startsWith(`builtin:${selected}:morning-`),
+                  )
+                  .map((key) => key.slice(`builtin:${selected}:`.length))}
+                disabled={toggleFetcher.state !== "idle"}
+                onToggle={toggleTask}
               />
               <Checklist
                 title="Nightly routine"
@@ -230,9 +330,28 @@ export default function Home() {
                 items={nightRoutine}
                 prefix="night"
                 checked={checked}
-                onToggle={toggle}
+                earnedIds={page.earnedTaskKeys
+                  .filter((key) =>
+                    key.startsWith(`builtin:${selected}:night-`),
+                  )
+                  .map((key) => key.slice(`builtin:${selected}:`.length))}
+                disabled={toggleFetcher.state !== "idle"}
+                onToggle={toggleTask}
               />
             </div>
+            <Checklist
+              title="Google & email tasks"
+              eyebrow="SYNCED TASKS"
+              icon="↻"
+              items={page.tasks.map((task) => task.title)}
+              ids={externalIds}
+              prefix="external"
+              checked={externalChecked}
+              earnedIds={externalEarned}
+              taskLinks={page.tasks.map((task) => task.emailUrl)}
+              disabled={toggleFetcher.state !== "idle"}
+              onToggle={toggleTask}
+            />
           </div>
 
           <aside className="right-column">
@@ -255,59 +374,9 @@ export default function Home() {
                 SELF-KINDNESS IS A SUPERPOWER <span>↗</span>
               </div>
             </section>
-            <section className="panel rewards-panel">
-              <div className="section-label">
-                <span>04 / REWARDS</span>
-                <span>✧</span>
-              </div>
-              <h2>Celebrate the wins.</h2>
-              <p>Good work deserves a little joy.</p>
-              <div className="reward-list">
-                {rewards.map((reward, index) => (
-                  <div key={reward}>
-                    <span>
-                      {
-                        [
-                          "✦",
-                          "◈",
-                          "♥",
-                          "✧",
-                          "☼",
-                          "♪",
-                          "▣",
-                          "★",
-                          "✿",
-                          "◆",
-                          "☻",
-                          "✺",
-                        ][index]
-                      }
-                    </span>
-                    {reward}
-                  </div>
-                ))}
-              </div>
-              <div className="reward-note">
-                PICK A REWARD THAT FEELS GOOD <span>↗</span>
-              </div>
-            </section>
-            <section className="panel notes-panel">
-              <div className="section-label">
-                <span>05 / BRAIN DUMP</span>
-                <span>✎</span>
-              </div>
-              <h2>Notes to self.</h2>
-              <label className="sr-only" htmlFor="notes">
-                Notes for {selected}
-              </label>
-              <textarea
-                id="notes"
-                placeholder="What's on your mind?"
-                value={data.notes[selected] ?? ""}
-                onChange={(event) => setNote(event.target.value)}
-              />
-              <p>SAVED ON THIS DEVICE</p>
-            </section>
+            <RewardShop balance={page.balance} redemptions={page.redemptions} />
+            <GoogleIntegrationPanel email={page.email} selected={selected} />
+            <NotesEditor selected={selected} note={page.note} />
           </aside>
         </div>
         <footer>

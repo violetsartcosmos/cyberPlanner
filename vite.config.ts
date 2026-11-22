@@ -1,10 +1,34 @@
-import { reactRouter } from "@react-router/dev/vite";
+import "dotenv/config";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
+const apiPort = process.env.PORT || "3000";
+const backendDirectory = resolve("server");
+
 export default defineConfig({
-  plugins: [tailwindcss(), reactRouter()],
-  resolve: {
-    tsconfigPaths: true,
+  root: "client",
+  plugins: [
+    {
+      name: "prevent-server-imports",
+      enforce: "pre",
+      transform(_code, id) {
+        const path = relative(backendDirectory, id.split("?")[0]);
+        if (path !== "" && path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path)) {
+          this.error("Server modules cannot be imported into the browser client.");
+        }
+      },
+    },
+    tailwindcss(),
+  ],
+  build: { outDir: "../build/client", emptyOutDir: true },
+  server: {
+    host: "localhost",
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      "/api": { target: `http://localhost:${apiPort}`, changeOrigin: false },
+      "/auth": { target: `http://localhost:${apiPort}`, changeOrigin: false },
+    },
   },
 });

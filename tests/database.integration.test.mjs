@@ -1,0 +1,141 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import test from "node:test";
+import pg from "pg";
+import { createCookieSessionStorage } from "react-router";
+import { createServer } from "vite";
+
+test("Prisma preserves planner, points, and Google database behavior", async () => {
+  const url = process.env.TEST_DATABASE_URL;
+  if (!url) throw new Error("TEST_DATABASE_URL must point to an empty, disposable PostgreSQL database.");
+  const client = new pg.Client({ connectionString: url });
+  await client.connect();
+  try {
+    const tables = await client.query(
+      "SELECT tablename FROM pg_tables WHERE schemaname = current_schema()",
+    );
+    if (tables.rowCount !== 0) {
+      throw new Error("TEST_DATABASE_URL must point to an empty database; no changes were made.");
+    }
+
+    process.env.DATABASE_URL = url;
+    process.env.SESSION_SECRET = "temporary-integration-test-session-secret";
+    process.env.GOOGLE_ALLOWED_EMAIL = "integration@example.test";
+    const migration = spawnSync(process.execPath, [
+      "node_modules/prisma/build/index.js", "migrate", "deploy",
+    ], { env: process.env, encoding: "utf8" });
+    assert.equal(migration.status, 0, migration.stderr || migration.stdout);
+    const diff = spawnSync(process.execPath, [
+      "node_modules/prisma/build/index.js", "migrate", "diff",
+      "--from-config-datasource", "--to-schema", "prisma/schema.prisma", "--exit-code",
+    ], { env: process.env, encoding: "utf8" });
+    assert.equal(diff.status, 0, `${diff.stderr}\n${diff.stdout}`);
+
+    const vite = await createServer({
+      configFile: false,
+      appType: "custom",
+      server: { middlewareMode: true, hmr: false, ws: false },
+    });
+    let db;
+    try {
+      const planner = await vite.ssrLoadModule("/server/planner/service.ts");
+      const points = await vite.ssrLoadModule("/server/points/service.ts");
+      const database = await vite.ssrLoadModule("/server/db/client.ts");
+      db = database.getDatabase();
+      const date = "2026-11-21";
+
+      await Promise.all([
+        planner.setBuiltinTaskCompletion(date, "daily-0", true),
+        planner.setBuiltinTaskCompletion(date, "daily-1", true),
+      ]);
+      await planner.setBuiltinTaskCompletion(date, "daily-0", true);
+      await planner.savePlannerNote(date, "Keep this note");
+      await planner.setBuiltinTaskCompletion(date, "daily-2", true);
+      const snapshot = await planner.getPlannerSnapshot(date);
+      assert.deepEqual(new Set(snapshot.checks[date]), new Set(["daily-0", "daily-1", "daily-2"]));
+      assert.equal(await planner.getPlannerNote(date), "Keep this note");
+      assert.equal((await points.getPointsSummary(date)).todayPoints, 30);
+
+      const redemptions = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          points.redeemReward({ id: "reward", name: "Reward", cost: 20 }),
+        ),
+      );
+      assert.equal(redemptions.filter((item) => item.redeemed).length, 1);
+      assert.equal((await points.getPointsSummary(date)).balance, 10);
+
+      const googleTask = {
+        source: "google", externalId: "google-task", taskListId: "list",
+        title: "Google task", dueDate: date, completed: true,
+        completedAt: "2026-11-21T14:00:00Z", emailFrom: null, emailUrl: null,
+      };
+      await planner.upsertGoogleTask(googleTask, date);
+      await planner.upsertGoogleTask(googleTask, date);
+      assert.equal((await planner.getExternalTask("google", "google-task")).dueDate, date);
+      assert.equal((await points.getPointsSummary(date)).balance, 20);
+      await planner.setExternalTaskCompletion(googleTask, false, date);
+      await planner.setExternalTaskCompletion(googleTask, true, date);
+      assert.equal((await points.getPointsSummary(date)).balance, 20);
+
+      const gmailTask = {
+        source: "gmail", externalId: "message", taskListId: null,
+        title: "Email", dueDate: date, completed: false,
+        emailFrom: "sender", emailUrl: "https://example.test/message",
+      };
+      assert.equal(await planner.createGmailTask(gmailTask), true);
+      assert.equal(await planner.createGmailTask(gmailTask), false);
+      await planner.saveGoogleConnection("user@example.test", "encrypted");
+      assert.deepEqual(await planner.getGoogleConnection(), {
+        email: "user@example.test", encrypted_refresh_token: "encrypted",
+      });
+
+      const extraDate = "2026-11-22";
+      const actions = await vite.ssrLoadModule("/server/planner/dispatch.ts");
+      const storage = createCookieSessionStorage({
+        cookie: {
+          name: "cyberplanner_session", httpOnly: true, path: "/", sameSite: "lax",
+          secure: process.env.NODE_ENV === "production", secrets: [process.env.SESSION_SECRET],
+        },
+      });
+      const session = await storage.getSession();
+      session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
+      const cookie = await storage.commitSession(session);
+      async function submit(values, signedIn = true) {
+        return actions.handlePlannerAction(new Request("http://localhost/", {
+          method: "POST",
+          headers: signedIn ? { Cookie: cookie } : {},
+          body: new URLSearchParams(values),
+        }));
+      }
+      assert.equal((await submit({ intent: "save_note" }, false)).ok, false);
+      assert.deepEqual(await submit({ intent: "__proto__" }), {
+        ok: false, error: "Unknown planner action.",
+      });
+      assert.deepEqual(await submit({ intent: "save_note", date: "bad", note: "x" }), {
+        ok: false, error: "That planner date is invalid.",
+      });
+      assert.deepEqual(await submit({ intent: "toggle_builtin", date: extraDate, taskId: "bad" }), {
+        ok: false, error: "That planner task is invalid.",
+      });
+      assert.deepEqual(await submit({ intent: "search_gmail", query: " " }), {
+        ok: false, error: "Enter a Gmail search query (up to 256 characters).",
+      });
+      assert.deepEqual(await submit({ intent: "redeem_reward", rewardId: "missing" }), {
+        ok: false, error: "That reward is not available.",
+      });
+      assert.equal((await submit({ intent: "save_note", date: extraDate, note: "Updated" })).ok, true);
+      assert.equal(await planner.getPlannerNote(extraDate), "Updated");
+      assert.equal((await submit({ intent: "save_note", date: extraDate, note: "" })).ok, true);
+      assert.equal(await planner.getPlannerNote(extraDate), "");
+
+      await assert.rejects(client.query(
+        "INSERT INTO point_ledger (amount, entry_type, task_key) VALUES (0, 'earn', 'invalid')",
+      ));
+    } finally {
+      if (db) await db.$disconnect();
+      await vite.close();
+    }
+  } finally {
+    await client.end();
+  }
+});
