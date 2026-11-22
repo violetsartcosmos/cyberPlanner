@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowUpRight,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+} from "lucide-react";
+import {
   addDays,
   dateKey,
   dayProgress,
@@ -53,14 +60,14 @@ export function MissionCalendar({
     <section className="panel calendar-panel">
       <div className="section-label">
         <span>01 / NAVIGATION</span>
-        <span>▰ ▰ ▰</span>
+        <Sparkles aria-hidden="true" size={12} />
       </div>
       <div className="calendar-title">
         <div>
           <p className="eyebrow">YOUR TIMELINE</p>
           <h2>Mission calendar</h2>
         </div>
-        <span className="calendar-symbol">▦</span>
+        <CalendarDays className="calendar-symbol" aria-hidden="true" />
       </div>
       <div className="calendar-views" role="group" aria-label="Calendar view">
         <button
@@ -85,7 +92,7 @@ export function MissionCalendar({
           onClick={() => navigate(-1)}
           aria-label={`Previous ${view}`}
         >
-          ‹
+          <ChevronLeft aria-hidden="true" size={16} />
         </button>
         <strong aria-live="polite">{range}</strong>
         <button
@@ -94,7 +101,7 @@ export function MissionCalendar({
           onClick={() => navigate(1)}
           aria-label={`Next ${view}`}
         >
-          ›
+          <ChevronRight aria-hidden="true" size={16} />
         </button>
       </div>
       {view === "month" && (
@@ -139,7 +146,7 @@ export function MissionCalendar({
         })}
       </div>
       <button className="today-button" type="button" onClick={onToday}>
-        ↗ BACK TO TODAY
+        <ArrowUpRight aria-hidden="true" size={12} /> BACK TO TODAY
       </button>
     </section>
   );

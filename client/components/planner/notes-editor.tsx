@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
+import { Pencil } from "lucide-react";
 import type { PlannerActionResult } from "../../../shared/planner/types";
 
 type NotesEditorProps = {
@@ -19,7 +20,7 @@ export function NotesEditor({ selected, note: savedNote }: NotesEditorProps) {
     <section className="panel notes-panel">
       <div className="section-label">
         <span>06 / BRAIN DUMP</span>
-        <span>✎</span>
+        <Pencil aria-hidden="true" size={12} />
       </div>
       <h2>Notes to self.</h2>
       <label className="sr-only" htmlFor="notes">

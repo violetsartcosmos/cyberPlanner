@@ -125,7 +125,6 @@ button:disabled {
 .brand-mark {
   display: grid;
   place-items: center;
-  font-size: 31px;
   color: var(--md-sys-color-primary);
 }
 
@@ -216,9 +215,8 @@ h1 em,
   line-height: 1.8;
 }
 
-.intro-tag span {
+.intro-tag svg {
   color: var(--md-sys-color-secondary);
-  font-size: 16px;
 }
 
 .intro-tag small {
@@ -260,7 +258,9 @@ h1 em,
   margin-bottom: 19px;
 }
 
-.section-label span:last-child {
+.section-label > :last-child {
+  display: inline-flex;
+  align-items: center;
   color: var(--md-sys-color-primary);
 }
 
@@ -278,7 +278,8 @@ h1 em,
 
 .calendar-symbol {
   color: var(--md-sys-color-primary);
-  font-size: 25px;
+  width: 25px;
+  height: 25px;
 }
 
 .month-nav {
@@ -387,6 +388,10 @@ h1 em,
 }
 
 .today-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
   min-height: 44px;
   margin-top: 17px;
@@ -455,7 +460,7 @@ h1 em,
   letter-spacing: 0.05em;
 }
 
-.side-quote span {
+.side-quote svg {
   color: var(--md-sys-color-secondary);
 }
 
@@ -514,7 +519,9 @@ h1 em,
 }
 
 .hero-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid #b75d72;
   border-radius: var(--md-sys-shape-corner-full);
   color: #f4c9d3;
@@ -524,7 +531,7 @@ h1 em,
   letter-spacing: 0.06em;
 }
 
-.hero-badge span {
+.hero-badge svg {
   color: var(--md-sys-color-primary);
 }
 
@@ -566,9 +573,10 @@ h1 em,
 }
 
 .hero-star {
-  font-size: 105px;
+  width: 105px;
+  height: 105px;
   color: var(--md-sys-color-primary);
-  text-shadow: 0 0 30px #f4ed3855;
+  filter: drop-shadow(0 0 30px #f4ed3855);
 }
 
 .hero-art-label {
@@ -584,6 +592,9 @@ h1 em,
   position: absolute;
   top: 20px;
   right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   color: #f0b5c3;
   font: 8px var(--font-mono);
 }
@@ -647,8 +658,8 @@ h1 em,
   color: var(--md-sys-color-primary);
 }
 
-.xp-total > span {
-  font-size: 23px;
+.xp-total > svg {
+  flex: 0 0 auto;
 }
 
 .xp-total strong {
@@ -692,7 +703,6 @@ h1 em,
   background: var(--md-sys-color-primary-container);
   border: 1px solid #5b5835;
   border-radius: var(--md-sys-shape-corner-md);
-  font-size: 18px;
 }
 
 .heading-group .eyebrow {
@@ -733,13 +743,13 @@ h1 em,
 }
 
 .checkmark {
+  display: grid;
+  place-items: center;
   width: 18px;
   height: 18px;
   flex: 0 0 18px;
   border: 1px solid var(--md-sys-color-outline);
   border-radius: var(--md-sys-shape-corner-xs);
-  display: grid;
-  place-items: center;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -755,10 +765,12 @@ h1 em,
   border-color: var(--md-sys-color-primary);
 }
 
-.task input:checked + .checkmark:after {
-  content: "✓";
-  font-size: 11px;
-  font-weight: 700;
+.checkmark svg {
+  display: none;
+}
+
+.task input:checked + .checkmark svg {
+  display: block;
   color: var(--md-sys-color-on-primary);
 }
 
@@ -794,10 +806,10 @@ h1 em,
   );
 }
 
-.pixel-heart {
-  font-size: 39px;
+.motivation-heart {
+  display: block;
   color: var(--md-sys-color-secondary);
-  text-shadow: 4px 4px #7f405c;
+  filter: drop-shadow(4px 4px #7f405c);
   margin: 10px 0 15px;
 }
 
@@ -824,9 +836,14 @@ h1 em,
   letter-spacing: 0.05em;
 }
 
-.motivation-bottom span,
-.reward-note span {
+.motivation-bottom svg,
+.reward-note svg {
   color: var(--md-sys-color-primary);
+}
+
+.right-column .progress-panel {
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
 .reward-list {
@@ -928,7 +945,7 @@ footer {
   letter-spacing: 0.1em;
 }
 
-footer b {
+footer svg {
   color: var(--md-sys-color-primary);
 }
 

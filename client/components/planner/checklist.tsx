@@ -1,7 +1,10 @@
+import type { ReactNode } from "react";
+import { ArrowUpRight, Check } from "lucide-react";
+
 type ChecklistProps = {
   title: string;
   eyebrow: string;
-  icon: string;
+  icon: ReactNode;
   items: readonly string[];
   prefix: string;
   checked: string[];
@@ -59,7 +62,9 @@ export function Checklist({
                   disabled={disabled}
                   onChange={() => onToggle(id)}
                 />
-                <span className="checkmark" aria-hidden="true" />
+                <span className="checkmark" aria-hidden="true">
+                  <Check size={12} />
+                </span>
                 <span>{item}</span>
                 <span className="task-xp">
                   {earned ? "EARNED" : "+10 PTS"}
@@ -73,7 +78,7 @@ export function Checklist({
                   rel="noreferrer"
                   aria-label={`Open source email for ${item}`}
                 >
-                  EMAIL ↗
+                  EMAIL <ArrowUpRight aria-hidden="true" size={12} />
                 </a>
               )}
             </div>

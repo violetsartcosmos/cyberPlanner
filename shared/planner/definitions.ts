@@ -107,26 +107,16 @@ export const nightRoutine = [
 ] as const;
 
 export const rewards = [
-  { id: "snacks", title: "Snacks", cost: 50, icon: "✦" },
-  { id: "game-time", title: "Game time", cost: 100, icon: "◈" },
-  { id: "tv-time", title: "TV time", cost: 80, icon: "♥" },
-  { id: "scroll-time", title: "Scroll time", cost: 50, icon: "✧" },
-  {
-    id: "small-treat",
-    title: "Buy something small",
-    cost: 300,
-    icon: "☼",
-  },
-  {
-    id: "takeout",
-    title: "Order pizza or food",
-    cost: 400,
-    icon: "♪",
-  },
-  { id: "paint", title: "Paint", cost: 150, icon: "▣" },
-  { id: "self-care", title: "Self-care", cost: 150, icon: "★" },
-  { id: "movie-night", title: "Movie night", cost: 200, icon: "✿" },
-  { id: "planner-supplies", title: "Planner supplies", cost: 250, icon: "◆" },
-  { id: "day-trip", title: "Day trip", cost: 800, icon: "☻" },
-  { id: "stickers", title: "Stickers", cost: 100, icon: "✺" },
+  { id: "snacks", title: "Snacks", cost: 50 },
+  { id: "game-time", title: "Game time", cost: 100 },
+  { id: "tv-time", title: "TV time", cost: 80 },
+  { id: "scroll-time", title: "Scroll time", cost: 50 },
+  { id: "small-treat", title: "Buy something small", cost: 300 },
+  { id: "takeout", title: "Order pizza or food", cost: 400 },
+  { id: "paint", title: "Paint", cost: 150 },
+  { id: "self-care", title: "Self-care", cost: 150 },
+  { id: "movie-night", title: "Movie night", cost: 200 },
+  { id: "planner-supplies", title: "Planner supplies", cost: 250 },
+  { id: "day-trip", title: "Day trip", cost: 800 },
+  { id: "stickers", title: "Stickers", cost: 100 },
 ] as const;

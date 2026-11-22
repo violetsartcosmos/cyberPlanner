@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowUpRight,
+  ChevronRight,
+  Heart,
+  Moon,
+  RefreshCw,
+  Sparkles,
+  Sun,
+} from "lucide-react";
+import {
   useFetcher,
   useLoaderData,
   useNavigate,
@@ -121,7 +130,9 @@ export default function Home() {
     <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="/" aria-label="CyberPlanner home">
-          <span className="brand-mark">✳</span>
+          <span className="brand-mark">
+            <Sparkles aria-hidden="true" size={28} />
+          </span>
           <span>
             CYBER<span>PLANNER</span>
             <small>LIFE MANAGEMENT SYSTEM</small>
@@ -132,7 +143,7 @@ export default function Home() {
             <i /> SYSTEM ONLINE
           </span>
           <span className="wallet-balance" aria-label={`${page.balance} points`}>
-            ✦ {page.balance} PTS
+            <Sparkles aria-hidden="true" size={13} /> {page.balance} PTS
           </span>
           <span className="top-date">
             {date
@@ -165,7 +176,7 @@ export default function Home() {
             </p>
           </div>
           <div className="intro-tag">
-            <span>✦</span> BE AGGRESSIVELY KIND{" "}
+            <Sparkles aria-hidden="true" size={14} /> BE AGGRESSIVELY KIND{" "}
             <small>TO YOURSELF, ALWAYS.</small>
           </div>
         </div>
@@ -193,7 +204,10 @@ export default function Home() {
             <span>
               <b>{completed}</b> / {total} tasks complete
             </span>
-            <span>✦ {page.todayPoints} PTS EARNED</span>
+            <span>
+              <Sparkles aria-hidden="true" size={12} /> {page.todayPoints} PTS
+              EARNED
+            </span>
           </div>
         </section>
 
@@ -210,7 +224,7 @@ export default function Home() {
             <section className="panel week-panel">
               <div className="section-label">
                 <span>02 / WEEKLY PROTOCOL</span>
-                <span>✦</span>
+                <Sparkles aria-hidden="true" size={12} />
               </div>
               <h2>Every day has a mission.</h2>
               <p>Small steps, one day at a time.</p>
@@ -222,13 +236,18 @@ export default function Home() {
                   >
                     <span>{weekdays[index].toUpperCase()}</span>
                     <strong>{day.title}</strong>
-                    <b>{index === weekday ? "↗" : "·"}</b>
+                    <b>
+                      {index === weekday ? (
+                        <ChevronRight aria-hidden="true" size={12} />
+                      ) : null}
+                    </b>
                   </div>
                 ))}
               </div>
             </section>
             <div className="side-quote">
-              <span>✳</span> PROGRESS, NOT PERFECTION.
+              <Sparkles aria-hidden="true" size={14} /> PROGRESS, NOT
+              PERFECTION.
               <br />
               <small>YOU ARE ALREADY DOING ENOUGH.</small>
             </div>
@@ -247,21 +266,109 @@ export default function Home() {
                 </h2>
                 <p>{quest.message}</p>
                 <div className="hero-badge">
-                  <span>◆</span> DAILY QUEST ACTIVE
+                  <Sparkles aria-hidden="true" size={12} /> DAILY QUEST ACTIVE
                 </div>
               </div>
               <div className="hero-art" aria-hidden="true">
                 <div className="orbit orbit-one" />
                 <div className="orbit orbit-two" />
-                <div className="hero-star">✳</div>
+                <Sparkles className="hero-star" aria-hidden="true" />
                 <span className="hero-art-label">
                   LIFE IS THE
                   <br />
                   MAIN QUEST
                 </span>
-                <span className="hero-art-index">✦ 001 / 007</span>
+                <span className="hero-art-index">
+                  <Sparkles aria-hidden="true" size={11} /> 001 / 007
+                </span>
               </div>
             </section>
+            <section className="panel motivation-panel">
+              <div className="section-label">
+                <span>03 / A LITTLE REMINDER</span>
+                <Sparkles aria-hidden="true" size={12} />
+              </div>
+              <Heart
+                className="motivation-heart"
+                aria-hidden="true"
+                fill="currentColor"
+                size={40}
+              />
+              <h2>
+                You're doing
+                <br />
+                <em>amazing.</em>
+              </h2>
+              <p>
+                Showing up for yourself is the real win. Keep going, one quest
+                at a time.
+              </p>
+              <div className="motivation-bottom">
+                SELF-KINDNESS IS A SUPERPOWER
+                <ArrowUpRight aria-hidden="true" size={12} />
+              </div>
+            </section>
+            <Checklist
+              title={quest.title}
+              eyebrow="YOUR DAILY QUESTS"
+              icon={<Sparkles aria-hidden="true" size={19} />}
+              items={quest.tasks}
+              prefix="daily"
+              checked={checked}
+              earnedIds={page.earnedTaskKeys
+                .filter((key) => key.startsWith(`builtin:${selected}:`))
+                .map((key) => key.slice(`builtin:${selected}:`.length))}
+              disabled={toggleFetcher.state !== "idle"}
+              onToggle={toggleTask}
+            />
+            <div className="routine-grid">
+              <Checklist
+                title="Morning routine"
+                eyebrow="RISE & SHINE"
+                icon={<Sun aria-hidden="true" size={19} />}
+                items={morningRoutine}
+                prefix="morning"
+                checked={checked}
+                earnedIds={page.earnedTaskKeys
+                  .filter((key) =>
+                    key.startsWith(`builtin:${selected}:morning-`),
+                  )
+                  .map((key) => key.slice(`builtin:${selected}:`.length))}
+                disabled={toggleFetcher.state !== "idle"}
+                onToggle={toggleTask}
+              />
+              <Checklist
+                title="Nightly routine"
+                eyebrow="WIND DOWN"
+                icon={<Moon aria-hidden="true" size={19} />}
+                items={nightRoutine}
+                prefix="night"
+                checked={checked}
+                earnedIds={page.earnedTaskKeys
+                  .filter((key) =>
+                    key.startsWith(`builtin:${selected}:night-`),
+                  )
+                  .map((key) => key.slice(`builtin:${selected}:`.length))}
+                disabled={toggleFetcher.state !== "idle"}
+                onToggle={toggleTask}
+              />
+            </div>
+            <Checklist
+              title="Google & email tasks"
+              eyebrow="SYNCED TASKS"
+              icon={<RefreshCw aria-hidden="true" size={19} />}
+              items={page.tasks.map((task) => task.title)}
+              ids={externalIds}
+              prefix="external"
+              checked={externalChecked}
+              earnedIds={externalEarned}
+              taskLinks={page.tasks.map((task) => task.emailUrl)}
+              disabled={toggleFetcher.state !== "idle"}
+              onToggle={toggleTask}
+            />
+          </div>
+
+          <aside className="right-column">
             <section className="progress-panel">
               <div>
                 <p className="eyebrow">DAILY PROGRESS</p>
@@ -287,91 +394,11 @@ export default function Home() {
                 </div>
               </div>
               <div className="xp-total">
-                <span>✦</span>
+                <Sparkles aria-hidden="true" size={22} />
                 <div>
                   <strong>{page.todayPoints} PTS</strong>
                   <small>EARNED THIS DAY</small>
                 </div>
-              </div>
-            </section>
-            <Checklist
-              title={quest.title}
-              eyebrow="YOUR DAILY QUESTS"
-              icon="✦"
-              items={quest.tasks}
-              prefix="daily"
-              checked={checked}
-              earnedIds={page.earnedTaskKeys
-                .filter((key) => key.startsWith(`builtin:${selected}:`))
-                .map((key) => key.slice(`builtin:${selected}:`.length))}
-              disabled={toggleFetcher.state !== "idle"}
-              onToggle={toggleTask}
-            />
-            <div className="routine-grid">
-              <Checklist
-                title="Morning routine"
-                eyebrow="RISE & SHINE"
-                icon="☼"
-                items={morningRoutine}
-                prefix="morning"
-                checked={checked}
-                earnedIds={page.earnedTaskKeys
-                  .filter((key) =>
-                    key.startsWith(`builtin:${selected}:morning-`),
-                  )
-                  .map((key) => key.slice(`builtin:${selected}:`.length))}
-                disabled={toggleFetcher.state !== "idle"}
-                onToggle={toggleTask}
-              />
-              <Checklist
-                title="Nightly routine"
-                eyebrow="WIND DOWN"
-                icon="☾"
-                items={nightRoutine}
-                prefix="night"
-                checked={checked}
-                earnedIds={page.earnedTaskKeys
-                  .filter((key) =>
-                    key.startsWith(`builtin:${selected}:night-`),
-                  )
-                  .map((key) => key.slice(`builtin:${selected}:`.length))}
-                disabled={toggleFetcher.state !== "idle"}
-                onToggle={toggleTask}
-              />
-            </div>
-            <Checklist
-              title="Google & email tasks"
-              eyebrow="SYNCED TASKS"
-              icon="↻"
-              items={page.tasks.map((task) => task.title)}
-              ids={externalIds}
-              prefix="external"
-              checked={externalChecked}
-              earnedIds={externalEarned}
-              taskLinks={page.tasks.map((task) => task.emailUrl)}
-              disabled={toggleFetcher.state !== "idle"}
-              onToggle={toggleTask}
-            />
-          </div>
-
-          <aside className="right-column">
-            <section className="panel motivation-panel">
-              <div className="section-label">
-                <span>03 / A LITTLE REMINDER</span>
-                <span>✦</span>
-              </div>
-              <div className="pixel-heart">♥</div>
-              <h2>
-                You're doing
-                <br />
-                <em>amazing.</em>
-              </h2>
-              <p>
-                Showing up for yourself is the real win. Keep going, one quest
-                at a time.
-              </p>
-              <div className="motivation-bottom">
-                SELF-KINDNESS IS A SUPERPOWER <span>↗</span>
               </div>
             </section>
             <RewardShop balance={page.balance} redemptions={page.redemptions} />
@@ -381,7 +408,8 @@ export default function Home() {
         </div>
         <footer>
           <span>
-            CYBERPLANNER <b>✳</b> YOUR LIFE, YOUR QUEST.
+            CYBERPLANNER <Sparkles aria-hidden="true" size={11} /> YOUR LIFE,
+            YOUR QUEST.
           </span>
           <span>BUILT FOR THE BEAUTIFULLY HUMAN EXPERIENCE</span>
         </footer>

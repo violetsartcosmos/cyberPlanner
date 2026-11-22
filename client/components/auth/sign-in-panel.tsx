@@ -1,3 +1,5 @@
+import { Sparkles } from "lucide-react";
+
 type SignInPanelProps = {
   missingConfiguration: readonly string[];
   authError: string;
@@ -11,7 +13,9 @@ export function SignInPanel({
     <main className="app-shell sign-in-shell">
       <section className="panel sign-in-panel">
         <a className="brand" href="/" aria-label="CyberPlanner home">
-          <span className="brand-mark">✳</span>
+          <span className="brand-mark">
+            <Sparkles aria-hidden="true" size={28} />
+          </span>
           <span>
             CYBER<span>PLANNER</span>
             <small>LIFE MANAGEMENT SYSTEM</small>
