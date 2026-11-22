@@ -1,55 +1,42 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  ArrowUpRight,
-  CalendarDays,
-  CalendarRange,
-  ChartNoAxesCombined,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Cloud,
-  Gift,
-  Heart,
-  LayoutDashboard,
-  ListChecks,
-  ListTodo,
-  Moon,
-  NotebookPen,
-  Repeat2,
-  RefreshCw,
-  Sparkles,
-  Sun,
-  Swords,
-  UserRound,
-  type LucideIcon,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import {
   useFetcher,
   useLoaderData,
   useLocation,
   useNavigate,
-  Link,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
 } from "react-router";
-import { Checklist } from "../components/planner/checklist";
+import {
+  navigationSections,
+  PlannerNavigation,
+} from "../components/layout/planner-navigation";
 import { GoogleIntegrationPanel } from "../components/google/integration-panel";
-import { MissionCalendar } from "../components/planner/mission-calendar";
-import { JournalEditor } from "../components/planner/journal-editor";
 import { NotesEditor } from "../components/planner/notes-editor";
 import { Profile } from "../components/planner/profile";
 import { QuestBoard } from "../components/planner/quest-board";
 import { LevelHeader } from "../components/planner/level-header";
+import {
+  DailyProgressPanel,
+  ReminderPanel,
+} from "../components/planner/dashboard-widgets";
+import {
+  CalendarSection,
+  DailyQuestsSection,
+  RoutinesSection,
+  SyncedTasksSection,
+  WeeklyProtocolSection,
+} from "../components/planner/navigation-sections";
 import { RewardShop } from "../components/rewards/shop";
 import { SignInPanel } from "../components/auth/sign-in-panel";
-import { dailyQuests, morningRoutine, nightRoutine } from "../../shared/planner/definitions";
+import { dailyQuests } from "../../shared/planner/definitions";
 import type { PlannerActionResult, PlannerPage } from "../../shared/planner/types";
 import {
   dateKey,
   dayProgress,
   parseDate,
   weekdayIndex,
-  weekdays,
 } from "../../shared/planner/utils";
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -84,48 +71,6 @@ export default function Home() {
   const toggleFetcher = useFetcher<PlannerActionResult>();
   const [today, setToday] = useState(page.authenticated ? page.today : "");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [narrowScreen, setNarrowScreen] = useState(() => window.matchMedia("(max-width: 850px)").matches);
-  const menuRef = useRef<HTMLElement>(null);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 850px)");
-    function onChange(event: MediaQueryListEvent) {
-      setNarrowScreen(event.matches);
-    }
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, []);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    if (narrowScreen && !menuRef.current?.contains(document.activeElement)) {
-      menuButtonRef.current?.focus();
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-        menuButtonRef.current?.focus();
-      }
-      if (event.key === "Tab" && narrowScreen) {
-        const items = menuRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])");
-        if (!items?.length) return;
-        const first = items[0];
-        const last = items[items.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [menuOpen, narrowScreen]);
 
   useEffect(() => {
     if (!page.authenticated) return;
@@ -162,20 +107,9 @@ export default function Home() {
   const quest = dailyQuests[weekday];
   const checked = page.checks[selected] ?? [];
   const { total, completed, percent } = dayProgress(date, checked);
-  const externalIds = page.tasks.map(
-    (task) => `${task.source}:${task.externalId}`,
-  );
   const externalChecked = page.tasks
     .filter((task) => task.completed)
     .map((task) => `${task.source}:${task.externalId}`);
-  const externalEarned = page.tasks
-    .filter((task) =>
-      page.earnedTaskKeys.includes(
-        `external:${task.source}:${task.externalId}`,
-      ),
-    )
-    .map((task) => `${task.source}:${task.externalId}`);
-
   function toggleTask(taskId: string) {
     if (taskId.startsWith("google:") || taskId.startsWith("gmail:")) {
       const separator = taskId.indexOf(":");
@@ -216,92 +150,14 @@ export default function Home() {
     }
   }
 
-  const navigationGroups: ReadonlyArray<{
-    title: string;
-    items: ReadonlyArray<readonly [string, string, LucideIcon]>;
-  }> = [
-    { title: "YOUR SPACE", items: [
-      ["", "Dashboard", LayoutDashboard], ["calendar", "Calendar", CalendarDays],
-      ["quest-board", "Quest board", Swords],
-    ] },
-    { title: "PLANNER", items: [
-      ["quests", "Daily quests", ListChecks], ["routines", "Routines", Repeat2],
-      ["weekly", "Weekly protocol", CalendarRange], ["synced-tasks", "Synced tasks", ListTodo],
-      ["notes", "Notes", NotebookPen],
-    ] },
-    { title: "YOUR PROGRESS", items: [
-      ["progress", "Progress", ChartNoAxesCombined], ["rewards", "Rewards", Gift],
-      ["reminder", "Reminder", Heart], ["google", "Google sync", Cloud],
-    ] },
-  ];
-  const sections = [...navigationGroups.flatMap((group) => group.items), ["profile", "Profile", UserRound] as const];
-
-  function closeMenu() {
-    setMenuOpen(false);
-    menuButtonRef.current?.focus();
-  }
-
   return (
     <div className={`app-shell authenticated-shell ${menuOpen ? "menu-expanded" : ""}`}>
-      {menuOpen && narrowScreen && <button className="sidebar-backdrop" type="button" aria-label="Collapse menu" tabIndex={-1} onClick={closeMenu} />}
-      <aside
-        className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}
-        id="planner-sidebar"
-        ref={menuRef}
-        role={menuOpen && narrowScreen ? "dialog" : undefined}
-        aria-modal={menuOpen && narrowScreen ? true : undefined}
-        aria-label="Planner navigation"
-      >
-        <div className="sidebar-heading">
-          <Link className="brand" to={`/?date=${selected}`} aria-label="CyberPlanner home" title="CyberPlanner home" onClick={() => { if (menuOpen && narrowScreen) closeMenu(); }}>
-            <span className="brand-mark"><Sparkles aria-hidden="true" size={24} /></span>
-            <span className="sidebar-brand-text">CYBER<span>PLANNER</span><small>LIFE MANAGEMENT SYSTEM</small></span>
-          </Link>
-          <button
-            ref={menuButtonRef}
-            className="sidebar-toggle"
-            type="button"
-            aria-label={menuOpen ? "Collapse menu" : "Expand menu"}
-            title={menuOpen ? "Collapse menu" : "Expand menu"}
-            aria-expanded={menuOpen}
-            aria-controls="planner-navigation"
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {menuOpen ? <ChevronsLeft aria-hidden="true" size={20} /> : <ChevronsRight aria-hidden="true" size={20} />}
-          </button>
-        </div>
-        <nav className="section-navigation" id="planner-navigation" aria-label="Planner sections">
-          {navigationGroups.map((group) => (
-            <div className="navigation-group" key={group.title}>
-              <p>{group.title}</p>
-              {group.items.map(([path, label, Icon]) => (
-                <Link
-                  key={path}
-                  to={`${path ? `/${path}` : "/"}?date=${selected}`}
-                  aria-label={label}
-                  title={label}
-                  aria-current={section === path ? "page" : undefined}
-                  onClick={() => { if (menuOpen && narrowScreen) closeMenu(); }}
-                >
-                  <Icon aria-hidden="true" size={17} />
-                  <span className="sidebar-label">{label}</span>
-                </Link>
-              ))}
-            </div>
-          ))}
-          <Link
-            className="sidebar-profile"
-            to={`/profile?date=${selected}`}
-            aria-label="Profile"
-            title="Profile"
-            aria-current={section === "profile" ? "page" : undefined}
-            onClick={() => { if (menuOpen && narrowScreen) closeMenu(); }}
-          >
-            <span className="sidebar-avatar" aria-hidden="true">V</span>
-            <span className="sidebar-label"><strong>Violet</strong><small>VIEW PROFILE</small></span>
-          </Link>
-        </nav>
-      </aside>
+      <PlannerNavigation
+        selected={selected}
+        section={section}
+        expanded={menuOpen}
+        setExpanded={setMenuOpen}
+      />
       <header className="topbar">
         <div className="topbar-left">
           <span className="topbar-caption">YOUR LIFE, YOUR QUEST.</span>
@@ -331,7 +187,7 @@ export default function Home() {
         {!isDashboard && section !== "profile" && (
           <div className="page-heading">
             <p className="eyebrow accent">YOUR PERSONAL COMMAND CENTER</p>
-            <h1>{sections.find(([path]) => path === section)?.[1] ?? "Page not found"}</h1>
+            <h1>{navigationSections.find(([path]) => path === section)?.[1] ?? "Page not found"}</h1>
           </div>
         )}
         {isDashboard && <>
@@ -398,79 +254,25 @@ export default function Home() {
         {section === "quest-board" && <QuestBoard quests={page.quests} selected={selected} />}
         <div className="dashboard-grid">
           <aside className="left-column">
-            {show("calendar") && <>
-            <MissionCalendar
-              date={date}
-              selected={selected}
-              today={today || page.today}
-              checks={page.checks}
-              journalDates={page.journalDates}
-              onSelect={selectDate}
-              onToday={() => selectDate(today || page.today)}
-              onAddJournal={addJournal}
-            />
-            {section === "calendar" && <JournalEditor key={selected} selected={selected} journal={page.journal} />}
-            </>}
-            {show("weekly") && <>
-            <section className="panel week-panel">
-              <Link className="section-label section-link" to={`/weekly?date=${selected}`}>
-                <span>02 / WEEKLY PROTOCOL</span>
-                <Sparkles aria-hidden="true" size={12} />
-              </Link>
-              <h2>Every day has a mission.</h2>
-              <p>Small steps, one day at a time.</p>
-              <div className="week-list">
-                {dailyQuests.map((day, index) => (
-                  <div
-                    key={day.title}
-                    className={index === weekday ? "active-weekday" : ""}
-                  >
-                    <span>{weekdays[index].toUpperCase()}</span>
-                    <strong>{day.title}</strong>
-                    <b>
-                      {index === weekday ? (
-                        <ChevronRight aria-hidden="true" size={12} />
-                      ) : null}
-                    </b>
-                  </div>
-                ))}
-              </div>
-            </section>
-            </>}
-            {show("reminder") && (
-            <section className="panel motivation-panel">
-              <Link className="section-label section-link" to={`/reminder?date=${selected}`}>
-                <span>03 / A LITTLE REMINDER</span>
-                <Sparkles aria-hidden="true" size={12} />
-              </Link>
-              <Heart
-                className="motivation-heart"
-                aria-hidden="true"
-                fill="currentColor"
-                size={40}
+            {show("calendar") && (
+              <CalendarSection
+                date={date}
+                selected={selected}
+                today={today || page.today}
+                checks={page.checks}
+                journalDates={page.journalDates}
+                showJournal={section === "calendar"}
+                journal={page.journal}
+                onSelect={selectDate}
+                onToday={() => selectDate(today || page.today)}
+                onAddJournal={addJournal}
               />
-              <h2>
-                You're doing
-                <br />
-                <em>amazing.</em>
-              </h2>
-              <p>
-                Showing up for yourself is the real win. Keep going, one quest
-                at a time.
-              </p>
-              <div className="motivation-bottom">
-                SELF-KINDNESS IS A SUPERPOWER
-                <ArrowUpRight aria-hidden="true" size={12} />
-              </div>
-            </section>
             )}
             {show("weekly") && (
-            <div className="side-quote">
-              <Sparkles aria-hidden="true" size={14} /> PROGRESS, NOT
-              PERFECTION.
-              <br />
-              <small>YOU ARE ALREADY DOING ENOUGH.</small>
-            </div>
+              <WeeklyProtocolSection selected={selected} weekday={weekday} />
+            )}
+            {show("reminder") && (
+            <ReminderPanel selected={selected} />
             )}
           </aside>
 
@@ -510,69 +312,30 @@ export default function Home() {
             <NotesEditor selected={selected} note={page.note} />
             )}
             {show("quests") && (
-            <Checklist
-              title={quest.title}
-              eyebrow="YOUR DAILY QUESTS"
-              icon={<Sparkles aria-hidden="true" size={19} />}
-              sectionHref={`/quests?date=${selected}`}
-              items={quest.tasks}
-              prefix="daily"
+            <DailyQuestsSection
+              selected={selected}
+              weekday={weekday}
               checked={checked}
-              earnedIds={page.earnedTaskKeys
-                .filter((key) => key.startsWith(`builtin:${selected}:`))
-                .map((key) => key.slice(`builtin:${selected}:`.length))}
+              earnedTaskKeys={page.earnedTaskKeys}
               disabled={toggleFetcher.state !== "idle"}
               onToggle={toggleTask}
             />
             )}
             {show("routines") && (
-            <div className="routine-grid">
-              <Checklist
-                title="Morning routine"
-                eyebrow="RISE & SHINE"
-                icon={<Sun aria-hidden="true" size={19} />}
-                sectionHref={`/routines?date=${selected}`}
-                items={morningRoutine}
-                prefix="morning"
-                checked={checked}
-                earnedIds={page.earnedTaskKeys
-                  .filter((key) =>
-                    key.startsWith(`builtin:${selected}:morning-`),
-                  )
-                  .map((key) => key.slice(`builtin:${selected}:`.length))}
-                disabled={toggleFetcher.state !== "idle"}
-                onToggle={toggleTask}
-              />
-              <Checklist
-                title="Nightly routine"
-                eyebrow="WIND DOWN"
-                icon={<Moon aria-hidden="true" size={19} />}
-                sectionHref={`/routines?date=${selected}`}
-                items={nightRoutine}
-                prefix="night"
-                checked={checked}
-                earnedIds={page.earnedTaskKeys
-                  .filter((key) =>
-                    key.startsWith(`builtin:${selected}:night-`),
-                  )
-                  .map((key) => key.slice(`builtin:${selected}:`.length))}
-                disabled={toggleFetcher.state !== "idle"}
-                onToggle={toggleTask}
-              />
-            </div>
+            <RoutinesSection
+              selected={selected}
+              checked={checked}
+              earnedTaskKeys={page.earnedTaskKeys}
+              disabled={toggleFetcher.state !== "idle"}
+              onToggle={toggleTask}
+            />
             )}
             {show("synced-tasks") && (
-            <Checklist
-              title="Google & email tasks"
-              eyebrow="SYNCED TASKS"
-              icon={<RefreshCw aria-hidden="true" size={19} />}
-              sectionHref={`/synced-tasks?date=${selected}`}
-              items={page.tasks.map((task) => task.title)}
-              ids={externalIds}
-              prefix="external"
+            <SyncedTasksSection
+              selected={selected}
+              tasks={page.tasks}
               checked={externalChecked}
-              earnedIds={externalEarned}
-              taskLinks={page.tasks.map((task) => task.emailUrl)}
+              earnedTaskKeys={page.earnedTaskKeys}
               disabled={toggleFetcher.state !== "idle"}
               onToggle={toggleTask}
             />
@@ -581,38 +344,13 @@ export default function Home() {
 
           <aside className="right-column">
             {show("progress") && (
-            <section className="progress-panel">
-              <div>
-                <Link className="eyebrow section-heading-link" to={`/progress?date=${selected}`}>DAILY PROGRESS</Link>
-                <strong>
-                  {completed}
-                  <span> / {total} TASKS COMPLETE</span>
-                </strong>
-              </div>
-              <div className="progress-main">
-                <div className="progress-label">
-                  <span>YOUR MOMENTUM</span>
-                  <b>{percent}%</b>
-                </div>
-                <div
-                  className="progress-track"
-                  role="progressbar"
-                  aria-label="Daily quest completion"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={percent}
-                >
-                  <div style={{ width: `${percent}%` }} />
-                </div>
-              </div>
-              <div className="xp-total">
-                <Sparkles aria-hidden="true" size={22} />
-                <div>
-                  <strong>{page.todayPoints} PTS</strong>
-                  <small>EARNED THIS DAY</small>
-                </div>
-              </div>
-            </section>
+            <DailyProgressPanel
+              selected={selected}
+              completed={completed}
+              total={total}
+              percent={percent}
+              points={page.todayPoints}
+            />
             )}
             {show("rewards") && (
             <RewardShop balance={page.balance} selected={selected} redemptions={page.redemptions} />
