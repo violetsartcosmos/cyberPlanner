@@ -77,26 +77,27 @@ Google Cloud controls which APIs are enabled, which account may authorize the ap
 2. Open [Google Tasks API](https://console.cloud.google.com/apis/library/tasks.googleapis.com) and click **Enable**.
 3. Open [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) and click **Enable**. The current sign-in flow requests both Tasks and Gmail access, even if you only plan to use Tasks.
 4. Open [Google Auth platform](https://console.cloud.google.com/auth/overview). If it says the platform is not configured, click **Get started**:
+
    - Enter an app name, such as `CyberPlanner`, and choose your email as the support email.
    - Choose **External** for a personal Google account. A Workspace organization may use **Internal** if available.
    - Enter your contact email, review Google's policy, and complete the setup.
 5. On [Audience](https://console.cloud.google.com/auth/audience), leave the app in **Testing**. Under **Test users**, click **Add users**, enter the Google account you will use, and save.
 6. On [Data Access](https://console.cloud.google.com/auth/scopes), choose **Add or remove scopes**, find the following scopes (or enter their URIs manually if needed), and save:
 
-   | Scope | What CyberPlanner requests it for |
-   | --- | --- |
-   | `openid` | Identify the signed-in account. |
-   | `email` (may appear as `https://www.googleapis.com/auth/userinfo.email`) | Check the account's email against your allowed account. |
-   | `https://www.googleapis.com/auth/tasks` | Read and update Google Tasks. |
-   | `https://www.googleapis.com/auth/gmail.readonly` | Search Gmail for follow-ups. This permission allows reading mail, not just metadata. |
+   | Scope                                                                        | What CyberPlanner requests it for                                                    |
+   | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+   | `openid`                                                                   | Identify the signed-in account.                                                      |
+   | `email` (may appear as `https://www.googleapis.com/auth/userinfo.email`) | Check the account's email against your allowed account.                              |
+   | `https://www.googleapis.com/auth/tasks`                                    | Read and update Google Tasks.                                                        |
+   | `https://www.googleapis.com/auth/gmail.readonly`                           | Search Gmail for follow-ups. This permission allows reading mail, not just metadata. |
 
-The Gmail scope is restricted. Public publishing can require Google verification and a security assessment; see [Google's consent-screen instructions](https://developers.google.com/workspace/guides/configure-oauth-consent) and [Gmail scope requirements](https://developers.google.com/workspace/gmail/api/auth/scopes). An external app in Testing can receive refresh tokens that expire after seven days; sign in again if sync stops working.
+The Gmail scope is restricted. Public publishing can require Google verification and a security assessment; see [Google&#39;s consent-screen instructions](https://developers.google.com/workspace/guides/configure-oauth-consent) and [Gmail scope requirements](https://developers.google.com/workspace/gmail/api/auth/scopes). An external app in Testing can receive refresh tokens that expire after seven days; sign in again if sync stops working.
 
 ### 4. Create OAuth credentials
 
 Use an **OAuth client ID**, not an API key or service account: CyberPlanner needs your permission to access your personal Tasks and Gmail.
 
-1. In the same Cloud project, open [Google Auth platform > Clients](https://console.cloud.google.com/auth/clients) and click **Create client**. You may also reach this from **APIs & Services > Credentials**.
+1. In the same Cloud project, open [Google Auth platform &gt; Clients](https://console.cloud.google.com/auth/clients) and click **Create client**. You may also reach this from **APIs & Services > Credentials**.
 2. For **Application type**, select **Web application**. Name it `CyberPlanner local` or another name you recognize.
 3. Leave **Authorized JavaScript origins** empty. CyberPlanner's server initiates OAuth; it does not use Google's browser JavaScript OAuth library.
 4. Under **Authorized redirect URIs**, click **Add URI** and enter `http://localhost:5173/auth/callback` for `npm run dev`. This is the address Google returns your browser to after consent. Google requires an exact match; don't add a trailing slash.
@@ -113,35 +114,34 @@ The client ID identifies your app; the client secret authenticates its server to
 
 `GOOGLE_ALLOWED_EMAIL` is your actual Google email, matching the test user above. `GOOGLE_REDIRECT_URI` must exactly match your Google Cloud entry, including scheme, hostname, port, and path. For this example, open the app at `localhost`, not `127.0.0.1`.
 
-The development client listens on port `5173` and forwards sign-in and API requests to the server on port `3000`. If testing the production build locally, add `http://localhost:3000/auth/callback` to the same client's redirect URIs and change `GOOGLE_REDIRECT_URI` to match before starting it. For a hosted app, use an HTTPS address on your own domain instead, for example `https://YOUR_DOMAIN/auth/callback`, in both places. You can create separate clients for local and hosted use. See [Google's web-server OAuth guide](https://developers.google.com/identity/protocols/oauth2/web-server).
+Use the values for the environment you are starting:
 
-#### Is the redirect URI secret?
+- **Development with `npm run dev`:**
+  - Add this authorized redirect URI in Google Cloud: `http://localhost:5173/auth/callback`
+  - Set `.env` to: `GOOGLE_REDIRECT_URI="http://localhost:5173/auth/callback"`
+  - The development client uses port `5173` and forwards `/auth` and `/api` requests to the server on port `3000`.
+- **Production build tested locally with `npm run start`:**
+  - Add this authorized redirect URI in Google Cloud: `http://localhost:3000/auth/callback`
+  - Set `.env` to: `GOOGLE_REDIRECT_URI="http://localhost:3000/auth/callback"`
+  - The production client and API are served together on port `3000`.
+- **Hosted application:**
+  - Add the public HTTPS callback URI in Google Cloud, for example: `https://YOUR_DOMAIN/auth/callback`
+  - Set `.env` to the same public URI: `GOOGLE_REDIRECT_URI="https://YOUR_DOMAIN/auth/callback"`
 
-No. The example callback in this guide is not a credential, and changing or hiding its path does not secure it. `localhost` means the computer running the browser; it is not an internet address that a remote bot can use to reach your computer. Google sends the browser there, and CyberPlanner checks a random OAuth `state` against the initiating browser's signed session cookie before exchanging the code. It also checks the returned account against `GOOGLE_ALLOWED_EMAIL`.
-
-For development, both servers listen only on localhost, not your network interfaces. This does **not** protect against malicious software or other users on the same computer, browser extensions, or other local processes attempting to use or occupy the port. A website may also try to cause your browser to contact local services; state validation and same-origin checks protect specific flows, not a compromised computer. Use a trusted computer and do not expose the development server through a tunnel or port forwarding.
-
-Keep the **client secret**, session secret, encryption key, database credentials, tokens, and `.env` private; the client ID and redirect URI are not secrets. `.env` is ignored by Git, but that does not remove a secret that was already committed. Rotate any exposed secret. A hosted production server is network-accessible: use HTTPS and protect its host and credentials rather than relying on a hidden callback path.
+The Google redirect URI and `GOOGLE_REDIRECT_URI` must contain the exact same scheme, hostname, port, and path. You can use separate Google OAuth clients for development and hosted use. See [Google&#39;s web-server OAuth guide](https://developers.google.com/identity/protocols/oauth2/web-server).
 
 ### 5. Generate the app's two secrets
 
-These are created by **you**, not provided by Google:
-
-- `SESSION_SECRET` signs the browser's login session cookie.
-- `GOOGLE_TOKEN_ENCRYPTION_KEY` encrypts the stored Google refresh token. It must be a base64-encoded 32-byte key.
-
-Run this command **twice**, independently:
+ Run:
 
 ```powershell
-node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+npm run generate-secrets
 ```
 
-Copy the first output into `SESSION_SECRET` and the second, different output into `GOOGLE_TOKEN_ENCRYPTION_KEY`:
+Copy the two printed entries into `.env`
 
-```dotenv
-SESSION_SECRET="FIRST_GENERATED_VALUE"
-GOOGLE_TOKEN_ENCRYPTION_KEY="SECOND_GENERATED_VALUE"
-```
+- `SESSION_SECRET` signs the browser's login session cookie.
+- `GOOGLE_TOKEN_ENCRYPTION_KEY` encrypts the stored Google refresh token.
 
 Keep both values private and stable across restarts and deployments. Changing the session secret signs users out. Losing or changing the encryption key prevents the app from reading the saved Google token; sign in and reconnect Google with the new key.
 
@@ -156,7 +156,13 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173), sign in with `GOOGLE_ALLOWED_EMAIL`, and approve the requested permissions. Select **Sync Google Tasks** to import tasks. Leave the terminal running while you use the app; press `Ctrl+C` to stop it.
 
-`npm run dev` starts both processes. Make sure ports `5173` and `3000` are available. If port `3000` is occupied, set `PORT` in `.env` to a free port; both the API and development proxy will use it.
+`npm run dev` starts both the browser app and API. If the browser app is already running and you need to start just the API, open another terminal in the project folder and run:
+
+```powershell
+npx tsx server/index.ts
+```
+
+The API listens on port `3000`. Leave that terminal open while using the app.
 
 For an existing Prisma-managed CyberPlanner database, back it up and run `npm run db:migrate` to apply pending migrations.
 
@@ -168,4 +174,3 @@ For an existing Prisma-managed CyberPlanner database, back it up and run `npm ru
 - **Google denies access or says the app is unverified:** Confirm the correct Cloud project, enabled APIs, test-user email, consent scopes, and account. Testing and public publishing have different verification requirements.
 - **Google sync stops after working:** An external OAuth app in Testing can receive seven-day refresh tokens. Sign in again to reconnect. If the encryption key was changed, the old token cannot be decrypted.
 - **Database tests refuse to run:** Create a separate empty database and set `TEST_DATABASE_URL` to it; the test deliberately refuses databases with existing tables.
-

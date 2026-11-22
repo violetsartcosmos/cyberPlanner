@@ -24,16 +24,27 @@ Run commands in the project folder.
 | Command | Purpose |
 | --- | --- |
 | `npm install` | Install dependencies and generate Prisma Client. |
-| `npm run dev` | Start the loopback-only API on localhost:3000 and React development server on localhost:5173. The client proxies API and sign-in requests to the API. |
+| `npm run dev` | Start the API on localhost:3000 and the Vite development server on localhost:5173. The client proxies API and sign-in requests to the API. |
 | `npm run build` | Build the browser client and API server. |
 | `npm run start` | Serve the production client and API together at localhost:3000; build first. |
 | `npm run db:migrate` | Apply committed database migrations. |
 | `npm run db:studio` | Open Prisma Studio to browse and edit the configured database; also available as `npx prisma studio`. |
+| `npm run generate-secrets` | Print new secret entries to copy into `.env`; keep the output private. |
 | `npx prisma generate` | Regenerate Prisma Client after changing the schema. |
 | `npx prisma migrate dev --name describe_your_change` | Create and apply a migration on a development database; review reset prompts carefully. |
 | `npm run typecheck` | Check TypeScript. |
 | `npm run test:server` | Test API authentication, request validation, and form validation without a database. |
 | `npm run test:database` | Run integration tests against a separate, empty, disposable database specified by `TEST_DATABASE_URL`. |
+
+### Run the API separately
+
+Normally, `npm run dev` starts both the browser app and API. If the browser app is already running and you need to start just the API, open another terminal in the project folder and run:
+
+```powershell
+npx tsx server/index.ts
+```
+
+The API listens on port `3000`. Leave this terminal open while using the app.
 
 For production, use HTTPS and your host's secret settings, apply migrations as a release step, and start the built server. The included [Dockerfile](Dockerfile) starts the server but does not apply migrations.
 
