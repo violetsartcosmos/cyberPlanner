@@ -1,14 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
+  CalendarDays,
+  CalendarRange,
+  ChartNoAxesCombined,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Cloud,
+  Gift,
   Heart,
-  Menu,
+  LayoutDashboard,
+  ListChecks,
+  ListTodo,
   Moon,
+  NotebookPen,
+  Repeat2,
   RefreshCw,
   Sparkles,
   Sun,
-  X,
+  Swords,
+  UserRound,
+  type LucideIcon,
 } from "lucide-react";
 import {
   useFetcher,
@@ -71,29 +84,48 @@ export default function Home() {
   const toggleFetcher = useFetcher<PlannerActionResult>();
   const [today, setToday] = useState(page.authenticated ? page.today : "");
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [narrowScreen, setNarrowScreen] = useState(() => window.matchMedia("(max-width: 850px)").matches);
+  const menuRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    const media = window.matchMedia("(max-width: 850px)");
+    function onChange(event: MediaQueryListEvent) {
+      setNarrowScreen(event.matches);
+    }
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
     if (!menuOpen) return;
-    function onPointerDown(event: PointerEvent) {
-      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
-        setMenuOpen(false);
-      }
+    if (narrowScreen && !menuRef.current?.contains(document.activeElement)) {
+      menuButtonRef.current?.focus();
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setMenuOpen(false);
         menuButtonRef.current?.focus();
       }
+      if (event.key === "Tab" && narrowScreen) {
+        const items = menuRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])");
+        if (!items?.length) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     }
-    document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [menuOpen]);
+  }, [menuOpen, narrowScreen]);
 
   useEffect(() => {
     if (!page.authenticated) return;
@@ -184,52 +216,97 @@ export default function Home() {
     }
   }
 
-  const sections = [
-    ["", "Dashboard"], ["calendar", "Calendar"], ["weekly", "Weekly protocol"],
-    ["reminder", "Reminder"], ["quests", "Daily quests"], ["routines", "Routines"],
-    ["synced-tasks", "Synced tasks"], ["progress", "Progress"], ["rewards", "Rewards"],
-    ["google", "Google sync"], ["notes", "Notes"], ["profile", "Profile"],
-    ["quest-board", "Quest board"],
-  ] as const;
+  const navigationGroups: ReadonlyArray<{
+    title: string;
+    items: ReadonlyArray<readonly [string, string, LucideIcon]>;
+  }> = [
+    { title: "YOUR SPACE", items: [
+      ["", "Dashboard", LayoutDashboard], ["calendar", "Calendar", CalendarDays],
+      ["quest-board", "Quest board", Swords],
+    ] },
+    { title: "PLANNER", items: [
+      ["quests", "Daily quests", ListChecks], ["routines", "Routines", Repeat2],
+      ["weekly", "Weekly protocol", CalendarRange], ["synced-tasks", "Synced tasks", ListTodo],
+      ["notes", "Notes", NotebookPen],
+    ] },
+    { title: "YOUR PROGRESS", items: [
+      ["progress", "Progress", ChartNoAxesCombined], ["rewards", "Rewards", Gift],
+      ["reminder", "Reminder", Heart], ["google", "Google sync", Cloud],
+    ] },
+  ];
+  const sections = [...navigationGroups.flatMap((group) => group.items), ["profile", "Profile", UserRound] as const];
+
+  function closeMenu() {
+    setMenuOpen(false);
+    menuButtonRef.current?.focus();
+  }
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="/" aria-label="CyberPlanner home">
-          <span className="brand-mark">
-            <Sparkles aria-hidden="true" size={28} />
-          </span>
-          <span>
-            CYBER<span>PLANNER</span>
-            <small>LIFE MANAGEMENT SYSTEM</small>
-          </span>
-        </a>
-        <div className="topbar-right">
-          <div className="menu-container" ref={menuRef}>
-            <button
-              ref={menuButtonRef}
-              className="menu-button"
-              type="button"
-              aria-expanded={menuOpen}
-              aria-controls="planner-navigation"
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              {menuOpen ? <X aria-hidden="true" size={17} /> : <Menu aria-hidden="true" size={17} />}
-              MENU
-            </button>
-            {menuOpen && <nav id="planner-navigation" className="section-navigation" aria-label="Planner sections">
-              {sections.map(([path, label]) => (
+    <div className={`app-shell authenticated-shell ${menuOpen ? "menu-expanded" : ""}`}>
+      {menuOpen && narrowScreen && <button className="sidebar-backdrop" type="button" aria-label="Collapse menu" tabIndex={-1} onClick={closeMenu} />}
+      <aside
+        className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}
+        id="planner-sidebar"
+        ref={menuRef}
+        role={menuOpen && narrowScreen ? "dialog" : undefined}
+        aria-modal={menuOpen && narrowScreen ? true : undefined}
+        aria-label="Planner navigation"
+      >
+        <div className="sidebar-heading">
+          <Link className="brand" to={`/?date=${selected}`} aria-label="CyberPlanner home" title="CyberPlanner home" onClick={() => { if (menuOpen && narrowScreen) closeMenu(); }}>
+            <span className="brand-mark"><Sparkles aria-hidden="true" size={24} /></span>
+            <span className="sidebar-brand-text">CYBER<span>PLANNER</span><small>LIFE MANAGEMENT SYSTEM</small></span>
+          </Link>
+          <button
+            ref={menuButtonRef}
+            className="sidebar-toggle"
+            type="button"
+            aria-label={menuOpen ? "Collapse menu" : "Expand menu"}
+            title={menuOpen ? "Collapse menu" : "Expand menu"}
+            aria-expanded={menuOpen}
+            aria-controls="planner-navigation"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? <ChevronsLeft aria-hidden="true" size={20} /> : <ChevronsRight aria-hidden="true" size={20} />}
+          </button>
+        </div>
+        <nav className="section-navigation" id="planner-navigation" aria-label="Planner sections">
+          {navigationGroups.map((group) => (
+            <div className="navigation-group" key={group.title}>
+              <p>{group.title}</p>
+              {group.items.map(([path, label, Icon]) => (
                 <Link
                   key={path}
                   to={`${path ? `/${path}` : "/"}?date=${selected}`}
+                  aria-label={label}
+                  title={label}
                   aria-current={section === path ? "page" : undefined}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => { if (menuOpen && narrowScreen) closeMenu(); }}
                 >
-                  {label}
+                  <Icon aria-hidden="true" size={17} />
+                  <span className="sidebar-label">{label}</span>
                 </Link>
               ))}
-            </nav>}
-          </div>
+            </div>
+          ))}
+          <Link
+            className="sidebar-profile"
+            to={`/profile?date=${selected}`}
+            aria-label="Profile"
+            title="Profile"
+            aria-current={section === "profile" ? "page" : undefined}
+            onClick={() => { if (menuOpen && narrowScreen) closeMenu(); }}
+          >
+            <span className="sidebar-avatar" aria-hidden="true">V</span>
+            <span className="sidebar-label"><strong>Violet</strong><small>VIEW PROFILE</small></span>
+          </Link>
+        </nav>
+      </aside>
+      <header className="topbar">
+        <div className="topbar-left">
+          <span className="topbar-caption">YOUR LIFE, YOUR QUEST.</span>
+        </div>
+        <div className="topbar-right">
           <span className="wallet-balance" aria-label={`${page.balance} points`}>
             <Sparkles aria-hidden="true" size={13} /> {page.balance} PTS
           </span>

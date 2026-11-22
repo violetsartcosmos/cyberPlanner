@@ -17,7 +17,7 @@ npm run dev
 
 Open [localhost:5173](http://localhost:5173) and sign in.
 
-Use **Menu** in the top bar to open each part of the dashboard on its own page, including Violet's profile and the Quest Board. After updating, run `npx prisma generate` and `npm run db:migrate`, then restart the server. The migration creates the achievement and quest tables and seeds the supplied achievements.
+Use the icons in the left sidebar to open each part of the dashboard, including Violet's profile and the Quest Board. Use the double arrows to expand or minimize the sidebar. After updating, run `npx prisma generate` and `npm run db:migrate`, then restart the server. The migration creates the achievement and quest tables and seeds the supplied achievements.
 
 The profile displays level, lifetime XP, activity, and achievements. Every 100 XP gains one level. Lifetime XP includes all earned task points (including existing awards) and one-time achievement XP; spending points never lowers XP. Achievement XP is separate from the spendable points balance. The supplied achievements are self-reported: use **Unlock** or **+1 progress**, and observe any time limits described yourself. Create or edit achievements to change their target, rarity, XP, and optional personal reward. For automatic consecutive-day tracking, choose a morning or night routine task; Workout Queen starts with a five-day target. Streaks use the server's current local date, so configure its time zone to match yours. Earned badges and XP remain unlocked even if past checks are removed or the achievement is deleted. Editing an unfinished achievement's tracking method or routine task resets its progress.
 
