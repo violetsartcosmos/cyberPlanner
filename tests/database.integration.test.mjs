@@ -136,6 +136,48 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal(await planner.getPlannerJournal(extraDate), "");
       assert.ok(!(await planner.getPlannerSnapshot(extraDate)).journalDates.includes(extraDate));
 
+      const gamification = await vite.ssrLoadModule("/server/gamification/service.ts");
+      const utils = await vite.ssrLoadModule("/shared/planner/utils.ts");
+      const today = utils.dateKey(new Date());
+      const initial = await gamification.getGamification(today);
+      assert.equal(initial.achievements.length, 30);
+      assert.ok(initial.achievements.some((item) => item.id === "daily-early-bird"));
+      await gamification.saveAchievement(null, {
+        title: "Test milestone", description: "Two steps", category: "Daily & Routine",
+        tier: "Rare", xp: 75, target: 2, tracking: "manual", taskId: null, reward: "Break",
+      });
+      const manual = await db.achievement.findFirstOrThrow({ where: { title: "Test milestone" } });
+      await Promise.all([gamification.advanceAchievement(manual.id), gamification.advanceAchievement(manual.id)]);
+      assert.equal((await db.achievement.findUniqueOrThrow({ where: { id: manual.id } })).awardedXp, 75);
+      await assert.rejects(gamification.advanceAchievement(manual.id), /already unlocked/);
+      await gamification.deleteAchievement(manual.id);
+      assert.equal((await gamification.getGamification(today)).totalXp, initial.totalXp + 75);
+
+      await gamification.createQuest({ title: "Test boss", description: "", kind: "boss", tier: "Epic", points: 150 });
+      const boss = await db.quest.findFirstOrThrow({ where: { title: "Test boss" } });
+      const completions = await Promise.allSettled([gamification.completeQuest(boss.id), gamification.completeQuest(boss.id)]);
+      assert.equal(completions.filter((result) => result.status === "fulfilled").length, 1);
+      assert.equal((await gamification.getGamification(today)).totalXp, initial.totalXp + 225);
+      await gamification.deleteQuest(boss.id);
+      assert.equal((await gamification.getGamification(today)).totalXp, initial.totalXp + 225);
+      const beforeSpending = await points.getPointsSummary(today);
+      assert.equal((await points.redeemReward({ id: "xp-test", name: "XP test", cost: 20 })).redeemed, true);
+      assert.equal((await points.getPointsSummary(today)).balance, beforeSpending.balance - 20);
+      assert.equal((await gamification.getGamification(today)).totalXp, initial.totalXp + 225);
+
+      await gamification.saveAchievement(null, {
+        title: "Test routine streak", description: "Two days", category: "Daily & Routine",
+        tier: "Common", xp: 40, target: 2, tracking: "streak", taskId: "morning-0", reward: "",
+      });
+      const yesterday = utils.dateKey(utils.addDays(new Date(), -1));
+      await planner.setBuiltinTaskCompletion(yesterday, "morning-0", true);
+      const result = await planner.setBuiltinTaskCompletion(today, "morning-0", true);
+      assert.ok(result.unlockedAchievements.includes("Test routine streak"));
+      await planner.setBuiltinTaskCompletion(yesterday, "morning-0", false);
+      const streak = await db.achievement.findFirstOrThrow({ where: { title: "Test routine streak" } });
+      assert.ok(streak.unlockedAt);
+      assert.equal(streak.awardedXp, 40);
+
       await assert.rejects(client.query(
         "INSERT INTO point_ledger (amount, entry_type, task_key) VALUES (0, 'earn', 'invalid')",
       ));

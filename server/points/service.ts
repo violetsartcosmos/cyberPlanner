@@ -5,9 +5,10 @@ export async function awardTaskPoints(
   client: Prisma.TransactionClient,
   taskKey: string,
   taskDate: string,
+  amount = 10,
 ) {
   await client.pointLedger.createMany({
-    data: [{ amount: 10, entryType: "earn", taskKey, taskDate: databaseDate(taskDate) }],
+    data: [{ amount, entryType: "earn", taskKey, taskDate: databaseDate(taskDate) }],
     skipDuplicates: true,
   });
 }

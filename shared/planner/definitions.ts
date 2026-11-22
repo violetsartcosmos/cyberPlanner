@@ -84,6 +84,7 @@ export const morningRoutine = [
   "Breakfast",
   "Make bed",
   "Prep bag (laptop, task list, lunch)",
+  "Workout",
 ] as const;
 
 export const nightRoutine = [

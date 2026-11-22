@@ -17,7 +17,13 @@ npm run dev
 
 Open [localhost:5173](http://localhost:5173) and sign in.
 
-Use the section navigation to open each part of the dashboard on its own page. On the calendar page, select a date and choose **Add journal** to write or edit that day's journal entry. Journal entries are stored separately from notes; the calendar marks dates with entries. Use **Today** beneath the month or week heading to return to the current date. Run `npm run db:migrate` after updating to add journal storage.
+Use **Menu** in the top bar to open each part of the dashboard on its own page, including Violet's profile and the Quest Board. After updating, run `npx prisma generate` and `npm run db:migrate`, then restart the server. The migration creates the achievement and quest tables and seeds the supplied achievements.
+
+The profile displays level, lifetime XP, activity, and achievements. Every 100 XP gains one level. Lifetime XP includes all earned task points (including existing awards) and one-time achievement XP; spending points never lowers XP. Achievement XP is separate from the spendable points balance. The supplied achievements are self-reported: use **Unlock** or **+1 progress**, and observe any time limits described yourself. Create or edit achievements to change their target, rarity, XP, and optional personal reward. For automatic consecutive-day tracking, choose a morning or night routine task; Workout Queen starts with a five-day target. Streaks use the server's current local date, so configure its time zone to match yours. Earned badges and XP remain unlocked even if past checks are removed or the achievement is deleted. Editing an unfinished achievement's tracking method or routine task resets its progress.
+
+Existing daily quests, routines, and synced tasks are Side Quests worth 10 points each. On the Quest Board, create additional Side Quests, Main Quests, and End-Game Bosses with your own rarity and point value. Completing a custom quest awards its points and equal XP once; deleting it does not remove earned points or XP.
+
+On the calendar page, select a date and choose **Add journal** to write or edit that day's journal entry. Journal entries are stored separately from notes; the calendar marks dates with entries. Use **Today** beneath the month or week heading to return to the current date.
 
 ## Commands
 
@@ -35,6 +41,7 @@ Run commands in the project folder.
 | `npx prisma generate` | Regenerate Prisma Client after changing the schema. |
 | `npx prisma migrate dev --name describe_your_change` | Create and apply a migration on a development database; review reset prompts carefully. |
 | `npm run typecheck` | Check TypeScript. |
+| `npm run test:profile` | Test profile stats and achievement streaks. |
 | `npm run test:server` | Test API authentication, request validation, and form validation without a database. |
 | `npm run test:database` | Run integration tests against a separate, empty, disposable database specified by `TEST_DATABASE_URL`. |
 

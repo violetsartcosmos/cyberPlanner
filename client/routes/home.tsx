@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
   ChevronRight,
   Heart,
+  Menu,
   Moon,
   RefreshCw,
   Sparkles,
   Sun,
+  X,
 } from "lucide-react";
 import {
   useFetcher,
@@ -22,6 +24,9 @@ import { GoogleIntegrationPanel } from "../components/google/integration-panel";
 import { MissionCalendar } from "../components/planner/mission-calendar";
 import { JournalEditor } from "../components/planner/journal-editor";
 import { NotesEditor } from "../components/planner/notes-editor";
+import { Profile } from "../components/planner/profile";
+import { QuestBoard } from "../components/planner/quest-board";
+import { LevelHeader } from "../components/planner/level-header";
 import { RewardShop } from "../components/rewards/shop";
 import { SignInPanel } from "../components/auth/sign-in-panel";
 import { dailyQuests, morningRoutine, nightRoutine } from "../../shared/planner/definitions";
@@ -39,7 +44,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const response = await fetch(`/api/planner${url.search}`, { signal: request.signal });
   if (!response.ok) throw new Error(`Could not load the planner (${response.status}).`);
   const page = await response.json() as PlannerPage;
-  if (page.authenticated && (typeof page.journal !== "string" || !Array.isArray(page.journalDates))) {
+  if (page.authenticated && (
+    typeof page.journal !== "string" || !Array.isArray(page.journalDates) ||
+    !Array.isArray(page.achievements) || !Array.isArray(page.quests) ||
+    !Array.isArray(page.newlyUnlocked) || typeof page.totalXp !== "number"
+  )) {
     throw new Error("The planner server is out of date. Apply database migrations and restart the server.");
   }
   return page;
@@ -61,6 +70,30 @@ export default function Home() {
   const location = useLocation();
   const toggleFetcher = useFetcher<PlannerActionResult>();
   const [today, setToday] = useState(page.authenticated ? page.today : "");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!page.authenticated) return;
@@ -155,7 +188,8 @@ export default function Home() {
     ["", "Dashboard"], ["calendar", "Calendar"], ["weekly", "Weekly protocol"],
     ["reminder", "Reminder"], ["quests", "Daily quests"], ["routines", "Routines"],
     ["synced-tasks", "Synced tasks"], ["progress", "Progress"], ["rewards", "Rewards"],
-    ["google", "Google sync"], ["notes", "Notes"],
+    ["google", "Google sync"], ["notes", "Notes"], ["profile", "Profile"],
+    ["quest-board", "Quest board"],
   ] as const;
 
   return (
@@ -171,9 +205,31 @@ export default function Home() {
           </span>
         </a>
         <div className="topbar-right">
-          <span className="status">
-            <i /> SYSTEM ONLINE
-          </span>
+          <div className="menu-container" ref={menuRef}>
+            <button
+              ref={menuButtonRef}
+              className="menu-button"
+              type="button"
+              aria-expanded={menuOpen}
+              aria-controls="planner-navigation"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? <X aria-hidden="true" size={17} /> : <Menu aria-hidden="true" size={17} />}
+              MENU
+            </button>
+            {menuOpen && <nav id="planner-navigation" className="section-navigation" aria-label="Planner sections">
+              {sections.map(([path, label]) => (
+                <Link
+                  key={path}
+                  to={`${path ? `/${path}` : "/"}?date=${selected}`}
+                  aria-current={section === path ? "page" : undefined}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>}
+          </div>
           <span className="wallet-balance" aria-label={`${page.balance} points`}>
             <Sparkles aria-hidden="true" size={13} /> {page.balance} PTS
           </span>
@@ -195,18 +251,7 @@ export default function Home() {
       </header>
 
       <main className={`dashboard ${isDashboard ? "" : "section-page"}`}>
-        <nav className="section-navigation" aria-label="Planner sections">
-          {sections.map(([path, label]) => (
-            <Link
-              key={path}
-              to={`${path ? `/${path}` : "/"}?date=${selected}`}
-              aria-current={section === path ? "page" : undefined}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-        {!isDashboard && (
+        {!isDashboard && section !== "profile" && (
           <div className="page-heading">
             <p className="eyebrow accent">YOUR PERSONAL COMMAND CENTER</p>
             <h1>{sections.find(([path]) => path === section)?.[1] ?? "Page not found"}</h1>
@@ -260,7 +305,20 @@ export default function Home() {
             {toggleFetcher.data.error}
           </div>
         )}
+        {toggleFetcher.data?.unlockedAchievements && toggleFetcher.data.unlockedAchievements.length > 0 && (
+          <div className="achievement-notice" role="status">
+            Achievement unlocked: {toggleFetcher.data.unlockedAchievements.join(", ")}!
+          </div>
+        )}
+        {page.newlyUnlocked.length > 0 && (
+          <div className="achievement-notice" role="status">
+            Achievement unlocked: {page.newlyUnlocked.join(", ")}!
+          </div>
+        )}
 
+        {isDashboard && <LevelHeader totalXp={page.totalXp} unlocked={page.achievements.filter((item) => item.unlockedAt).length} />}
+        {section === "profile" && <Profile checks={page.checks} today={today || page.today} balance={page.balance} totalXp={page.totalXp} achievements={page.achievements} />}
+        {section === "quest-board" && <QuestBoard quests={page.quests} selected={selected} />}
         <div className="dashboard-grid">
           <aside className="left-column">
             {show("calendar") && <>

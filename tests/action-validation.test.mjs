@@ -44,6 +44,9 @@ test("planner actions reject missing and file-valued fields", async () => {
       [{ intent: "import_gmail", date: "2026-11-21", messageId: file }, "Choose an email and planner date first."],
       [{ intent: "import_legacy", payload: file }, "Unknown planner action."],
       [{ intent: "redeem_reward", rewardId: file }, "That reward is not available."],
+      [{ intent: "create_quest", title: "Test", description: "", kind: "boss", tier: "Epic", points: "0" }, "points must be a whole number between 1 and 100000."],
+      [{ intent: "save_achievement", id: "", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "0", tracking: "manual", reward: "" }, "target must be a whole number between 1 and 3650."],
+      [{ intent: "save_achievement", id: "", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "3", tracking: "streak", taskId: "morning-999", reward: "" }, "Choose a valid routine task."],
     ];
     for (const [values, error] of cases) {
       assert.deepEqual(await submit(values), { ok: false, error });

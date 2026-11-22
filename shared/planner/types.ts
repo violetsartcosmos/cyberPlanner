@@ -1,7 +1,10 @@
+import type { Achievement, Quest } from "./gamification";
+
 export type PlannerActionResult = {
   ok: boolean;
   message?: string;
   error?: string;
+  unlockedAchievements?: string[];
   emails?: Array<{
     id: string;
     subject: string;
@@ -42,6 +45,10 @@ export type PlannerPage =
       balance: number;
       todayPoints: number;
       earnedTaskKeys: string[];
+      totalXp: number;
+      newlyUnlocked: string[];
+      achievements: Achievement[];
+      quests: Quest[];
       redemptions: Array<{
         rewardId: string;
         rewardName: string;

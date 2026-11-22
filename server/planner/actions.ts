@@ -37,8 +37,8 @@ export const plannerFormActions = {
     if (completed !== "true" && completed !== "false") {
       return { ok: false, error: "That task state is invalid." };
     }
-    await setBuiltinTaskCompletion(date, taskId, completed === "true");
-    return { ok: true };
+    const { unlockedAchievements } = await setBuiltinTaskCompletion(date, taskId, completed === "true");
+    return { ok: true, unlockedAchievements };
   },
 
   async toggle_external(form) {

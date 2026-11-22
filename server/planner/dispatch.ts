@@ -3,6 +3,7 @@ import { getSignedInEmail } from "../auth/service";
 import { googleFormActions } from "../google/actions";
 import { pointsFormActions } from "../points/actions";
 import { plannerFormActions } from "./actions";
+import { gamificationActions } from "../gamification/actions";
 
 export type ActionHandler = (form: FormData) => Promise<PlannerActionResult>;
 
@@ -10,6 +11,7 @@ const actions: Record<string, ActionHandler> = {
   ...plannerFormActions,
   ...googleFormActions,
   ...pointsFormActions,
+  ...gamificationActions,
 };
 
 export async function handlePlannerAction(request: Request): Promise<PlannerActionResult> {

@@ -57,3 +57,37 @@ model PointLedger {
   @@unique([taskKey], map: "point_ledger_task_award_idx", where: { entryType: "earn" })
   @@map("point_ledger")
 }
+
+model Achievement {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  category    String
+  tier        String
+  xp          Int
+  target      Int
+  current     Int       @default(0)
+  icon        String    @default("award")
+  tracking    String    @default("manual")
+  taskId      String?   @map("task_id")
+  reward      String    @default("")
+  unlockedAt  DateTime? @map("unlocked_at") @db.Timestamptz(6)
+  awardedXp   Int       @default(0) @map("awarded_xp")
+  deleted     Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("achievements")
+}
+
+model Quest {
+  id          String    @id @default(uuid())
+  title       String
+  description String    @default("")
+  kind        String
+  tier        String
+  points      Int
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("quests")
+}
