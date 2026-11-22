@@ -158,81 +158,77 @@ export default function Home() {
         expanded={menuOpen}
         setExpanded={setMenuOpen}
       />
-      <header className="topbar">
-        <div className="topbar-left">
-          <span className="topbar-caption">YOUR LIFE, YOUR QUEST.</span>
-        </div>
-        <div className="topbar-right">
-          <span className="wallet-balance" aria-label={`${page.balance} points`}>
-            <Sparkles aria-hidden="true" size={13} /> {page.balance} PTS
-          </span>
-          <span className="top-date">
-            {date
-              .toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
-              .toUpperCase()}
-          </span>
-          <form method="post" action="/auth/logout">
-            <button className="logout-button" type="submit">
-              SIGN OUT
-            </button>
-          </form>
-        </div>
-      </header>
-
       <main className={`dashboard ${isDashboard ? "" : "section-page"}`}>
-        {!isDashboard && section !== "profile" && (
-          <div className="page-heading">
-            <p className="eyebrow accent">YOUR PERSONAL COMMAND CENTER</p>
-            <h1>{navigationSections.find(([path]) => path === section)?.[1] ?? "Page not found"}</h1>
-          </div>
-        )}
-        {isDashboard && <>
-        <div className="intro">
-          <div>
-            <p className="eyebrow accent">
-              YOUR PERSONAL COMMAND CENTER <span>// 001</span>
-            </p>
-            <h1>
-              YOUR LIFE, <em>YOUR QUEST.</em>
-            </h1>
-            <p className="intro-copy">
-              A little progress is still progress. Let's make today count.
-            </p>
-          </div>
-          <div className="intro-tag">
-            <Sparkles aria-hidden="true" size={14} /> BE AGGRESSIVELY KIND{" "}
-            <small>TO YOURSELF, ALWAYS.</small>
-          </div>
-        </div>
-        <section className="mobile-welcome">
-          <div>
-            <p className="eyebrow">YOUR LIFE, YOUR QUEST</p>
-            <h1>
-              {selected === today
-                ? "Today"
-                : date.toLocaleDateString("en-US", { weekday: "long" })}
-            </h1>
-            <p>{quest.message}</p>
-          </div>
-          <div className="mobile-momentum">
-            <strong>{percent}%</strong>
-            <span>COMPLETE</span>
-          </div>
-          <div className="mobile-summary">
-            <span>
-              <b>{completed}</b> / {total} tasks complete
+        <header className={`dashboard-header ${isDashboard ? "dashboard-header-home" : ""}`}>
+          {!isDashboard && section !== "profile" && (
+            <div className="page-heading">
+              <p className="eyebrow accent">YOUR PERSONAL COMMAND CENTER</p>
+              <h1>{navigationSections.find(([path]) => path === section)?.[1] ?? "Page not found"}</h1>
+            </div>
+          )}
+          {isDashboard && <>
+            <div className="intro">
+              <div>
+                <p className="eyebrow accent">
+                  YOUR PERSONAL COMMAND CENTER <span>// 001</span>
+                </p>
+                <h1>
+                  YOUR LIFE, <em>YOUR QUEST.</em>
+                </h1>
+                <p className="intro-copy">
+                  A little progress is still progress. Let's make today count.
+                </p>
+              </div>
+              <div className="intro-tag">
+                <Sparkles aria-hidden="true" size={14} /> BE AGGRESSIVELY KIND{" "}
+                <small>TO YOURSELF, ALWAYS.</small>
+              </div>
+            </div>
+            <section className="mobile-welcome">
+              <div>
+                <p className="eyebrow">YOUR LIFE, YOUR QUEST</p>
+                <h1>
+                  {selected === today
+                    ? "Today"
+                    : date.toLocaleDateString("en-US", { weekday: "long" })}
+                </h1>
+                <p>{quest.message}</p>
+              </div>
+              <div className="mobile-momentum">
+                <strong>{percent}%</strong>
+                <span>COMPLETE</span>
+              </div>
+              <div className="mobile-summary">
+                <span>
+                  <b>{completed}</b> / {total} tasks complete
+                </span>
+                <span>
+                  <Sparkles aria-hidden="true" size={12} /> {page.todayPoints} PTS
+                  EARNED
+                </span>
+              </div>
+            </section>
+          </>}
+          <div className="hero-actions">
+            <span className="wallet-balance" aria-label={`${page.balance} points`}>
+              <Sparkles aria-hidden="true" size={13} /> {page.balance} PTS
             </span>
-            <span>
-              <Sparkles aria-hidden="true" size={12} /> {page.todayPoints} PTS
-              EARNED
+            <span className="hero-date">
+              {date
+                .toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+                .toUpperCase()}
             </span>
+            <form method="post" action="/auth/logout">
+              <button className="logout-button" type="submit">
+                SIGN OUT
+              </button>
+            </form>
           </div>
-        </section>
-        </>}
+        </header>
         {toggleFetcher.data?.error && (
           <div className="storage-error" role="alert">
             {toggleFetcher.data.error}

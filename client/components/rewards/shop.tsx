@@ -55,7 +55,7 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
         <Sparkles aria-hidden="true" size={12} />
       </Link>
       <h2>Celebrate the wins.</h2>
-      <p>Spend points you have earned. Reopening tasks never refunds rewards.</p>
+      <p>Spend points you have earned.</p>
       <div className="reward-list">
         {rewards.map((reward) => {
           const Icon = rewardIcons[reward.id];
