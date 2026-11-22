@@ -22,7 +22,6 @@ import { QuestBoard } from "../components/planner/quest-board";
 import { LevelHeader } from "../components/planner/level-header";
 import {
   DailyAffirmation,
-  DailyProgressPanel,
 } from "../components/planner/dashboard-widgets";
 import {
   DailyQuestsSection,
@@ -162,7 +161,7 @@ export default function Home() {
   if (section === "weekly" || section === "google") {
     return <Navigate to={`/calendar?date=${selected}#${section}`} replace />;
   }
-  if (section === "reminder") {
+  if (section === "reminder" || section === "progress") {
     return <Navigate to={`/?date=${selected}`} replace />;
   }
 
@@ -178,7 +177,7 @@ export default function Home() {
         <header className={`dashboard-header ${isDashboard ? "dashboard-header-home" : ""}`}>
           {!isDashboard && section !== "profile" && (
             <div className="page-heading">
-              <p className="eyebrow accent">YOUR PERSONAL COMMAND CENTER</p>
+              <p className="eyebrow accent">CYBER PLANNER</p>
               <h1>{navigationSections.find(([path]) => path === section)?.[1] ?? "Page not found"}</h1>
             </div>
           )}
@@ -186,7 +185,7 @@ export default function Home() {
             <div className="intro">
               <div>
                 <p className="eyebrow accent">
-                  YOUR PERSONAL COMMAND CENTER <span>// 001</span>
+                  CYBER PLANNER <span>// 001</span>
                 </p>
                 <h1>
                   YOUR LIFE, <em>YOUR QUEST.</em>
@@ -221,26 +220,20 @@ export default function Home() {
               </div>
             </section>
           </>}
-          <div className="hero-actions">
-            <span className="wallet-balance" aria-label={`${page.balance} points`}>
-              <Sparkles aria-hidden="true" size={13} /> {page.balance} PTS
-            </span>
-            <span className="hero-date">
-              {date
-                .toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })
-                .toUpperCase()}
-            </span>
-            <form method="post" action="/auth/logout">
-              <button className="logout-button" type="submit">
-                SIGN OUT
-              </button>
-            </form>
+          <div className="header-utilities">
+            <div className="hero-actions">
+              <span className="hero-date">
+                {date
+                  .toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                  .toUpperCase()}
+              </span>
+            </div>
+            {isDashboard && <DailyAffirmation today={today || page.today} />}
           </div>
-          {isDashboard && <DailyAffirmation today={today || page.today} />}
         </header>
         {toggleFetcher.data?.error && (
           <div className="storage-error" role="alert">
@@ -361,15 +354,6 @@ export default function Home() {
           </div>
 
           <aside className="right-column">
-            {show("progress") && (
-            <DailyProgressPanel
-              selected={selected}
-              completed={completed}
-              total={total}
-              percent={percent}
-              points={page.todayPoints}
-            />
-            )}
             {isDashboard && (
             <RoutinesSection
               selected={selected}

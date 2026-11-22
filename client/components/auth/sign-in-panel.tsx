@@ -21,7 +21,7 @@ export function SignInPanel({
             <small>LIFE MANAGEMENT SYSTEM</small>
           </span>
         </a>
-        <p className="eyebrow accent">YOUR PERSONAL COMMAND CENTER</p>
+        <p className="eyebrow accent">CYBER PLANNER</p>
         <h1>
           YOUR LIFE, <em>YOUR QUEST.</em>
         </h1>

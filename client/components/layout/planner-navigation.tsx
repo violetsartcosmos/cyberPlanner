@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import {
   CalendarDays,
-  ChartNoAxesCombined,
   ChevronsLeft,
   ChevronsRight,
   Gift,
@@ -30,12 +29,12 @@ const navigationGroups: readonly NavigationGroup[] = [
     items: [
       ["", "Dashboard", LayoutDashboard],
       ["calendar", "Calendar", CalendarDays],
-      ["quest-board", "Quest board", Swords],
     ],
   },
   {
     title: "PLANNER",
     items: [
+      ["quest-board", "Create Quest", Swords],
       ["quests", "Daily quests", ListChecks],
       ["routines", "Routines", Repeat2],
       ["synced-tasks", "Synced tasks", ListTodo],
@@ -43,11 +42,8 @@ const navigationGroups: readonly NavigationGroup[] = [
     ],
   },
   {
-    title: "YOUR PROGRESS",
-    items: [
-      ["progress", "Progress", ChartNoAxesCombined],
-      ["rewards", "Shop", Gift],
-    ],
+    title: "YOUR REWARDS",
+    items: [["rewards", "Shop", Gift]],
   },
 ];
 

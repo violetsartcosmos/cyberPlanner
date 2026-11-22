@@ -340,8 +340,15 @@ button:disabled {
   margin-bottom: 32px;
 }
 
-.dashboard-header > .hero-actions {
+.dashboard-header > .header-utilities {
   margin-left: auto;
+}
+
+.header-utilities {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
 }
 
 .page-heading {
@@ -442,7 +449,7 @@ h1 em,
 }
 
 .intro-tag {
-  flex: 0 1 190px;
+  flex: none;
   text-align: right;
   font: 10px var(--font-mono);
   letter-spacing: 0.08em;
@@ -887,82 +894,6 @@ h1 em,
   font: 8px var(--font-mono);
 }
 
-.progress-panel {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr auto;
-  gap: 20px;
-  align-items: center;
-  background: var(--md-sys-color-surface-container);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-lg);
-  padding: 16px 20px;
-  box-shadow: var(--md-sys-elevation-1);
-}
-
-.progress-panel strong {
-  font-size: 19px;
-}
-
-.progress-panel strong span {
-  font: 9px var(--font-mono);
-  color: #a28e99;
-}
-
-.progress-panel .eyebrow {
-  display: inline-block;
-  font-size: 9px;
-  margin-bottom: 7px;
-}
-
-.progress-label {
-  display: flex;
-  justify-content: space-between;
-  font: 9px var(--font-mono);
-  color: #a18d99;
-  margin-bottom: 7px;
-}
-
-.progress-label b {
-  color: var(--md-sys-color-primary);
-}
-
-.progress-track {
-  height: 8px;
-  overflow: hidden;
-  background: var(--md-sys-color-surface-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-}
-
-.progress-track div {
-  height: 100%;
-  background: var(--md-sys-color-primary);
-  border-radius: inherit;
-  transition: width 0.2s ease;
-}
-
-.xp-total {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  color: var(--md-sys-color-primary);
-}
-
-.xp-total > svg {
-  flex: 0 0 auto;
-}
-
-.xp-total strong {
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.xp-total small {
-  display: block;
-  color: #a7929d;
-  font: 8px var(--font-mono);
-  margin-top: 3px;
-}
-
 .checklist {
   padding: 20px;
 }
@@ -1110,11 +1041,6 @@ h1 em,
   color: var(--md-sys-color-secondary);
   background: var(--md-sys-color-secondary-container);
   border-color: #68404d;
-}
-
-.right-column .progress-panel {
-  grid-template-columns: 1fr;
-  gap: 12px;
 }
 
 .notes-panel textarea {
@@ -1359,10 +1285,6 @@ footer svg {
 }
 
 @media (max-width: 700px) {
-  .section-page .progress-panel {
-    display: grid;
-  }
-
   .section-page .calendar-panel .calendar-day {
     min-height: 48px;
     font-size: 18px;
@@ -1391,8 +1313,11 @@ footer svg {
     box-shadow: var(--md-sys-elevation-2);
   }
 
+  .header-utilities {
+    width: 100%;
+  }
+
   .dashboard-header-home .intro-tag {
-    flex: none;
     align-self: flex-end;
   }
 
@@ -1571,12 +1496,6 @@ footer svg {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
-}
-
-.wallet-balance {
-  color: var(--md-sys-color-primary);
-  font: 10px var(--font-mono);
-  white-space: nowrap;
 }
 
 .task-row {
@@ -1774,10 +1693,6 @@ footer svg {
 @media (max-width: 700px) {
   .hero-actions {
     gap: 8px;
-  }
-
-  .wallet-balance {
-    font-size: 8px;
   }
 
   .logout-button {

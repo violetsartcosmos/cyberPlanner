@@ -33,6 +33,9 @@ export function Profile({ checks, today, balance, totalXp, achievements }: Profi
         <div className="profile-points">
           <span>AVAILABLE POINTS</span>
           <strong><Sparkles aria-hidden="true" size={18} /> {balance}</strong>
+          <form method="post" action="/auth/logout">
+            <button className="logout-button" type="submit">SIGN OUT</button>
+          </form>
         </div>
       </section>
 
