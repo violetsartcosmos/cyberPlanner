@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import {
+  BookOpen,
   CalendarDays,
   ChevronsLeft,
   ChevronsRight,
@@ -18,6 +19,7 @@ const dashboardNavigation: NavigationItem = ["", "Dashboard", LayoutDashboard];
 const calendarNavigation: NavigationItem = ["calendar", "Calendar", CalendarDays];
 const questBoardNavigation: NavigationItem = ["quest-board", "Create Quest", Swords];
 const notesNavigation: NavigationItem = ["notes", "Notes", NotebookPen];
+const booksNavigation: NavigationItem = ["books", "Library", BookOpen];
 const rewardsNavigation: NavigationItem = ["rewards", "Shop", Gift];
 const profileNavigation: NavigationItem = ["profile", "Profile", UserRound];
 
@@ -26,6 +28,7 @@ export const navigationSections: readonly NavigationItem[] = [
   calendarNavigation,
   questBoardNavigation,
   notesNavigation,
+  booksNavigation,
   rewardsNavigation,
   profileNavigation,
 ];
@@ -218,6 +221,7 @@ export function PlannerNavigation({
           <NavigationGroup title="PLANNER">
             <NavigationLink item={questBoardNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
             <NavigationLink item={notesNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+            <NavigationLink item={booksNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
           </NavigationGroup>
           <NavigationGroup title="YOUR REWARDS">
             <NavigationLink item={rewardsNavigation} selected={selected} section={section} onNavigate={handleNavigation} />

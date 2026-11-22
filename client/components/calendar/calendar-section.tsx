@@ -34,6 +34,11 @@ export function CalendarSection({
     else setJournalOpen(true);
   }
 
+  function selectCalendarDate(next: string) {
+    setJournalOpen(false);
+    onSelect(next);
+  }
+
   return (
     <>
       <MissionCalendar
@@ -42,7 +47,7 @@ export function CalendarSection({
         today={today}
         checks={checks}
         journalDates={journalDates}
-        onSelect={onSelect}
+        onSelect={selectCalendarDate}
         onToday={onToday}
         onAddJournal={openJournal}
         journalOpen={journalOpen}

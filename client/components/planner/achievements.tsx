@@ -6,7 +6,7 @@ import {
   MapPin, Mic, Moon, PowerOff, Rocket, Send, Shield, Sparkles, Sunrise,
   Sword, Terminal, Trees, Trophy, Utensils,
 } from "lucide-react";
-import { useFetcher } from "react-router";
+import { Link, useFetcher } from "react-router";
 import { morningRoutine, nightRoutine } from "../../../shared/planner/definitions";
 import { achievementCategories, tiers, type Achievement } from "../../../shared/planner/gamification";
 import type { PlannerActionResult } from "../../../shared/planner/types";
@@ -40,6 +40,44 @@ function buildIndexedOptions(values: readonly string[], prefix: string) {
     );
   }
   return options;
+}
+
+export function AchievementPreview({ achievements, selected, onProfile = false }: { achievements: Achievement[]; selected: string; onProfile?: boolean }) {
+  const unlocked = achievements.filter((achievement) => achievement.unlockedAt);
+  const featured = [...achievements]
+    .sort((a, b) => Number(Boolean(b.unlockedAt)) - Number(Boolean(a.unlockedAt)))
+    .slice(0, 4);
+
+  return (
+    <section className="panel achievement-preview" aria-labelledby="achievement-preview-heading">
+      <div className="achievement-preview-heading">
+        <div>
+          <p className="eyebrow">YOUR WINS</p>
+          <h2 id="achievement-preview-heading">Achievements</h2>
+        </div>
+        {onProfile
+          ? <a className="section-link" href="#achievements">VIEW ALL</a>
+          : <Link className="section-link" to={`/profile?date=${selected}#achievements`}>VIEW ALL</Link>}
+      </div>
+      <p className="achievement-preview-count">{unlocked.length} / {achievements.length} UNLOCKED</p>
+      {featured.length > 0 ? (
+        <div className="achievement-preview-grid">
+          {featured.map((achievement) => {
+            const Icon = icons[achievement.icon] ?? Award;
+            return (
+              <div className={`achievement-preview-card ${achievement.unlockedAt ? "is-unlocked" : ""}`} key={achievement.id}>
+                <span className="achievement-preview-icon"><Icon aria-hidden="true" size={25} /></span>
+                <strong>{achievement.title}</strong>
+                <span>{achievement.unlockedAt ? "UNLOCKED" : `${achievement.current} / ${achievement.target}`}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="profile-note">No achievements yet. Visit your profile to create one.</p>
+      )}
+    </section>
+  );
 }
 
 function AchievementDialog({ achievement, onClose, fetcher, onSubmit, error }: {
@@ -231,7 +269,7 @@ export function Achievements({ achievements }: { achievements: Achievement[] }) 
   }
 
   return (
-    <section className="profile-achievements" aria-labelledby="achievements-heading">
+    <section className="profile-achievements" id="achievements" aria-labelledby="achievements-heading">
       <div className="profile-section-heading">
         <div>
           <p className="eyebrow accent">YOUR WINS // KEEP GOING</p>

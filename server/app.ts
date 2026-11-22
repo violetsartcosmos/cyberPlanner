@@ -7,11 +7,37 @@ import { handlePlannerAction } from "./planner/dispatch";
 import { getPlannerPage } from "./planner/page";
 import { getSignedInEmail } from "./auth/service";
 import { getCalendarData, validCalendarRange } from "./google/calendar";
+import { bookResponse, libraryDirectory, listBooks } from "./books/library";
 
 export const app = new Hono();
 
 app.use("/api/*", csrf());
 app.use("/auth/*", csrf());
+
+app.get("/api/books", async (context) => {
+  context.header("Cache-Control", "no-store");
+  if (!(await getSignedInEmail(context.req.raw))) {
+    return context.json({ error: "Sign in with your configured Google account first." }, 401);
+  }
+  try {
+    return context.json(await listBooks(libraryDirectory));
+  } catch (error) {
+    console.error("Could not load ebook library.", error);
+    return context.json({ error: "Could not load the ebook library." }, 500);
+  }
+});
+
+app.get("/api/books/file", async (context) => {
+  if (!(await getSignedInEmail(context.req.raw))) {
+    return context.json({ error: "Sign in with your configured Google account first." }, 401);
+  }
+  try {
+    return await bookResponse(libraryDirectory, context.req.query("path") ?? "", context.req.header("range") ?? null);
+  } catch (error) {
+    console.error("Could not open ebook.", error);
+    return context.json({ error: "Could not open the book." }, 500);
+  }
+});
 
 app.get("/api/planner", async (context) => {
   context.header("Cache-Control", "no-store");

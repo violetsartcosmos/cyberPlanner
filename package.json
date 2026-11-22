@@ -12,6 +12,7 @@
     "db:studio": "prisma studio",
     "test:database": "node --test tests/database.integration.test.mjs",
     "test:profile": "node --import tsx --test tests/profile.test.mjs tests/gamification.test.mjs",
+    "test:books": "node --import tsx --test tests/books.test.mjs",
     "test:server": "node --test tests/server.test.mjs tests/action-validation.test.mjs",
     "typecheck": "tsc"
   },
@@ -27,6 +28,7 @@
     "prisma": "^7.0.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-reader": "^2.0.15",
     "react-router": "^8.5.2"
   },
   "devDependencies": {
@@ -40,5 +42,13 @@
     "tsx": "^4.0.0",
     "typescript": "^5.9.3",
     "vite": "^8.0.3"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "effect": "3.22.1"
+    },
+    "epubjs": {
+      "@xmldom/xmldom": "^0.9.12"
+    }
   }
 }

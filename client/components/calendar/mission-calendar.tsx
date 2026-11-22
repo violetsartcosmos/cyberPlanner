@@ -167,8 +167,6 @@ export function MissionCalendar({
       </li>,
     );
   }
-  const selectedProgress = dayProgress(date, checks[selected] ?? []);
-
   function navigate(amount: number) {
     const next =
       view === "day"
@@ -240,10 +238,6 @@ export function MissionCalendar({
       )}
       {view === "day" ? (
         <>
-          <p className="day-summary">
-            {selectedProgress.completed} / {selectedProgress.total} TASKS COMPLETE
-            {journalDates.includes(selected) && " · JOURNAL ENTRY"}
-          </p>
           {selectedEvents.some((event) => event.allDay) && (
             <div className="calendar-all-day-events">
               <strong>ALL DAY</strong>

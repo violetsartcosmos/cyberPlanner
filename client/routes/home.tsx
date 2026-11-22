@@ -16,7 +16,9 @@ import { CalendarSection } from "../components/calendar/calendar-section";
 import { GoogleIntegrationPanel } from "../components/calendar/integration-panel";
 import { WeeklyProtocolPanel } from "../components/calendar/weekly-protocol";
 import { NotesEditor } from "../components/planner/notes-editor";
+import { BookLibrary } from "../components/books/book-library";
 import { Profile } from "../components/planner/profile";
+import { AchievementPreview } from "../components/planner/achievements";
 import { QuestBoard } from "../components/planner/quest-board";
 import { LevelHeader } from "../components/planner/level-header";
 import {
@@ -182,6 +184,46 @@ export default function Home() {
   const quest = dailyQuests[weekday];
   const checked = page.checks[selected] ?? [];
   const { total, completed, percent } = dayProgress(date, checked);
+  const dateSummary = (
+    <section className="panel date-summary" aria-label="Selected date summary">
+      <p className="eyebrow">DATE SUMMARY</p>
+      <h2>{date.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })}</h2>
+      <p>
+        {completed} / {total} TASKS COMPLETE
+        {page.journalDates.includes(selected) && " · JOURNAL ENTRY"}
+      </p>
+    </section>
+  );
+  const calendarSummary = (
+    <section className="calendar-summary" aria-label="Selected date summary">
+      <div className="calendar-summary-copy">
+        <p className="eyebrow">YOUR DAILY MISSION // {selected.replaceAll("-", ".")}</p>
+        <h2>{date.toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}</h2>
+        <p>{quest.message}</p>
+        <div className="calendar-summary-progress">
+          <div><span>MISSION PROGRESS</span><strong>{percent}%</strong></div>
+          <div className="calendar-summary-track" role="progressbar" aria-label="Selected date task progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+            <span style={{ width: `${percent}%` }} />
+          </div>
+          <span>{completed} / {total} BUILT-IN TASKS COMPLETE{page.journalDates.includes(selected) && " · JOURNAL ENTRY"}</span>
+        </div>
+      </div>
+      <div className="calendar-summary-art" aria-hidden="true">
+        <img src="/witchycalendar.png" alt="" />
+      </div>
+      <AchievementPreview achievements={page.achievements} selected={selected} />
+    </section>
+  );
   const externalChecked = getCompletedExternalTaskIds(page.tasks);
   function toggleTask(taskId: string) {
     const completed = isExternalTaskId(taskId)
@@ -216,8 +258,7 @@ export default function Home() {
   }
 
   function selectDate(next: string) {
-    const hash = isCalendar && location.hash === "#journal" ? "#journal" : "";
-    navigate(`${location.pathname}?date=${next}${hash}`);
+    navigate(`${location.pathname}?date=${next}`);
   }
 
   return (
@@ -312,11 +353,13 @@ export default function Home() {
         )}
 
         {isDashboard && <LevelHeader totalXp={page.totalXp} unlocked={getUnlockedAchievementCount(page.achievements)} />}
-        {section === "profile" && <Profile checks={page.checks} today={today || page.today} balance={page.balance} totalXp={page.totalXp} achievements={page.achievements} />}
+        {section === "profile" && <Profile checks={page.checks} selected={selected} today={today || page.today} balance={page.balance} totalXp={page.totalXp} achievements={page.achievements} />}
         {section === "quest-board" && <QuestBoard quests={page.quests} selected={selected} />}
+        {section === "books" && <BookLibrary />}
         {isCalendar && (
           <div className="calendar-layout">
             <div className="calendar-tasks">
+              {calendarSummary}
               <TaskSection
                 kind="daily"
                 selected={selected}
@@ -366,7 +409,7 @@ export default function Home() {
             </div>
           </div>
         )}
-        {!isCalendar && (
+        {!isCalendar && section !== "books" && (
         <div className="dashboard-grid">
           <aside className="left-column">
             {isDashboard && (
@@ -383,6 +426,7 @@ export default function Home() {
                 onToday={selectToday}
               />
             )}
+            {isDashboard && dateSummary}
             {isDashboard && (
             <TaskSection
               kind="daily"
@@ -427,7 +471,7 @@ export default function Home() {
             </section>
             )}
             {showSection("notes") && (
-            <NotesEditor selected={selected} note={page.note} />
+            <NotesEditor selected={selected} note={page.note} onSelect={selectDate} />
             )}
             {isDashboard && (
             <TaskSection

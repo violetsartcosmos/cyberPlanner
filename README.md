@@ -25,6 +25,12 @@ Existing daily quests, routines, and synced tasks are Side Quests worth 10 point
 
 On the calendar page, daily quests, morning and night routines, and synced tasks appear beside the calendar. Switch between day, week, and month views and select a date to see its tasks and Google Calendar events. Day view shows timed events in a 24-hour timeline and all-day events separately. Add events to writable calendars or select an event to edit its title and time; recurring-event edits apply only to the selected occurrence. Google Calendar loads live, and **Refresh** picks up external changes. Calendars with free/busy-only access cannot show event details. Enable the Calendar API and sign in again with the new permissions as described in the [setup guide](docs/setup.md). On the dashboard or calendar page, choose **Add journal** to open the editor in place for the selected day. Journal entries are stored separately from notes; the calendar marks dates with entries. Use **Today** beneath the calendar heading to return to the current date. Weekly protocol and Google sync are also on the calendar page.
 
+On the notes page or dashboard, use **Previous day** and **Next day** to turn through daily notes. Save changes before turning the page, or confirm that you want to discard them.
+
+Open **Library** in the sidebar to browse EPUB and PDF files in the local `ebooks` folder, including its subfolders. EPUBs open in the built-in reader; PDFs open in a browser tab. EPUB reading positions are saved in the current browser on this device. Add or remove files in the folder and refresh the page to update the shelf. DRM-protected or damaged files may not open. Only use books from sources you trust.
+
+The `ebooks` folder is excluded from Git and Docker build contexts and is served only to the signed-in account, not from the public assets folder. It is not backed up or deployed automatically. For Docker, mount your book folder at `/app/ebooks`; for a remote deployment, the files must be present on that server.
+
 The dashboard shows daily quests beneath the calendar and routine tabs beneath daily progress. Routines default to morning before noon and night from noon, using your device's local time; you can switch tabs at any time. The dashboard affirmation is selected based on the current local date.
 
 Visit **Shop** in the sidebar, select a reward in the inventory, and choose **Redeem** to spend points at Nyx's counter. Purchases require confirmation and cannot be refunded.
@@ -47,6 +53,7 @@ Run commands in the project folder.
 | `npm run typecheck` | Check TypeScript. |
 | `npm run test:profile` | Test profile stats and achievement streaks. |
 | `npm run test:server` | Test API authentication, request validation, and form validation without a database. |
+| `npm run test:books` | Test library listing and book file access. |
 | `npm run test:database` | Run integration tests against a separate, empty, disposable database specified by `TEST_DATABASE_URL`. |
 
 ### Run the API separately
@@ -80,6 +87,7 @@ Direct dependencies and their purposes:
 | [React and React DOM](https://react.dev/learn) | User interface. |
 | [React Router](https://reactrouter.com/) | Client-side navigation and server-side session cookies. |
 | [Hono](https://hono.dev/) and [@hono/node-server](https://github.com/honojs/node-server) | API routing, request protection, and HTTP serving. |
+| [React Reader](https://github.com/gerhardsletten/react-reader) and EPUB.js | EPUB reading in the browser. |
 | [Prisma](https://www.prisma.io/docs/orm) (`prisma`, `@prisma/client`, `@prisma/adapter-pg`) and [pg](https://node-postgres.com/) | PostgreSQL queries, migrations, and driver. |
 | [googleapis](https://github.com/googleapis/google-api-nodejs-client) | Google OAuth, Tasks, and Gmail. |
 | [dotenv](https://github.com/motdotla/dotenv#readme) | Local environment configuration. |

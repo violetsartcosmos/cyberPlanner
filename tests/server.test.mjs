@@ -32,6 +32,8 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     });
     const anonymousCalendar = await app.request("http://localhost/api/calendar");
     assert.equal(anonymousCalendar.status, 401);
+    assert.equal((await app.request("http://localhost/api/books")).status, 401);
+    assert.equal((await app.request("http://localhost/api/books/file?path=test.epub")).status, 401);
 
     const storage = createCookieSessionStorage({
       cookie: {
@@ -42,6 +44,8 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     const session = await storage.getSession();
     session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
     const cookie = await storage.commitSession(session);
+    const invalidBook = await app.request("http://localhost/api/books/file?path=..%2Fsecret.epub", { headers: { Cookie: cookie } });
+    assert.equal(invalidBook.status, 404);
     const invalidCalendarRange = await app.request("http://localhost/api/calendar?start=bad&end=bad", { headers: { Cookie: cookie } });
     assert.equal(invalidCalendarRange.status, 400);
     const submit = (origin, includeCookie = true) => app.request("http://localhost/api/planner", {
