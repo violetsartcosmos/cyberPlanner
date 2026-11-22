@@ -20,13 +20,18 @@ export function CalendarSection({
 }: CalendarSectionProps) {
   const [journalOpen, setJournalOpen] = useState(showJournal);
 
-  useEffect(() => {
+  useEffect(function syncJournalOpen() {
     if (showJournal) setJournalOpen(true);
   }, [showJournal]);
 
-  useEffect(() => {
+  useEffect(function focusJournalEntry() {
     if (journalOpen) document.getElementById("journal-entry")?.focus();
   }, [journalOpen, selected]);
+
+  function openJournal() {
+    if (journalOpen) document.getElementById("journal-entry")?.focus();
+    else setJournalOpen(true);
+  }
 
   return (
     <>
@@ -38,10 +43,7 @@ export function CalendarSection({
         journalDates={journalDates}
         onSelect={onSelect}
         onToday={onToday}
-        onAddJournal={() => {
-          if (journalOpen) document.getElementById("journal-entry")?.focus();
-          else setJournalOpen(true);
-        }}
+        onAddJournal={openJournal}
         journalOpen={journalOpen}
       />
       {journalOpen && (

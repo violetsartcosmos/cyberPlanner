@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 type SignInPanelProps = {
   missingConfiguration: readonly string[];
   authError: string;
@@ -7,6 +9,11 @@ export function SignInPanel({
   missingConfiguration,
   authError,
 }: SignInPanelProps) {
+  const configurationItems: ReactNode[] = [];
+  for (const name of missingConfiguration) {
+    configurationItems.push(<li key={name}>{name}</li>);
+  }
+
   return (
     <main className="app-shell sign-in-shell">
       <section className="panel sign-in-panel">
@@ -34,9 +41,7 @@ export function SignInPanel({
               Add the following server environment variables before signing in:
             </p>
             <ul className="configuration-list">
-              {missingConfiguration.map((name) => (
-                <li key={name}>{name}</li>
-              ))}
+              {configurationItems}
             </ul>
           </>
         ) : (

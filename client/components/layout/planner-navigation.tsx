@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import {
   CalendarDays,
   ChevronsLeft,
@@ -15,37 +15,65 @@ import {
 import { Link } from "react-router";
 
 type NavigationItem = readonly [string, string, LucideIcon];
-type NavigationGroup = {
-  title: string;
-  items: readonly NavigationItem[];
-};
-
-const navigationGroups: readonly NavigationGroup[] = [
-  {
-    title: "YOUR SPACE",
-    items: [
-      ["", "Dashboard", LayoutDashboard],
-      ["calendar", "Calendar", CalendarDays],
-    ],
-  },
-  {
-    title: "PLANNER",
-    items: [
-      ["quest-board", "Create Quest", Swords],
-      ["quests", "Daily quests & tasks", ListChecks],
-      ["notes", "Notes", NotebookPen],
-    ],
-  },
-  {
-    title: "YOUR REWARDS",
-    items: [["rewards", "Shop", Gift]],
-  },
-];
+const dashboardNavigation: NavigationItem = ["", "Dashboard", LayoutDashboard];
+const calendarNavigation: NavigationItem = ["calendar", "Calendar", CalendarDays];
+const questBoardNavigation: NavigationItem = ["quest-board", "Create Quest", Swords];
+const questsNavigation: NavigationItem = ["quests", "Daily quests & tasks", ListChecks];
+const notesNavigation: NavigationItem = ["notes", "Notes", NotebookPen];
+const rewardsNavigation: NavigationItem = ["rewards", "Shop", Gift];
+const profileNavigation: NavigationItem = ["profile", "Profile", UserRound];
 
 export const navigationSections: readonly NavigationItem[] = [
-  ...navigationGroups.flatMap((group) => group.items),
-  ["profile", "Profile", UserRound],
+  dashboardNavigation,
+  calendarNavigation,
+  questBoardNavigation,
+  questsNavigation,
+  notesNavigation,
+  rewardsNavigation,
+  profileNavigation,
 ];
+
+type NavigationLinkProps = {
+  item: NavigationItem;
+  selected: string;
+  section: string;
+  onNavigate: () => void;
+};
+
+function NavigationLink({
+  item,
+  selected,
+  section,
+  onNavigate,
+}: NavigationLinkProps) {
+  const [path, label, Icon] = item;
+  return (
+    <Link
+      to={`${path ? `/${path}` : "/"}?date=${selected}`}
+      aria-label={label}
+      title={label}
+      aria-current={section === path ? "page" : undefined}
+      onClick={onNavigate}
+    >
+      <Icon aria-hidden="true" size={17} />
+      <span className="sidebar-label">{label}</span>
+    </Link>
+  );
+}
+
+type NavigationGroupProps = {
+  title: string;
+  children: ReactNode;
+};
+
+function NavigationGroup({ title, children }: NavigationGroupProps) {
+  return (
+    <div className="navigation-group">
+      <p>{title}</p>
+      {children}
+    </div>
+  );
+}
 
 type PlannerNavigationProps = {
   selected: string;
@@ -60,22 +88,26 @@ export function PlannerNavigation({
   expanded,
   setExpanded,
 }: PlannerNavigationProps) {
-  const [narrowScreen, setNarrowScreen] = useState(() =>
-    window.matchMedia("(max-width: 850px)").matches,
-  );
+  function getInitialNarrowScreen() {
+    return window.matchMedia("(max-width: 850px)").matches;
+  }
+  const [narrowScreen, setNarrowScreen] = useState(getInitialNarrowScreen);
   const menuRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
+  useEffect(function syncNarrowScreen() {
     const media = window.matchMedia("(max-width: 850px)");
     function onChange(event: MediaQueryListEvent) {
       setNarrowScreen(event.matches);
     }
     media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
+    function cleanupNarrowScreen() {
+      media.removeEventListener("change", onChange);
+    }
+    return cleanupNarrowScreen;
   }, []);
 
-  useEffect(() => {
+  useEffect(function syncMenuKeyboardBehavior() {
     if (!expanded) return;
     if (narrowScreen && !menuRef.current?.contains(document.activeElement)) {
       menuButtonRef.current?.focus();
@@ -102,12 +134,27 @@ export function PlannerNavigation({
       }
     }
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    function cleanupMenuKeyboardBehavior() {
+      document.removeEventListener("keydown", onKeyDown);
+    }
+    return cleanupMenuKeyboardBehavior;
   }, [expanded, narrowScreen, setExpanded]);
 
   function closeMenu() {
     setExpanded(false);
     menuButtonRef.current?.focus();
+  }
+
+  function handleBrandNavigation() {
+    if (expanded && narrowScreen) closeMenu();
+  }
+
+  function toggleMenu() {
+    setExpanded(!expanded);
+  }
+
+  function handleNavigation() {
+    if (expanded && narrowScreen) closeMenu();
   }
 
   return (
@@ -135,9 +182,7 @@ export function PlannerNavigation({
             to={`/?date=${selected}`}
             aria-label="CyberPlanner home"
             title="CyberPlanner home"
-            onClick={() => {
-              if (expanded && narrowScreen) closeMenu();
-            }}
+            onClick={handleBrandNavigation}
           >
             <span className="brand-logo-frame">
               <img
@@ -155,7 +200,7 @@ export function PlannerNavigation({
             title={expanded ? "Collapse menu" : "Expand menu"}
             aria-expanded={expanded}
             aria-controls="planner-navigation"
-            onClick={() => setExpanded((open) => !open)}
+            onClick={toggleMenu}
           >
             {expanded ? (
               <ChevronsLeft aria-hidden="true" size={20} />
@@ -169,35 +214,25 @@ export function PlannerNavigation({
           id="planner-navigation"
           aria-label="Planner sections"
         >
-          {navigationGroups.map((group) => (
-            <div className="navigation-group" key={group.title}>
-              <p>{group.title}</p>
-              {group.items.map(([path, label, Icon]) => (
-                <Link
-                  key={path}
-                  to={`${path ? `/${path}` : "/"}?date=${selected}`}
-                  aria-label={label}
-                  title={label}
-                  aria-current={section === path ? "page" : undefined}
-                  onClick={() => {
-                    if (expanded && narrowScreen) closeMenu();
-                  }}
-                >
-                  <Icon aria-hidden="true" size={17} />
-                  <span className="sidebar-label">{label}</span>
-                </Link>
-              ))}
-            </div>
-          ))}
+          <NavigationGroup title="YOUR SPACE">
+            <NavigationLink item={dashboardNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+            <NavigationLink item={calendarNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+          </NavigationGroup>
+          <NavigationGroup title="PLANNER">
+            <NavigationLink item={questBoardNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+            <NavigationLink item={questsNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+            <NavigationLink item={notesNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+          </NavigationGroup>
+          <NavigationGroup title="YOUR REWARDS">
+            <NavigationLink item={rewardsNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+          </NavigationGroup>
           <Link
             className="sidebar-profile"
             to={`/profile?date=${selected}`}
             aria-label="Profile"
             title="Profile"
             aria-current={section === "profile" ? "page" : undefined}
-            onClick={() => {
-              if (expanded && narrowScreen) closeMenu();
-            }}
+            onClick={handleNavigation}
           >
             <span className="sidebar-avatar" aria-hidden="true">
               V

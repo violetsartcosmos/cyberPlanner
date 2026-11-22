@@ -11,6 +11,21 @@ export function parseDate(key: string) {
   return new Date(year, month - 1, day, 12);
 }
 
+export function formatShortDate(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function isExternalTaskId(taskId: string) {
+  return taskId.startsWith("google:") || taskId.startsWith("gmail:");
+}
+
+export function externalTaskId(source: string, externalId: string) {
+  return `${source}:${externalId}`;
+}
+
 export function isValidDateKey(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && dateKey(parseDate(value)) === value;
 }

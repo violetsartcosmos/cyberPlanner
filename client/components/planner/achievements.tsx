@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import {
   Award, Bug, CalendarCheck, Check, Clock, Compass, Droplet, Dumbbell,
   Flame, FolderCheck, GitPullRequest, GraduationCap, Layers, MailCheck,
@@ -21,6 +22,26 @@ const icons: Record<string, typeof Award> = {
   trophy: Trophy, utensils: Utensils,
 } as const;
 
+function buildOptions(values: readonly string[]) {
+  const options: ReactNode[] = [];
+  for (const value of values) {
+    options.push(<option key={value}>{value}</option>);
+  }
+  return options;
+}
+
+function buildIndexedOptions(values: readonly string[], prefix: string) {
+  const options: ReactNode[] = [];
+  for (let index = 0; index < values.length; index += 1) {
+    options.push(
+      <option value={`${prefix}-${index}`} key={index}>
+        {values[index]}
+      </option>,
+    );
+  }
+  return options;
+}
+
 function AchievementDialog({ achievement, onClose, fetcher, onSubmit, error }: {
   achievement: Achievement | null;
   onClose: () => void;
@@ -30,15 +51,23 @@ function AchievementDialog({ achievement, onClose, fetcher, onSubmit, error }: {
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [tracking, setTracking] = useState(achievement?.tracking ?? "manual");
-  useEffect(() => {
+  useEffect(function syncDialogVisibility() {
     dialog.current?.showModal();
   }, []);
+
+  function closeDialog() {
+    dialog.current?.close();
+  }
+
+  function handleTrackingChange(event: ChangeEvent<HTMLSelectElement>) {
+    setTracking(event.target.value);
+  }
 
   return (
     <dialog ref={dialog} className="achievement-dialog" onClose={onClose} aria-labelledby="achievement-dialog-title">
       <div className="dialog-heading">
         <h2 id="achievement-dialog-title">{achievement ? "Edit achievement" : "Create achievement"}</h2>
-        <button type="button" className="gamification-button" onClick={() => dialog.current?.close()}>Close</button>
+        <button type="button" className="gamification-button" onClick={closeDialog}>Close</button>
       </div>
       <fetcher.Form method="post" className="gamification-form" onSubmit={onSubmit}>
         <input type="hidden" name="intent" value="save_achievement" />
@@ -46,21 +75,21 @@ function AchievementDialog({ achievement, onClose, fetcher, onSubmit, error }: {
         <label>Title<input name="title" required maxLength={100} defaultValue={achievement?.title} /></label>
         <label>Description<textarea name="description" required maxLength={500} defaultValue={achievement?.description} /></label>
         <div className="form-grid">
-          <label>Category<select name="category" defaultValue={achievement?.category ?? achievementCategories[0]}>{achievementCategories.map((category) => <option key={category}>{category}</option>)}</select></label>
-          <label>Tier<select name="tier" defaultValue={achievement?.tier ?? "Common"}>{tiers.map((tier) => <option key={tier}>{tier}</option>)}</select></label>
+          <label>Category<select name="category" defaultValue={achievement?.category ?? achievementCategories[0]}>{buildOptions(achievementCategories)}</select></label>
+          <label>Tier<select name="tier" defaultValue={achievement?.tier ?? "Common"}>{buildOptions(tiers)}</select></label>
           <label>XP reward<input name="xp" type="number" min="1" max="100000" required defaultValue={achievement?.xp ?? 25} /></label>
           <label>Target (days or steps)<input name="target" type="number" min="1" max="3650" required defaultValue={achievement?.target ?? 1} /></label>
         </div>
         <label>Progress tracking
-          <select name="tracking" value={tracking} onChange={(event) => setTracking(event.target.value)}>
+          <select name="tracking" value={tracking} onChange={handleTrackingChange}>
             <option value="manual">Manual (+1)</option>
             <option value="streak">Consecutive routine days</option>
           </select>
         </label>
         {tracking === "streak" && <label>Routine task
           <select name="taskId" defaultValue={achievement?.taskId ?? "morning-0"}>
-            <optgroup label="Morning">{morningRoutine.map((task, index) => <option value={`morning-${index}`} key={index}>{task}</option>)}</optgroup>
-            <optgroup label="Night">{nightRoutine.map((task, index) => <option value={`night-${index}`} key={index}>{task}</option>)}</optgroup>
+            <optgroup label="Morning">{buildIndexedOptions(morningRoutine, "morning")}</optgroup>
+            <optgroup label="Night">{buildIndexedOptions(nightRoutine, "night")}</optgroup>
           </select>
         </label>}
         <label>Personal reward (optional)<input name="reward" maxLength={200} placeholder="A treat, downtime, or something special" defaultValue={achievement?.reward ?? ""} /></label>
@@ -83,7 +112,7 @@ export function Achievements({ achievements }: { achievements: Achievement[] }) 
   const [noticeIsError, setNoticeIsError] = useState(false);
   const pending = useRef<"save" | "other" | null>(null);
 
-  useEffect(() => {
+  useEffect(function syncAchievementFetcher() {
     if (fetcher.state !== "idle" || !fetcher.data || !pending.current) return;
     if (fetcher.data.ok) {
       if (pending.current === "save") setEditing(null);
@@ -100,12 +129,106 @@ export function Achievements({ achievements }: { achievements: Achievement[] }) 
     pending.current = null;
   }, [fetcher.state, fetcher.data]);
 
-  const filtered = achievements.filter((achievement) =>
-    (category === "all" || achievement.category === category) &&
-    (tier === "all" || achievement.tier === tier) &&
-    (status === "all" || (status === "unlocked") === Boolean(achievement.unlockedAt)),
-  );
-  const unlocked = achievements.filter((achievement) => achievement.unlockedAt).length;
+  function openNewAchievement() {
+    setDialogError("");
+    setEditing("new");
+  }
+
+  function dismissNotice() {
+    setNotice("");
+  }
+
+  function handleCategoryChange(event: ChangeEvent<HTMLSelectElement>) {
+    setCategory(event.target.value);
+  }
+
+  function handleTierChange(event: ChangeEvent<HTMLSelectElement>) {
+    setTier(event.target.value);
+  }
+
+  function handleStatusChange(event: ChangeEvent<HTMLSelectElement>) {
+    setStatus(event.target.value);
+  }
+
+  function editAchievement(achievement: Achievement) {
+    setDialogError("");
+    setEditing(achievement);
+  }
+
+  function closeEditing() {
+    setEditing(null);
+  }
+
+  function markSavePending() {
+    setDialogError("");
+    pending.current = "save";
+  }
+
+  function markOtherPending() {
+    pending.current = "other";
+  }
+
+  function confirmAchievementDelete(title: string) {
+    return function handleDelete(event: FormEvent<HTMLFormElement>) {
+      if (!window.confirm(`Delete "${title}"? Earned XP will be kept.`)) {
+        event.preventDefault();
+      } else {
+        pending.current = "other";
+      }
+    };
+  }
+
+  function createEditAchievementHandler(achievement: Achievement) {
+    return function handleEditAchievement() {
+      editAchievement(achievement);
+    };
+  }
+
+  const filtered: Achievement[] = [];
+  let unlocked = 0;
+  for (const achievement of achievements) {
+    if (achievement.unlockedAt) unlocked += 1;
+    if (
+      (category === "all" || achievement.category === category) &&
+      (tier === "all" || achievement.tier === tier) &&
+      (status === "all" || (status === "unlocked") === Boolean(achievement.unlockedAt))
+    ) {
+      filtered.push(achievement);
+    }
+  }
+
+  const achievementCards: ReactNode[] = [];
+  for (const achievement of filtered) {
+    const Icon = icons[achievement.icon] ?? Award;
+    achievementCards.push(
+      <article className={`achievement-card tier-${achievement.tier.toLowerCase()} ${achievement.unlockedAt ? "is-unlocked" : ""}`} key={achievement.id}>
+        <div className="achievement-icon"><Icon aria-hidden="true" size={30} /></div>
+        <div className="achievement-copy">
+          <span className="achievement-status">{achievement.unlockedAt ? <><Check aria-hidden="true" size={13} /> UNLOCKED</> : "LOCKED"} · {achievement.tier.toUpperCase()} · {achievement.unlockedAt ? achievement.awardedXp : achievement.xp} XP</span>
+          <h3>{achievement.title}</h3>
+          <p>{achievement.description}</p>
+          <p className="achievement-category">{achievement.category}</p>
+          {achievement.reward && <p className="achievement-reward">{achievement.unlockedAt ? "Your reward" : "Reward on unlock"}: {achievement.reward}</p>}
+          <div className="achievement-progress">
+            <div className="achievement-track" role="progressbar" aria-label={`${achievement.title} progress`} aria-valuemin={0} aria-valuemax={achievement.target} aria-valuenow={achievement.current}><span style={{ width: `${achievement.current / achievement.target * 100}%` }} /></div>
+            <span>{achievement.current} / {achievement.target}</span>
+          </div>
+          <div className="achievement-actions">
+            {!achievement.unlockedAt && achievement.tracking === "manual" && <fetcher.Form method="post" onSubmit={markOtherPending}>
+              <input type="hidden" name="intent" value="advance_achievement" /><input type="hidden" name="id" value={achievement.id} />
+              <button className="gamification-button primary" disabled={fetcher.state !== "idle"}>{achievement.target === 1 ? "Unlock" : "+1 progress"}</button>
+            </fetcher.Form>}
+            {!achievement.unlockedAt && achievement.tracking === "streak" && <span className="form-hint">Automatic routine streak</span>}
+            <button className="gamification-button" type="button" onClick={createEditAchievementHandler(achievement)}>Edit</button>
+            <fetcher.Form method="post" onSubmit={confirmAchievementDelete(achievement.title)}>
+              <input type="hidden" name="intent" value="delete_achievement" /><input type="hidden" name="id" value={achievement.id} />
+              <button className="gamification-button" disabled={fetcher.state !== "idle"}>Delete</button>
+            </fetcher.Form>
+          </div>
+        </div>
+      </article>,
+    );
+  }
 
   return (
     <section className="profile-achievements" aria-labelledby="achievements-heading">
@@ -115,53 +238,20 @@ export function Achievements({ achievements }: { achievements: Achievement[] }) 
           <h2 id="achievements-heading">Achievements &amp; badges</h2>
           <p>{unlocked} / {achievements.length} unlocked. Little victories deserve to be celebrated.</p>
         </div>
-        <button className="gamification-button primary" onClick={() => { setDialogError(""); setEditing("new"); }}>+ New achievement</button>
+        <button className="gamification-button primary" onClick={openNewAchievement}>+ New achievement</button>
       </div>
-      {notice && <div className="achievement-notice" role={noticeIsError ? "alert" : "status"}>{notice}<button type="button" aria-label="Dismiss notification" onClick={() => setNotice("")}>×</button></div>}
+      {notice && <div className="achievement-notice" role={noticeIsError ? "alert" : "status"}>{notice}<button type="button" aria-label="Dismiss notification" onClick={dismissNotice}>×</button></div>}
       <div className="achievement-filters">
-        <label>Category<select value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">All categories</option>{achievementCategories.map((item) => <option key={item}>{item}</option>)}</select></label>
-        <label>Tier<select value={tier} onChange={(event) => setTier(event.target.value)}><option value="all">All tiers</option>{tiers.map((item) => <option key={item}>{item}</option>)}</select></label>
-        <label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All achievements</option><option value="locked">Locked</option><option value="unlocked">Unlocked</option></select></label>
+        <label>Category<select value={category} onChange={handleCategoryChange}><option value="all">All categories</option>{buildOptions(achievementCategories)}</select></label>
+        <label>Tier<select value={tier} onChange={handleTierChange}><option value="all">All tiers</option>{buildOptions(tiers)}</select></label>
+        <label>Status<select value={status} onChange={handleStatusChange}><option value="all">All achievements</option><option value="locked">Locked</option><option value="unlocked">Unlocked</option></select></label>
       </div>
       <div className="achievement-grid">
-        {filtered.map((achievement) => {
-          const Icon = icons[achievement.icon] ?? Award;
-          return (
-            <article className={`achievement-card tier-${achievement.tier.toLowerCase()} ${achievement.unlockedAt ? "is-unlocked" : ""}`} key={achievement.id}>
-              <div className="achievement-icon"><Icon aria-hidden="true" size={30} /></div>
-              <div className="achievement-copy">
-                <span className="achievement-status">{achievement.unlockedAt ? <><Check aria-hidden="true" size={13} /> UNLOCKED</> : "LOCKED"} · {achievement.tier.toUpperCase()} · {achievement.unlockedAt ? achievement.awardedXp : achievement.xp} XP</span>
-                <h3>{achievement.title}</h3>
-                <p>{achievement.description}</p>
-                <p className="achievement-category">{achievement.category}</p>
-                {achievement.reward && <p className="achievement-reward">{achievement.unlockedAt ? "Your reward" : "Reward on unlock"}: {achievement.reward}</p>}
-                <div className="achievement-progress">
-                  <div className="achievement-track" role="progressbar" aria-label={`${achievement.title} progress`} aria-valuemin={0} aria-valuemax={achievement.target} aria-valuenow={achievement.current}><span style={{ width: `${achievement.current / achievement.target * 100}%` }} /></div>
-                  <span>{achievement.current} / {achievement.target}</span>
-                </div>
-                <div className="achievement-actions">
-                  {!achievement.unlockedAt && achievement.tracking === "manual" && <fetcher.Form method="post" onSubmit={() => { pending.current = "other"; }}>
-                    <input type="hidden" name="intent" value="advance_achievement" /><input type="hidden" name="id" value={achievement.id} />
-                    <button className="gamification-button primary" disabled={fetcher.state !== "idle"}>{achievement.target === 1 ? "Unlock" : "+1 progress"}</button>
-                  </fetcher.Form>}
-                  {!achievement.unlockedAt && achievement.tracking === "streak" && <span className="form-hint">Automatic routine streak</span>}
-                  <button className="gamification-button" type="button" onClick={() => { setDialogError(""); setEditing(achievement); }}>Edit</button>
-                  <fetcher.Form method="post" onSubmit={(event) => {
-                    if (!window.confirm(`Delete "${achievement.title}"? Earned XP will be kept.`)) event.preventDefault();
-                    else pending.current = "other";
-                  }}>
-                    <input type="hidden" name="intent" value="delete_achievement" /><input type="hidden" name="id" value={achievement.id} />
-                    <button className="gamification-button" disabled={fetcher.state !== "idle"}>Delete</button>
-                  </fetcher.Form>
-                </div>
-              </div>
-            </article>
-          );
-        })}
+        {achievementCards}
       </div>
       {filtered.length === 0 && <p className="profile-note">No achievements match these filters.</p>}
       <p className="profile-note">Manual goals are self-reported, including any time limits in their descriptions. Routine streaks unlock automatically. Unlocked badges and earned XP are permanent.</p>
-      {editing && <AchievementDialog key={editing === "new" ? "new" : editing.id} achievement={editing === "new" ? null : editing} fetcher={fetcher} error={dialogError} onClose={() => setEditing(null)} onSubmit={() => { setDialogError(""); pending.current = "save"; }} />}
+      {editing && <AchievementDialog key={editing === "new" ? "new" : editing.id} achievement={editing === "new" ? null : editing} fetcher={fetcher} error={dialogError} onClose={closeEditing} onSubmit={markSavePending} />}
     </section>
   );
 }

@@ -13,12 +13,16 @@ function PageError() {
   );
 }
 
+function HydrateFallback() {
+  return <main className="app-shell sign-in-shell">Loading planner...</main>;
+}
+
 const router = createBrowserRouter([{
   path: "/:section?",
   Component: Home,
   loader,
   action,
-  HydrateFallback: () => <main className="app-shell sign-in-shell">Loading planner...</main>,
+  HydrateFallback,
   ErrorBoundary: PageError,
 }]);
 

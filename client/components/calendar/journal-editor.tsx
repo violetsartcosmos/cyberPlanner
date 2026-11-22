@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
 import { BookOpen } from "lucide-react";
 import { useFetcher } from "react-router";
 import type { PlannerActionResult } from "../../../shared/planner/types";
@@ -12,9 +13,13 @@ export function JournalEditor({ selected, journal: savedJournal }: JournalEditor
   const fetcher = useFetcher<PlannerActionResult>();
   const [journal, setJournal] = useState(savedJournal);
 
-  useEffect(() => {
+  useEffect(function syncSavedJournal() {
     setJournal(savedJournal);
   }, [selected, savedJournal]);
+
+  function handleJournalChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    setJournal(event.target.value);
+  }
 
   return (
     <section className="panel notes-panel journal-panel" id="journal">
@@ -39,7 +44,7 @@ export function JournalEditor({ selected, journal: savedJournal }: JournalEditor
           value={journal}
           maxLength={10_000}
           disabled={fetcher.state !== "idle"}
-          onChange={(event) => setJournal(event.target.value)}
+          onChange={handleJournalChange}
         />
         <button className="google-action" type="submit" disabled={fetcher.state !== "idle"}>
           {fetcher.state === "idle" ? "SAVE JOURNAL" : "SAVING..."}

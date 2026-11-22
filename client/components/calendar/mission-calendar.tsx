@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import {
   CalendarDays,
@@ -10,6 +11,7 @@ import {
   addDays,
   dateKey,
   dayProgress,
+  formatShortDate,
   monthDates,
   weekdays,
   weekDates,
@@ -40,19 +42,78 @@ export function MissionCalendar({
 }: MissionCalendarProps) {
   const [view, setView] = useState<"week" | "month">("month");
 
-  useEffect(() => {
+  useEffect(function syncCompactCalendarView() {
     if (window.matchMedia("(max-width: 700px)").matches) setView("week");
   }, []);
 
   const days = view === "week" ? weekDates(date) : monthDates(date);
   const start = days[0];
   const end = days[6];
-  const formatShort = (day: Date) =>
-    day.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const range =
     view === "week"
-      ? `${formatShort(start)}${start.getFullYear() !== end.getFullYear() ? `, ${start.getFullYear()}` : ""} – ${formatShort(end)}, ${end.getFullYear()}`
+      ? `${formatShortDate(start)}${start.getFullYear() !== end.getFullYear() ? `, ${start.getFullYear()}` : ""} – ${formatShortDate(end)}, ${end.getFullYear()}`
       : date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  function showWeek() {
+    setView("week");
+  }
+
+  function showMonth() {
+    setView("month");
+  }
+
+  function navigatePrevious() {
+    navigate(-1);
+  }
+
+  function navigateNext() {
+    navigate(1);
+  }
+
+  function createDaySelectionHandler(key: string) {
+    return function handleDaySelection() {
+      onSelect(key);
+    };
+  }
+
+  const weekdayLabels: ReactNode[] = [];
+  for (const day of weekdays) {
+    weekdayLabels.push(<span key={day}>{day.slice(0, 1)}</span>);
+  }
+
+  const calendarDays: ReactNode[] = [];
+  for (const day of days) {
+    const key = dateKey(day);
+    const progress = dayProgress(day, checks[key] ?? []);
+    const label = day.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    calendarDays.push(
+      <button
+        key={key}
+        type="button"
+        className={`calendar-day ${view === "month" && day.getMonth() !== date.getMonth() ? "outside" : ""} ${key === selected ? "selected" : ""} ${key === today ? "is-today" : ""} ${progress.completed ? "has-progress" : ""} ${journalDates.includes(key) ? "has-journal" : ""}`}
+        onClick={createDaySelectionHandler(key)}
+        aria-label={`${label}, ${progress.completed} of ${progress.total} tasks complete${journalDates.includes(key) ? ", journal entry" : ""}`}
+        aria-pressed={key === selected}
+      >
+        {view === "week" && (
+          <span className="week-day-name">
+            {weekdays[(day.getDay() + 6) % 7]}
+          </span>
+        )}
+        <span>{day.getDate()}</span>
+        {view === "week" && (
+          <span className="week-day-progress">
+            {progress.completed}/{progress.total}
+          </span>
+        )}
+      </button>,
+    );
+  }
 
   function navigate(amount: number) {
     const next =
@@ -79,14 +140,14 @@ export function MissionCalendar({
         <button
           type="button"
           aria-pressed={view === "week"}
-          onClick={() => setView("week")}
+          onClick={showWeek}
         >
           Week
         </button>
         <button
           type="button"
           aria-pressed={view === "month"}
-          onClick={() => setView("month")}
+          onClick={showMonth}
         >
           Month
         </button>
@@ -95,7 +156,7 @@ export function MissionCalendar({
         <button
           className="icon-button"
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={navigatePrevious}
           aria-label={`Previous ${view}`}
         >
           <ChevronLeft aria-hidden="true" size={16} />
@@ -107,7 +168,7 @@ export function MissionCalendar({
         <button
           className="icon-button"
           type="button"
-          onClick={() => navigate(1)}
+          onClick={navigateNext}
           aria-label={`Next ${view}`}
         >
           <ChevronRight aria-hidden="true" size={16} />
@@ -115,44 +176,10 @@ export function MissionCalendar({
       </div>
       {view === "month" && (
         <div className="calendar-grid weekday-labels">
-          {weekdays.map((day) => (
-            <span key={day}>{day.slice(0, 1)}</span>
-          ))}
+          {weekdayLabels}
         </div>
       )}
       <div className={`calendar-grid ${view === "week" ? "week-dates" : ""}`}>
-        {days.map((day) => {
-          const key = dateKey(day);
-          const progress = dayProgress(day, checks[key] ?? []);
-          const label = day.toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          });
-          return (
-            <button
-              key={key}
-              type="button"
-              className={`calendar-day ${view === "month" && day.getMonth() !== date.getMonth() ? "outside" : ""} ${key === selected ? "selected" : ""} ${key === today ? "is-today" : ""} ${progress.completed ? "has-progress" : ""} ${journalDates.includes(key) ? "has-journal" : ""}`}
-              onClick={() => onSelect(key)}
-              aria-label={`${label}, ${progress.completed} of ${progress.total} tasks complete${journalDates.includes(key) ? ", journal entry" : ""}`}
-              aria-pressed={key === selected}
-            >
-              {view === "week" && (
-                <span className="week-day-name">
-                  {weekdays[(day.getDay() + 6) % 7]}
-                </span>
-              )}
-              <span>{day.getDate()}</span>
-              {view === "week" && (
-                <span className="week-day-progress">
-                  {progress.completed}/{progress.total}
-                </span>
-              )}
-            </button>
-          );
-        })}
       </div>
       <p className="calendar-legend"><span aria-hidden="true" /> JOURNAL ENTRY</p>
       <button className="today-button" type="button" onClick={onAddJournal} aria-expanded={journalOpen} aria-controls={journalOpen ? "journal" : undefined}>

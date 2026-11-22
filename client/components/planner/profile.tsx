@@ -14,7 +14,10 @@ type ProfileProps = {
 
 export function Profile({ checks, today, balance, totalXp, achievements }: ProfileProps) {
   const stats = getProfileStats(checks, today);
-  const unlocked = achievements.filter((achievement) => achievement.unlockedAt).length;
+  let unlocked = 0;
+  for (const achievement of achievements) {
+    if (achievement.unlockedAt) unlocked += 1;
+  }
 
   return (
     <div className="profile-page">

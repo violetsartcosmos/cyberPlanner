@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
 import { Link, useFetcher } from "react-router";
 import { Pencil } from "lucide-react";
 import type { PlannerActionResult } from "../../../shared/planner/types";
@@ -12,9 +13,13 @@ export function NotesEditor({ selected, note: savedNote }: NotesEditorProps) {
   const fetcher = useFetcher<PlannerActionResult>();
   const [note, setNote] = useState(savedNote);
 
-  useEffect(() => {
+  useEffect(function syncSavedNote() {
     setNote(savedNote);
   }, [selected, savedNote]);
+
+  function handleNoteChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    setNote(event.target.value);
+  }
 
   return (
     <section className="panel notes-panel">
@@ -31,7 +36,7 @@ export function NotesEditor({ selected, note: savedNote }: NotesEditorProps) {
         placeholder="What's on your mind?"
         value={note}
         maxLength={10_000}
-        onChange={(event) => setNote(event.target.value)}
+        onChange={handleNoteChange}
       />
       <fetcher.Form method="post">
         <input type="hidden" name="intent" value="save_note" />

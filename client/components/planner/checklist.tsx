@@ -18,6 +18,75 @@ type ChecklistProps = {
   illustration?: string;
 };
 
+function ChecklistItem({
+  item,
+  id,
+  checked,
+  earned,
+  disabled,
+  taskLink,
+  onToggle,
+}: {
+  item: string;
+  id: string;
+  checked: boolean;
+  earned: boolean;
+  disabled: boolean;
+  taskLink?: string | null;
+  onToggle: (id: string) => void;
+}) {
+  function handleTaskToggle() {
+    onToggle(id);
+  }
+
+  return (
+    <div className="task-row" key={id}>
+      <label className={`task ${checked ? "task-done" : ""}`}>
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={handleTaskToggle}
+        />
+        <span className="checkmark" aria-hidden="true">
+          <Check size={12} />
+        </span>
+        <span>{item}</span>
+        <span className="task-xp">
+          {earned ? "EARNED" : "+10 PTS"}
+        </span>
+      </label>
+      {taskLink && (
+        <a
+          className="task-source-link"
+          href={taskLink}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open source email for ${item}`}
+        >
+          EMAIL <ArrowUpRight aria-hidden="true" size={12} />
+        </a>
+      )}
+    </div>
+  );
+}
+
+function buildTaskIds(items: readonly string[], ids: readonly string[] | undefined, prefix: string) {
+  const taskIds: string[] = [];
+  for (let index = 0; index < items.length; index += 1) {
+    taskIds.push(ids?.[index] ?? `${prefix}-${index}`);
+  }
+  return taskIds;
+}
+
+function countCompleted(ids: readonly string[], checked: readonly string[]) {
+  let count = 0;
+  for (const id of ids) {
+    if (checked.includes(id)) count += 1;
+  }
+  return count;
+}
+
 export function Checklist({
   title,
   eyebrow,
@@ -33,8 +102,25 @@ export function Checklist({
   taskLinks,
   illustration,
 }: ChecklistProps) {
-  const taskIds = items.map((_, index) => ids?.[index] ?? `${prefix}-${index}`);
-  const done = taskIds.filter((id) => checked.includes(id)).length;
+  const taskIds = buildTaskIds(items, ids, prefix);
+  const done = countCompleted(taskIds, checked);
+  const taskRows: ReactNode[] = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const id = taskIds[index];
+    taskRows.push(
+      <ChecklistItem
+        key={id}
+        item={items[index]}
+        id={id}
+        checked={checked.includes(id)}
+        earned={earnedIds.includes(id)}
+        disabled={disabled}
+        taskLink={taskLinks?.[index]}
+        onToggle={onToggle}
+      />,
+    );
+  }
+
   return (
     <section className={`panel checklist ${illustration ? "checklist-illustrated" : ""}`}>
       <div className="panel-heading">
@@ -54,42 +140,7 @@ export function Checklist({
       </div>
       <div className="checklist-body">
         <div className="checklist-items">
-          {items.map((item, index) => {
-            const id = taskIds[index];
-            const earned = earnedIds.includes(id);
-            return (
-              <div className="task-row" key={id}>
-                <label
-                  className={`task ${checked.includes(id) ? "task-done" : ""}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked.includes(id)}
-                    disabled={disabled}
-                    onChange={() => onToggle(id)}
-                  />
-                  <span className="checkmark" aria-hidden="true">
-                    <Check size={12} />
-                  </span>
-                  <span>{item}</span>
-                  <span className="task-xp">
-                    {earned ? "EARNED" : "+10 PTS"}
-                  </span>
-                </label>
-                {taskLinks?.[index] && (
-                  <a
-                    className="task-source-link"
-                    href={taskLinks[index] ?? undefined}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`Open source email for ${item}`}
-                  >
-                    EMAIL <ArrowUpRight aria-hidden="true" size={12} />
-                  </a>
-                )}
-              </div>
-            );
-          })}
+          {taskRows}
         </div>
         {illustration && <img className="checklist-art" src={illustration} alt="" />}
       </div>

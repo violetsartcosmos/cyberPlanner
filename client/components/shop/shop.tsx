@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useFetcher } from "react-router";
 import {
   BookOpen,
@@ -67,6 +68,51 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
   const SelectedIcon = rewardIcons[reward.id];
   const canAfford = balance >= reward.cost;
 
+  function selectReward(index: number) {
+    setSelectedIndex(index);
+  }
+
+  function createRewardSelectionHandler(index: number) {
+    return function handleRewardSelection() {
+      selectReward(index);
+    };
+  }
+
+  const rewardItems: ReactNode[] = [];
+  for (let index = 0; index < rewards.length; index += 1) {
+    const item = rewards[index];
+    const Icon = rewardIcons[item.id];
+    rewardItems.push(
+      <button
+        key={item.id}
+        className="shop-item"
+        type="button"
+        aria-pressed={selectedIndex === index}
+        onClick={createRewardSelectionHandler(index)}
+      >
+        <Icon aria-hidden="true" size={28} />
+        <strong>{item.title}</strong>
+        <small>{item.cost} PTS</small>
+      </button>,
+    );
+  }
+
+  const redemptionHistory: ReactNode[] = [];
+  for (let index = 0; index < redemptions.length; index += 1) {
+    const item = redemptions[index];
+    redemptionHistory.push(
+      <p key={`${item.rewardId}-${item.createdAt}-${index}`}>
+        {item.rewardName} · {item.amount} pts
+      </p>,
+    );
+  }
+
+  function confirmRedemption(event: FormEvent<HTMLFormElement>) {
+    if (!window.confirm(`Redeem ${reward.title} for ${reward.cost} points? This purchase cannot be refunded.`)) {
+      event.preventDefault();
+    }
+  }
+
   return (
     <section className="shop" aria-labelledby="shop-heading">
       <header className="shop-header">
@@ -83,22 +129,7 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
             <span>{rewards.length} REWARDS</span>
           </div>
           <div className="shop-items" role="group" aria-labelledby="inventory-heading">
-            {rewards.map((item, index) => {
-              const Icon = rewardIcons[item.id];
-              return (
-                <button
-                  key={item.id}
-                  className="shop-item"
-                  type="button"
-                  aria-pressed={selectedIndex === index}
-                  onClick={() => setSelectedIndex(index)}
-                >
-                  <Icon aria-hidden="true" size={28} />
-                  <strong>{item.title}</strong>
-                  <small>{item.cost} PTS</small>
-                </button>
-              );
-            })}
+            {rewardItems}
           </div>
         </div>
         <div className="shop-preview">
@@ -113,11 +144,7 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
             {!canAfford && <p className="shop-shortfall">You need {reward.cost - balance} more points.</p>}
             <fetcher.Form
               method="post"
-              onSubmit={(event) => {
-                if (!window.confirm(`Redeem ${reward.title} for ${reward.cost} points? This purchase cannot be refunded.`)) {
-                  event.preventDefault();
-                }
-              }}
+              onSubmit={confirmRedemption}
             >
               <input type="hidden" name="intent" value="redeem_reward" />
               <input type="hidden" name="rewardId" value={reward.id} />
@@ -135,11 +162,7 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
         {redemptions.length > 0 && (
           <div className="redemption-history">
             <strong>RECENT REWARDS</strong>
-            {redemptions.map((item, index) => (
-              <p key={`${item.rewardId}-${item.createdAt}-${index}`}>
-                {item.rewardName} · {item.amount} pts
-              </p>
-            ))}
+            {redemptionHistory}
           </div>
         )}
       </div>

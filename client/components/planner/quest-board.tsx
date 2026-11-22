@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { Link, useFetcher } from "react-router";
 import { tiers, type Quest } from "../../../shared/planner/gamification";
 import type { PlannerActionResult } from "../../../shared/planner/types";
@@ -13,6 +14,79 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
   const fetcher = useFetcher<PlannerActionResult>();
   const [kind, setKind] = useState<(typeof groups)[number]["kind"]>("main");
   const [points, setPoints] = useState(50);
+
+  function handleKindChange(event: ChangeEvent<HTMLSelectElement>) {
+    for (const group of groups) {
+      if (group.kind === event.target.value) {
+        setKind(group.kind);
+        setPoints(group.points);
+        return;
+      }
+    }
+  }
+
+  function handlePointsChange(event: ChangeEvent<HTMLInputElement>) {
+    setPoints(Number(event.target.value));
+  }
+
+  function confirmQuestDelete(title: string) {
+    return function handleDelete(event: FormEvent<HTMLFormElement>) {
+      if (!window.confirm(`Delete "${title}"? Earned points and XP will be kept.`)) {
+        event.preventDefault();
+      }
+    };
+  }
+
+  const groupOptions: ReactNode[] = [];
+  for (const group of groups) {
+    groupOptions.push(
+      <option value={group.kind} key={group.kind}>{group.title}</option>,
+    );
+  }
+
+  const tierOptions: ReactNode[] = [];
+  for (const tier of tiers) {
+    tierOptions.push(<option key={tier}>{tier}</option>);
+  }
+
+  const questSections: ReactNode[] = [];
+  for (const group of groups) {
+    const questsInGroup: ReactNode[] = [];
+    let hasQuestInGroup = false;
+    for (const quest of quests) {
+      if (quest.kind !== group.kind) continue;
+      hasQuestInGroup = true;
+      questsInGroup.push(
+        <article className="quest-card" key={quest.id}>
+          <div><span className="eyebrow">{quest.tier} · {quest.points} PTS / XP</span><h3>{quest.title}</h3>{quest.description && <p>{quest.description}</p>}</div>
+          <div className="quest-actions">
+            {quest.completedAt ? <span className="quest-complete">COMPLETED</span> : <fetcher.Form method="post">
+              <input type="hidden" name="intent" value="complete_quest" /><input type="hidden" name="id" value={quest.id} />
+              <button className="gamification-button primary" disabled={fetcher.state !== "idle"}>Complete</button>
+            </fetcher.Form>}
+            <fetcher.Form method="post" onSubmit={confirmQuestDelete(quest.title)}>
+              <input type="hidden" name="intent" value="delete_quest" /><input type="hidden" name="id" value={quest.id} />
+              <button className="gamification-button" disabled={fetcher.state !== "idle"}>Delete</button>
+            </fetcher.Form>
+          </div>
+        </article>,
+      );
+    }
+    questSections.push(
+      <section className="quest-group" key={group.kind}>
+        <div className="profile-section-heading">
+          <div><p className="eyebrow accent">{group.detail}</p><h2>{group.title}</h2></div>
+        </div>
+        {group.kind === "side" && <div className="quest-builtin">
+          <span>Your daily quests, routines, and synced tasks are Side Quests worth 10 points each.</span>
+          <Link to={`/quests?date=${selected}#routines`}>View routines →</Link>
+        </div>}
+        {questsInGroup}
+        {group.kind !== "side" && !hasQuestInGroup && <p className="profile-note">No quests here yet. Create one when you are ready.</p>}
+      </section>,
+    );
+  }
+
   return (
     <div className="quest-board">
       <section className="panel quest-creator">
@@ -25,12 +99,9 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
             <label>Quest title<input name="title" required maxLength={100} /></label>
             <label>Description (optional)<textarea name="description" maxLength={500} /></label>
             <div className="form-grid">
-              <label>Quest type<select name="kind" value={kind} onChange={(event) => {
-                const next = groups.find((group) => group.kind === event.target.value);
-                if (next) { setKind(next.kind); setPoints(next.points); }
-              }}>{groups.map((group) => <option value={group.kind} key={group.kind}>{group.title}</option>)}</select></label>
-              <label>Rarity<select name="tier" defaultValue="Rare">{tiers.map((tier) => <option key={tier}>{tier}</option>)}</select></label>
-              <label>Points / XP<input name="points" type="number" min="1" max="100000" required value={points} onChange={(event) => setPoints(Number(event.target.value))} /></label>
+              <label>Quest type<select name="kind" value={kind} onChange={handleKindChange}>{groupOptions}</select></label>
+              <label>Rarity<select name="tier" defaultValue="Rare">{tierOptions}</select></label>
+              <label>Points / XP<input name="points" type="number" min="1" max="100000" required value={points} onChange={handlePointsChange} /></label>
             </div>
             <button className="gamification-button primary" disabled={fetcher.state !== "idle"}>Add quest</button>
           </fetcher.Form>
@@ -39,35 +110,7 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
         </div>
         <img className="quest-creator-art" src="/witchyaction.png" alt="" />
       </section>
-      {groups.map((group) => (
-        <section className="quest-group" key={group.kind}>
-          <div className="profile-section-heading">
-            <div><p className="eyebrow accent">{group.detail}</p><h2>{group.title}</h2></div>
-          </div>
-          {group.kind === "side" && <div className="quest-builtin">
-            <span>Your daily quests, routines, and synced tasks are Side Quests worth 10 points each.</span>
-            <Link to={`/quests?date=${selected}#routines`}>View routines →</Link>
-          </div>}
-          {quests.filter((quest) => quest.kind === group.kind).map((quest) => (
-            <article className="quest-card" key={quest.id}>
-              <div><span className="eyebrow">{quest.tier} · {quest.points} PTS / XP</span><h3>{quest.title}</h3>{quest.description && <p>{quest.description}</p>}</div>
-              <div className="quest-actions">
-                {quest.completedAt ? <span className="quest-complete">COMPLETED</span> : <fetcher.Form method="post">
-                  <input type="hidden" name="intent" value="complete_quest" /><input type="hidden" name="id" value={quest.id} />
-                  <button className="gamification-button primary" disabled={fetcher.state !== "idle"}>Complete</button>
-                </fetcher.Form>}
-                <fetcher.Form method="post" onSubmit={(event) => {
-                  if (!window.confirm(`Delete "${quest.title}"? Earned points and XP will be kept.`)) event.preventDefault();
-                }}>
-                  <input type="hidden" name="intent" value="delete_quest" /><input type="hidden" name="id" value={quest.id} />
-                  <button className="gamification-button" disabled={fetcher.state !== "idle"}>Delete</button>
-                </fetcher.Form>
-              </div>
-            </article>
-          ))}
-          {group.kind !== "side" && !quests.some((quest) => quest.kind === group.kind) && <p className="profile-note">No quests here yet. Create one when you are ready.</p>}
-        </section>
-      ))}
+      {questSections}
     </div>
   );
 }

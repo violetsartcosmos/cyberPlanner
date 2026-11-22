@@ -1,5 +1,6 @@
 import { Link, useFetcher } from "react-router";
 import { RefreshCw } from "lucide-react";
+import type { ReactNode } from "react";
 import type { PlannerActionResult } from "../../../shared/planner/types";
 
 type GoogleIntegrationPanelProps = {
@@ -14,6 +15,28 @@ export function GoogleIntegrationPanel({
   const syncFetcher = useFetcher<PlannerActionResult>();
   const searchFetcher = useFetcher<PlannerActionResult>();
   const importFetcher = useFetcher<PlannerActionResult>();
+  const emailResults: ReactNode[] = [];
+  for (const message of searchFetcher.data?.emails ?? []) {
+    emailResults.push(
+      <div className="email-result" key={message.id}>
+        <strong>{message.subject}</strong>
+        <small>{message.from}</small>
+        <p>{message.snippet}</p>
+        <importFetcher.Form method="post">
+          <input type="hidden" name="intent" value="import_gmail" />
+          <input type="hidden" name="messageId" value={message.id} />
+          <input type="hidden" name="date" value={selected} />
+          <button
+            className="google-action"
+            type="submit"
+            disabled={importFetcher.state !== "idle"}
+          >
+            ADD TO {selected}
+          </button>
+        </importFetcher.Form>
+      </div>,
+    );
+  }
 
   return (
     <section className="panel google-panel" id="google">
@@ -85,25 +108,7 @@ export function GoogleIntegrationPanel({
             {importFetcher.data.error}
           </p>
         )}
-        {searchFetcher.data?.emails?.map((message) => (
-          <div className="email-result" key={message.id}>
-            <strong>{message.subject}</strong>
-            <small>{message.from}</small>
-            <p>{message.snippet}</p>
-            <importFetcher.Form method="post">
-              <input type="hidden" name="intent" value="import_gmail" />
-              <input type="hidden" name="messageId" value={message.id} />
-              <input type="hidden" name="date" value={selected} />
-              <button
-                className="google-action"
-                type="submit"
-                disabled={importFetcher.state !== "idle"}
-              >
-                ADD TO {selected}
-              </button>
-            </importFetcher.Form>
-          </div>
-        ))}
+        {emailResults}
       </div>
     </section>
   );

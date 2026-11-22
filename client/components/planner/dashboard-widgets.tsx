@@ -16,10 +16,10 @@ const affirmations = [
 ] as const;
 
 export function DailyAffirmation({ today }: { today: string }) {
-  const seed = Array.from(today).reduce(
-    (hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0,
-    2166136261,
-  );
+  let seed = 2166136261;
+  for (const char of today) {
+    seed = Math.imul(seed ^ char.charCodeAt(0), 16777619) >>> 0;
+  }
   return (
     <div className="intro-tag">
       <Sparkles aria-hidden="true" size={14} /> DAILY AFFIRMATION

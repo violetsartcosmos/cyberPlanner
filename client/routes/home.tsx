@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import {
-  Navigate,
   useFetcher,
   useLoaderData,
   useLocation,
@@ -24,20 +23,25 @@ import {
   DailyAffirmation,
 } from "../components/planner/dashboard-widgets";
 import {
-  DailyQuestsSection,
-  RoutinesSection,
-  SyncedTasksSection,
+  TaskSection,
 } from "../components/planner/navigation-sections";
 import { RewardShop } from "../components/shop/shop";
 import { SignInPanel } from "../components/auth/sign-in-panel";
 import { dailyQuests } from "../../shared/planner/definitions";
-import type { PlannerActionResult, PlannerPage } from "../../shared/planner/types";
+import type { ExternalTask, PlannerActionResult, PlannerPage } from "../../shared/planner/types";
+import type { Achievement } from "../../shared/planner/gamification";
 import {
   dateKey,
   dayProgress,
+  externalTaskId,
+  isExternalTaskId,
   parseDate,
   weekdayIndex,
 } from "../../shared/planner/utils";
+
+function incrementCelebration(previous: number) {
+  return previous + 1;
+}
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -64,6 +68,31 @@ export async function action({ request }: ActionFunctionArgs) {
   return response.json() as Promise<PlannerActionResult>;
 }
 
+function getCompletedExternalTaskIds(tasks: readonly ExternalTask[]) {
+  const ids: string[] = [];
+  for (const task of tasks) {
+    if (task.completed) {
+      ids.push(externalTaskId(task.source, task.externalId));
+    }
+  }
+  return ids;
+}
+
+function getUnlockedAchievementCount(achievements: readonly Achievement[]) {
+  let count = 0;
+  for (const achievement of achievements) {
+    if (achievement.unlockedAt) count += 1;
+  }
+  return count;
+}
+
+function getNavigationLabel(section: string) {
+  for (const [path, label] of navigationSections) {
+    if (path === section) return label;
+  }
+  return "Page not found";
+}
+
 export default function Home() {
   const page = useLoaderData<typeof loader>();
   const navigate = useNavigate();
@@ -75,25 +104,31 @@ export default function Home() {
   const pendingCelebration = useRef(false);
   const toggleInFlight = useRef(false);
 
-  useEffect(() => {
+  useEffect(function syncToggleFetcher() {
     if (toggleFetcher.state !== "idle") {
       toggleInFlight.current = true;
     } else if (toggleInFlight.current) {
       toggleInFlight.current = false;
       if (pendingCelebration.current && toggleFetcher.data?.ok && location.pathname === "/") {
-        setCelebration((previous) => previous + 1);
+        setCelebration(incrementCelebration);
       }
       pendingCelebration.current = false;
     }
   }, [toggleFetcher.state, toggleFetcher.data, location.pathname]);
 
-  useEffect(() => {
+  useEffect(function clearCelebrationTimer() {
     if (!celebration) return;
-    const timer = setTimeout(() => setCelebration(0), 1800);
-    return () => clearTimeout(timer);
+    function clearCelebration() {
+      setCelebration(0);
+    }
+    const timer = setTimeout(clearCelebration, 1800);
+    function cleanupCelebrationTimer() {
+      clearTimeout(timer);
+    }
+    return cleanupCelebrationTimer;
   }, [celebration]);
 
-  useEffect(() => {
+  useEffect(function syncTodayWithServer() {
     if (!page.authenticated) return;
     const serverToday = page.today;
     let timer: ReturnType<typeof setTimeout>;
@@ -113,20 +148,12 @@ export default function Home() {
     }
     updateToday();
     window.addEventListener("focus", updateToday);
-    return () => {
+    function cleanupTodaySync() {
       clearTimeout(timer);
       window.removeEventListener("focus", updateToday);
-    };
-  }, [navigate, page, location.pathname, location.hash]);
-
-  useEffect(() => {
-    if (
-      (location.pathname === "/calendar" && (location.hash === "#weekly" || location.hash === "#google")) ||
-      (location.pathname === "/quests" && (location.hash === "#routines" || location.hash === "#synced-tasks"))
-    ) {
-      document.getElementById(location.hash.slice(1))?.scrollIntoView();
     }
-  }, [location.pathname, location.hash]);
+    return cleanupTodaySync;
+  }, [navigate, page, location.pathname, location.hash]);
 
   if (!page.authenticated) {
     return (
@@ -140,21 +167,27 @@ export default function Home() {
   const selected = page.selected;
   const section = location.pathname.slice(1);
   const isDashboard = !section;
-  const show = (name: string) => isDashboard || section === name;
+
+  function showSection(name: string) {
+    return isDashboard || section === name;
+  }
+
+  function selectToday() {
+    selectDate(today);
+  }
+
   const date = parseDate(selected);
   const weekday = weekdayIndex(date);
   const quest = dailyQuests[weekday];
   const checked = page.checks[selected] ?? [];
   const { total, completed, percent } = dayProgress(date, checked);
-  const externalChecked = page.tasks
-    .filter((task) => task.completed)
-    .map((task) => `${task.source}:${task.externalId}`);
+  const externalChecked = getCompletedExternalTaskIds(page.tasks);
   function toggleTask(taskId: string) {
-    const completed = taskId.startsWith("google:") || taskId.startsWith("gmail:")
+    const completed = isExternalTaskId(taskId)
       ? !externalChecked.includes(taskId)
       : !checked.includes(taskId);
     pendingCelebration.current = isDashboard && completed;
-    if (taskId.startsWith("google:") || taskId.startsWith("gmail:")) {
+    if (isExternalTaskId(taskId)) {
       const separator = taskId.indexOf(":");
       const source = taskId.slice(0, separator);
       const externalId = taskId.slice(separator + 1);
@@ -186,16 +219,6 @@ export default function Home() {
     navigate(`${location.pathname}?date=${next}${hash}`);
   }
 
-  if (section === "weekly" || section === "google") {
-    return <Navigate to={`/calendar?date=${selected}#${section}`} replace />;
-  }
-  if (section === "routines" || section === "synced-tasks") {
-    return <Navigate to={`/quests?date=${selected}#${section}`} replace />;
-  }
-  if (section === "reminder" || section === "progress") {
-    return <Navigate to={`/?date=${selected}`} replace />;
-  }
-
   return (
     <div className={`app-shell authenticated-shell ${menuOpen ? "menu-expanded" : ""}`}>
       {isDashboard && celebration > 0 && (
@@ -214,7 +237,7 @@ export default function Home() {
           {!isDashboard && section !== "profile" && (
             <div className="page-heading">
               <p className="eyebrow accent">CYBER PLANNER</p>
-              <h1>{navigationSections.find(([path]) => path === section)?.[1] ?? "Page not found"}</h1>
+              <h1>{getNavigationLabel(section)}</h1>
             </div>
           )}
           {isDashboard && <>
@@ -287,12 +310,12 @@ export default function Home() {
           </div>
         )}
 
-        {isDashboard && <LevelHeader totalXp={page.totalXp} unlocked={page.achievements.filter((item) => item.unlockedAt).length} />}
+        {isDashboard && <LevelHeader totalXp={page.totalXp} unlocked={getUnlockedAchievementCount(page.achievements)} />}
         {section === "profile" && <Profile checks={page.checks} today={today || page.today} balance={page.balance} totalXp={page.totalXp} achievements={page.achievements} />}
         {section === "quest-board" && <QuestBoard quests={page.quests} selected={selected} />}
         <div className="dashboard-grid">
           <aside className="left-column">
-            {show("calendar") && (
+            {showSection("calendar") && (
               <CalendarSection
                 date={date}
                 selected={selected}
@@ -302,7 +325,7 @@ export default function Home() {
                 showJournal={section === "calendar" && location.hash === "#journal"}
                 journal={page.journal}
                 onSelect={selectDate}
-                onToday={() => selectDate(today || page.today)}
+                onToday={selectToday}
               />
             )}
             {section === "calendar" && (
@@ -312,7 +335,8 @@ export default function Home() {
               </>
             )}
             {isDashboard && (
-            <DailyQuestsSection
+            <TaskSection
+              kind="daily"
               selected={selected}
               weekday={weekday}
               checked={checked}
@@ -353,12 +377,13 @@ export default function Home() {
               </div>
             </section>
             )}
-            {show("notes") && (
+            {showSection("notes") && (
             <NotesEditor selected={selected} note={page.note} />
             )}
             {section === "quests" && (
             <div className="daily-planner">
-              <DailyQuestsSection
+              <TaskSection
+                kind="daily"
                 selected={selected}
                 weekday={weekday}
                 checked={checked}
@@ -369,7 +394,8 @@ export default function Home() {
               />
               <div className="daily-planner-columns">
                 <div id="routines">
-                  <RoutinesSection
+                  <TaskSection
+                    kind="routines"
                     selected={selected}
                     checked={checked}
                     earnedTaskKeys={page.earnedTaskKeys}
@@ -378,7 +404,8 @@ export default function Home() {
                   />
                 </div>
                 <div id="synced-tasks">
-                  <SyncedTasksSection
+                  <TaskSection
+                    kind="synced"
                     selected={selected}
                     tasks={page.tasks}
                     checked={externalChecked}
@@ -392,7 +419,8 @@ export default function Home() {
             </div>
             )}
             {isDashboard && (
-            <SyncedTasksSection
+            <TaskSection
+              kind="synced"
               selected={selected}
               tasks={page.tasks}
               checked={externalChecked}
@@ -405,7 +433,8 @@ export default function Home() {
 
           <aside className="right-column">
             {isDashboard && (
-            <RoutinesSection
+            <TaskSection
+              kind="routines"
               selected={selected}
               checked={checked}
               earnedTaskKeys={page.earnedTaskKeys}
