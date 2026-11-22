@@ -887,6 +887,40 @@ h1 em,
   padding: 20px;
 }
 
+.daily-planner,
+.daily-planner-columns {
+  display: grid;
+  gap: 17px;
+}
+
+.daily-planner-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.checklist-illustrated .checklist-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(100px, 35%);
+  align-items: center;
+  gap: 12px;
+}
+
+.checklist-illustrated .task-row .task {
+  min-width: 0;
+}
+
+.checklist-illustrated .task > span:nth-of-type(2) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.checklist-art {
+  display: block;
+  width: 100%;
+  max-height: 270px;
+  object-fit: contain;
+}
+
 .panel-heading {
   display: flex;
   align-items: center;
@@ -1229,6 +1263,12 @@ footer svg {
     grid-column: 1 / -1;
   }
 
+}
+
+@media (max-width: 1000px) {
+  .daily-planner-columns {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 851px) and (max-width: 1050px) {
@@ -2434,7 +2474,25 @@ footer svg {
   max-width: 1000px;
 }
 
-.quest-creator > p:not(.eyebrow),
+.quest-creator {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(200px, 2fr);
+  align-items: center;
+  gap: 20px;
+}
+
+.quest-creator-copy {
+  min-width: 0;
+}
+
+.quest-creator-art {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+}
+
+.quest-creator-copy > p:not(.eyebrow),
 .quest-card p,
 .quest-builtin {
   color: var(--md-sys-color-on-surface-variant);
@@ -2473,6 +2531,28 @@ footer svg {
 }
 
 @media (max-width: 700px) {
+  .quest-creator {
+    grid-template-columns: 1fr;
+  }
+
+  .checklist-illustrated .checklist-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .checklist-art {
+    width: min(100%, 220px);
+    justify-self: center;
+  }
+
+  .checklist-art,
+  .quest-creator-art {
+    max-height: 220px;
+  }
+
+  .quest-creator-art {
+    justify-self: center;
+  }
+
   .level-header {
     flex-wrap: wrap;
     gap: 12px;

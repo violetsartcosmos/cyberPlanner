@@ -120,7 +120,10 @@ export default function Home() {
   }, [navigate, page, location.pathname, location.hash]);
 
   useEffect(() => {
-    if (location.pathname === "/calendar" && (location.hash === "#weekly" || location.hash === "#google")) {
+    if (
+      (location.pathname === "/calendar" && (location.hash === "#weekly" || location.hash === "#google")) ||
+      (location.pathname === "/quests" && (location.hash === "#routines" || location.hash === "#synced-tasks"))
+    ) {
       document.getElementById(location.hash.slice(1))?.scrollIntoView();
     }
   }, [location.pathname, location.hash]);
@@ -185,6 +188,9 @@ export default function Home() {
 
   if (section === "weekly" || section === "google") {
     return <Navigate to={`/calendar?date=${selected}#${section}`} replace />;
+  }
+  if (section === "routines" || section === "synced-tasks") {
+    return <Navigate to={`/quests?date=${selected}#${section}`} replace />;
   }
   if (section === "reminder" || section === "progress") {
     return <Navigate to={`/?date=${selected}`} replace />;
@@ -351,25 +357,41 @@ export default function Home() {
             <NotesEditor selected={selected} note={page.note} />
             )}
             {section === "quests" && (
-            <DailyQuestsSection
-              selected={selected}
-              weekday={weekday}
-              checked={checked}
-              earnedTaskKeys={page.earnedTaskKeys}
-              disabled={toggleFetcher.state !== "idle"}
-              onToggle={toggleTask}
-            />
+            <div className="daily-planner">
+              <DailyQuestsSection
+                selected={selected}
+                weekday={weekday}
+                checked={checked}
+                earnedTaskKeys={page.earnedTaskKeys}
+                disabled={toggleFetcher.state !== "idle"}
+                onToggle={toggleTask}
+                illustrated
+              />
+              <div className="daily-planner-columns">
+                <div id="routines">
+                  <RoutinesSection
+                    selected={selected}
+                    checked={checked}
+                    earnedTaskKeys={page.earnedTaskKeys}
+                    disabled={toggleFetcher.state !== "idle"}
+                    onToggle={toggleTask}
+                  />
+                </div>
+                <div id="synced-tasks">
+                  <SyncedTasksSection
+                    selected={selected}
+                    tasks={page.tasks}
+                    checked={externalChecked}
+                    earnedTaskKeys={page.earnedTaskKeys}
+                    disabled={toggleFetcher.state !== "idle"}
+                    onToggle={toggleTask}
+                    illustrated
+                  />
+                </div>
+              </div>
+            </div>
             )}
-            {section === "routines" && (
-            <RoutinesSection
-              selected={selected}
-              checked={checked}
-              earnedTaskKeys={page.earnedTaskKeys}
-              disabled={toggleFetcher.state !== "idle"}
-              onToggle={toggleTask}
-            />
-            )}
-            {show("synced-tasks") && (
+            {isDashboard && (
             <SyncedTasksSection
               selected={selected}
               tasks={page.tasks}

@@ -15,6 +15,7 @@ type ChecklistSectionProps = {
 
 type DailyQuestsSectionProps = ChecklistSectionProps & {
   weekday: number;
+  illustrated?: boolean;
 };
 
 export function DailyQuestsSection({
@@ -24,6 +25,7 @@ export function DailyQuestsSection({
   earnedTaskKeys,
   disabled,
   onToggle,
+  illustrated = false,
 }: DailyQuestsSectionProps) {
   const earnedPrefix = `builtin:${selected}:`;
 
@@ -41,6 +43,7 @@ export function DailyQuestsSection({
         .map((key) => key.slice(earnedPrefix.length))}
       disabled={disabled}
       onToggle={onToggle}
+      illustration={illustrated ? "/witchyhappy.png" : undefined}
     />
   );
 }
@@ -126,7 +129,7 @@ export function RoutinesSection({
           title={activeRoutine === "morning" ? "Morning routine" : "Nightly routine"}
           eyebrow={activeRoutine === "morning" ? "RISE & SHINE" : "WIND DOWN"}
           icon={activeRoutine === "morning" ? <Sun aria-hidden="true" size={19} /> : <Moon aria-hidden="true" size={19} />}
-          sectionHref={`/routines?date=${selected}`}
+          sectionHref={`/quests?date=${selected}#routines`}
           items={activeRoutine === "morning" ? morningRoutine : nightRoutine}
           prefix={activeRoutine}
           checked={checked}
@@ -143,6 +146,7 @@ export function RoutinesSection({
 
 type SyncedTasksSectionProps = ChecklistSectionProps & {
   tasks: readonly ExternalTask[];
+  illustrated?: boolean;
 };
 
 export function SyncedTasksSection({
@@ -152,13 +156,14 @@ export function SyncedTasksSection({
   earnedTaskKeys,
   disabled,
   onToggle,
+  illustrated = false,
 }: SyncedTasksSectionProps) {
   return (
     <Checklist
       title="Google & email tasks"
       eyebrow="SYNCED TASKS"
       icon={<RefreshCw aria-hidden="true" size={19} />}
-      sectionHref={`/synced-tasks?date=${selected}`}
+      sectionHref={`/quests?date=${selected}#synced-tasks`}
       items={tasks.map((task) => task.title)}
       ids={tasks.map((task) => `${task.source}:${task.externalId}`)}
       prefix="external"
