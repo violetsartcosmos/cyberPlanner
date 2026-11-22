@@ -14,7 +14,7 @@ function PageError() {
 }
 
 const router = createBrowserRouter([{
-  path: "/",
+  path: "/:section?",
   Component: Home,
   loader,
   action,

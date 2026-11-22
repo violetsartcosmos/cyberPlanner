@@ -1,0 +1,1 @@
+ALTER TABLE planner_days ADD COLUMN journal TEXT NOT NULL DEFAULT '';

@@ -2,7 +2,7 @@ import { dateKey, isValidDateKey } from "../../shared/planner/utils";
 import type { PlannerPage } from "../../shared/planner/types";
 import { getMissingConfiguration, getSignedInEmail } from "../auth/service";
 import { getPointsSummary } from "../points/service";
-import { getPlannerNote, getPlannerSnapshot } from "./service";
+import { getPlannerJournal, getPlannerNote, getPlannerSnapshot } from "./service";
 
 export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const url = new URL(request.url);
@@ -20,10 +20,11 @@ export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const today = dateKey(new Date());
   const requestedDate = url.searchParams.get("date");
   const selected = requestedDate && isValidDateKey(requestedDate) ? requestedDate : today;
-  const [planner, note, points] = await Promise.all([
+  const [planner, note, journal, points] = await Promise.all([
     getPlannerSnapshot(selected),
     getPlannerNote(selected),
+    getPlannerJournal(selected),
     getPointsSummary(selected),
   ]);
-  return { authenticated: true, email, today, selected, note, ...planner, ...points };
+  return { authenticated: true, email, today, selected, note, journal, ...planner, ...points };
 }

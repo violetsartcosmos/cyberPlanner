@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { ArrowUpRight, Check } from "lucide-react";
 
 type ChecklistProps = {
   title: string;
   eyebrow: string;
   icon: ReactNode;
+  sectionHref: string;
   items: readonly string[];
   prefix: string;
   checked: string[];
@@ -19,6 +21,7 @@ export function Checklist({
   title,
   eyebrow,
   icon,
+  sectionHref,
   items,
   prefix,
   checked,
@@ -33,7 +36,7 @@ export function Checklist({
   return (
     <section className="panel checklist">
       <div className="panel-heading">
-        <div className="heading-group">
+        <Link className="heading-group section-heading-link" to={sectionHref}>
           <span className="heading-icon" aria-hidden="true">
             {icon}
           </span>
@@ -41,7 +44,7 @@ export function Checklist({
             <p className="eyebrow">{eyebrow}</p>
             <h2>{title}</h2>
           </div>
-        </div>
+        </Link>
         <span className="count">
           {String(done).padStart(2, "0")} /{" "}
           {String(items.length).padStart(2, "0")}

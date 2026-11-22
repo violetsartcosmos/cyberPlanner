@@ -1,4 +1,4 @@
-import { useFetcher } from "react-router";
+import { Link, useFetcher } from "react-router";
 import { RefreshCw } from "lucide-react";
 import type { PlannerActionResult } from "../../../shared/planner/types";
 
@@ -17,10 +17,10 @@ export function GoogleIntegrationPanel({
 
   return (
     <section className="panel google-panel">
-      <div className="section-label">
+      <Link className="section-label section-link" to={`/google?date=${selected}`}>
         <span>05 / GOOGLE SYNC</span>
         <RefreshCw aria-hidden="true" size={12} />
-      </div>
+      </Link>
       <h2>Bring in your tasks.</h2>
       <p>Signed in as {email}. Google Tasks syncs when you ask it to.</p>
       <syncFetcher.Form method="post">

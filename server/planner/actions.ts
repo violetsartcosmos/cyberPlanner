@@ -2,6 +2,7 @@ import { dailyQuests, morningRoutine, nightRoutine } from "../../shared/planner/
 import { isValidDateKey, parseDate, weekdayIndex } from "../../shared/planner/utils";
 import {
   getExternalTask,
+  savePlannerJournal,
   savePlannerNote,
   setBuiltinTaskCompletion,
   setExternalTaskCompletion,
@@ -70,5 +71,14 @@ export const plannerFormActions = {
     if (note.length > 10_000) return { ok: false, error: "Notes must be under 10,000 characters." };
     await savePlannerNote(date, note);
     return { ok: true, message: "Note saved." };
+  },
+  async save_journal(form) {
+    const date = form.get("date");
+    const journal = form.get("journal");
+    if (typeof date !== "string" || !isValidDateKey(date)) return { ok: false, error: "That planner date is invalid." };
+    if (typeof journal !== "string") return { ok: false, error: "That journal entry is invalid." };
+    if (journal.length > 10_000) return { ok: false, error: "Journal entries must be under 10,000 characters." };
+    await savePlannerJournal(date, journal);
+    return { ok: true, message: "Journal saved." };
   },
 } satisfies Record<string, ActionHandler>;

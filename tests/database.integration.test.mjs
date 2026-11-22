@@ -50,10 +50,13 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       ]);
       await planner.setBuiltinTaskCompletion(date, "daily-0", true);
       await planner.savePlannerNote(date, "Keep this note");
+      await planner.savePlannerJournal(date, "A moment to remember");
       await planner.setBuiltinTaskCompletion(date, "daily-2", true);
       const snapshot = await planner.getPlannerSnapshot(date);
       assert.deepEqual(new Set(snapshot.checks[date]), new Set(["daily-0", "daily-1", "daily-2"]));
       assert.equal(await planner.getPlannerNote(date), "Keep this note");
+      assert.equal(await planner.getPlannerJournal(date), "A moment to remember");
+      assert.ok(snapshot.journalDates.includes(date));
       assert.equal((await points.getPointsSummary(date)).todayPoints, 30);
 
       const redemptions = await Promise.all(
@@ -127,6 +130,11 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal(await planner.getPlannerNote(extraDate), "Updated");
       assert.equal((await submit({ intent: "save_note", date: extraDate, note: "" })).ok, true);
       assert.equal(await planner.getPlannerNote(extraDate), "");
+      assert.equal((await submit({ intent: "save_journal", date: extraDate, journal: "Reflections" })).ok, true);
+      assert.equal(await planner.getPlannerJournal(extraDate), "Reflections");
+      assert.equal((await submit({ intent: "save_journal", date: extraDate, journal: "" })).ok, true);
+      assert.equal(await planner.getPlannerJournal(extraDate), "");
+      assert.ok(!(await planner.getPlannerSnapshot(extraDate)).journalDates.includes(extraDate));
 
       await assert.rejects(client.query(
         "INSERT INTO point_ledger (amount, entry_type, task_key) VALUES (0, 'earn', 'invalid')",

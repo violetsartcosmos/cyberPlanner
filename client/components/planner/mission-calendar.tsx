@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import {
-  ArrowUpRight,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -20,8 +20,10 @@ type MissionCalendarProps = {
   selected: string;
   today: string;
   checks: Record<string, string[]>;
+  journalDates: string[];
   onSelect: (date: string) => void;
   onToday: () => void;
+  onAddJournal: () => void;
 };
 
 export function MissionCalendar({
@@ -29,8 +31,10 @@ export function MissionCalendar({
   selected,
   today,
   checks,
+  journalDates,
   onSelect,
   onToday,
+  onAddJournal,
 }: MissionCalendarProps) {
   const [view, setView] = useState<"week" | "month">("month");
 
@@ -58,17 +62,17 @@ export function MissionCalendar({
 
   return (
     <section className="panel calendar-panel">
-      <div className="section-label">
-        <span>01 / NAVIGATION</span>
+      <Link className="section-label section-link" to={`/calendar?date=${selected}`}>
+        <span>01 / CALENDAR</span>
         <Sparkles aria-hidden="true" size={12} />
-      </div>
-      <div className="calendar-title">
+      </Link>
+      <Link className="calendar-title section-heading-link" to={`/calendar?date=${selected}`}>
         <div>
           <p className="eyebrow">YOUR TIMELINE</p>
           <h2>Mission calendar</h2>
         </div>
         <CalendarDays className="calendar-symbol" aria-hidden="true" />
-      </div>
+      </Link>
       <div className="calendar-views" role="group" aria-label="Calendar view">
         <button
           type="button"
@@ -94,7 +98,10 @@ export function MissionCalendar({
         >
           <ChevronLeft aria-hidden="true" size={16} />
         </button>
-        <strong aria-live="polite">{range}</strong>
+        <div className="month-heading">
+          <strong aria-live="polite">{range}</strong>
+          <button type="button" className="calendar-today" onClick={onToday}>Today</button>
+        </div>
         <button
           className="icon-button"
           type="button"
@@ -125,9 +132,9 @@ export function MissionCalendar({
             <button
               key={key}
               type="button"
-              className={`calendar-day ${view === "month" && day.getMonth() !== date.getMonth() ? "outside" : ""} ${key === selected ? "selected" : ""} ${key === today ? "is-today" : ""} ${progress.completed ? "has-progress" : ""}`}
+              className={`calendar-day ${view === "month" && day.getMonth() !== date.getMonth() ? "outside" : ""} ${key === selected ? "selected" : ""} ${key === today ? "is-today" : ""} ${progress.completed ? "has-progress" : ""} ${journalDates.includes(key) ? "has-journal" : ""}`}
               onClick={() => onSelect(key)}
-              aria-label={`${label}, ${progress.completed} of ${progress.total} tasks complete`}
+              aria-label={`${label}, ${progress.completed} of ${progress.total} tasks complete${journalDates.includes(key) ? ", journal entry" : ""}`}
               aria-pressed={key === selected}
             >
               {view === "week" && (
@@ -145,8 +152,9 @@ export function MissionCalendar({
           );
         })}
       </div>
-      <button className="today-button" type="button" onClick={onToday}>
-        <ArrowUpRight aria-hidden="true" size={12} /> BACK TO TODAY
+      <p className="calendar-legend"><span aria-hidden="true" /> JOURNAL ENTRY</p>
+      <button className="today-button" type="button" onClick={onAddJournal}>
+        ADD JOURNAL
       </button>
     </section>
   );

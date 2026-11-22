@@ -11,13 +11,16 @@ import {
 import {
   useFetcher,
   useLoaderData,
+  useLocation,
   useNavigate,
+  Link,
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
 } from "react-router";
 import { Checklist } from "../components/planner/checklist";
 import { GoogleIntegrationPanel } from "../components/google/integration-panel";
 import { MissionCalendar } from "../components/planner/mission-calendar";
+import { JournalEditor } from "../components/planner/journal-editor";
 import { NotesEditor } from "../components/planner/notes-editor";
 import { RewardShop } from "../components/rewards/shop";
 import { SignInPanel } from "../components/auth/sign-in-panel";
@@ -35,7 +38,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const response = await fetch(`/api/planner${url.search}`, { signal: request.signal });
   if (!response.ok) throw new Error(`Could not load the planner (${response.status}).`);
-  return response.json() as Promise<PlannerPage>;
+  const page = await response.json() as PlannerPage;
+  if (page.authenticated && (typeof page.journal !== "string" || !Array.isArray(page.journalDates))) {
+    throw new Error("The planner server is out of date. Apply database migrations and restart the server.");
+  }
+  return page;
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -51,6 +58,7 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function Home() {
   const page = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const location = useLocation();
   const toggleFetcher = useFetcher<PlannerActionResult>();
   const [today, setToday] = useState(page.authenticated ? page.today : "");
 
@@ -60,10 +68,16 @@ export default function Home() {
     setToday(localToday);
     if (!new URLSearchParams(window.location.search).has("date")) {
       if (localToday !== page.today) {
-        navigate(`/?date=${localToday}`, { replace: true });
+        navigate(`${location.pathname}?date=${localToday}${location.hash}`, { replace: true });
       }
     }
-  }, [navigate, page]);
+  }, [navigate, page, location.pathname, location.hash]);
+
+  useEffect(() => {
+    if (location.pathname === "/calendar" && location.hash === "#journal") {
+      document.getElementById("journal-entry")?.focus();
+    }
+  }, [location.pathname, location.hash, page]);
 
   if (!page.authenticated) {
     return (
@@ -75,6 +89,9 @@ export default function Home() {
   }
 
   const selected = page.selected;
+  const section = location.pathname.slice(1);
+  const isDashboard = !section;
+  const show = (name: string) => isDashboard || section === name;
   const date = parseDate(selected);
   const weekday = weekdayIndex(date);
   const quest = dailyQuests[weekday];
@@ -123,8 +140,23 @@ export default function Home() {
   }
 
   function selectDate(next: string) {
-    navigate(`/?date=${next}`);
+    navigate(`${location.pathname}?date=${next}`);
   }
+
+  function addJournal() {
+    if (section === "calendar") {
+      document.getElementById("journal-entry")?.focus();
+    } else {
+      navigate(`/calendar?date=${selected}#journal`);
+    }
+  }
+
+  const sections = [
+    ["", "Dashboard"], ["calendar", "Calendar"], ["weekly", "Weekly protocol"],
+    ["reminder", "Reminder"], ["quests", "Daily quests"], ["routines", "Routines"],
+    ["synced-tasks", "Synced tasks"], ["progress", "Progress"], ["rewards", "Rewards"],
+    ["google", "Google sync"], ["notes", "Notes"],
+  ] as const;
 
   return (
     <div className="app-shell">
@@ -162,7 +194,25 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="dashboard">
+      <main className={`dashboard ${isDashboard ? "" : "section-page"}`}>
+        <nav className="section-navigation" aria-label="Planner sections">
+          {sections.map(([path, label]) => (
+            <Link
+              key={path}
+              to={`${path ? `/${path}` : "/"}?date=${selected}`}
+              aria-current={section === path ? "page" : undefined}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+        {!isDashboard && (
+          <div className="page-heading">
+            <p className="eyebrow accent">YOUR PERSONAL COMMAND CENTER</p>
+            <h1>{sections.find(([path]) => path === section)?.[1] ?? "Page not found"}</h1>
+          </div>
+        )}
+        {isDashboard && <>
         <div className="intro">
           <div>
             <p className="eyebrow accent">
@@ -180,12 +230,6 @@ export default function Home() {
             <small>TO YOURSELF, ALWAYS.</small>
           </div>
         </div>
-        {toggleFetcher.data?.error && (
-          <div className="storage-error" role="alert">
-            {toggleFetcher.data.error}
-          </div>
-        )}
-
         <section className="mobile-welcome">
           <div>
             <p className="eyebrow">YOUR LIFE, YOUR QUEST</p>
@@ -210,22 +254,34 @@ export default function Home() {
             </span>
           </div>
         </section>
+        </>}
+        {toggleFetcher.data?.error && (
+          <div className="storage-error" role="alert">
+            {toggleFetcher.data.error}
+          </div>
+        )}
 
         <div className="dashboard-grid">
           <aside className="left-column">
+            {show("calendar") && <>
             <MissionCalendar
               date={date}
               selected={selected}
               today={today || page.today}
               checks={page.checks}
+              journalDates={page.journalDates}
               onSelect={selectDate}
               onToday={() => selectDate(today || page.today)}
+              onAddJournal={addJournal}
             />
+            {section === "calendar" && <JournalEditor key={selected} selected={selected} journal={page.journal} />}
+            </>}
+            {show("weekly") && <>
             <section className="panel week-panel">
-              <div className="section-label">
+              <Link className="section-label section-link" to={`/weekly?date=${selected}`}>
                 <span>02 / WEEKLY PROTOCOL</span>
                 <Sparkles aria-hidden="true" size={12} />
-              </div>
+              </Link>
               <h2>Every day has a mission.</h2>
               <p>Small steps, one day at a time.</p>
               <div className="week-list">
@@ -245,15 +301,46 @@ export default function Home() {
                 ))}
               </div>
             </section>
+            </>}
+            {show("reminder") && (
+            <section className="panel motivation-panel">
+              <Link className="section-label section-link" to={`/reminder?date=${selected}`}>
+                <span>03 / A LITTLE REMINDER</span>
+                <Sparkles aria-hidden="true" size={12} />
+              </Link>
+              <Heart
+                className="motivation-heart"
+                aria-hidden="true"
+                fill="currentColor"
+                size={40}
+              />
+              <h2>
+                You're doing
+                <br />
+                <em>amazing.</em>
+              </h2>
+              <p>
+                Showing up for yourself is the real win. Keep going, one quest
+                at a time.
+              </p>
+              <div className="motivation-bottom">
+                SELF-KINDNESS IS A SUPERPOWER
+                <ArrowUpRight aria-hidden="true" size={12} />
+              </div>
+            </section>
+            )}
+            {show("weekly") && (
             <div className="side-quote">
               <Sparkles aria-hidden="true" size={14} /> PROGRESS, NOT
               PERFECTION.
               <br />
               <small>YOU ARE ALREADY DOING ENOUGH.</small>
             </div>
+            )}
           </aside>
 
           <div className="main-column">
+            {isDashboard && (
             <section className="hero-panel">
               <div className="hero-copy">
                 <p className="eyebrow">
@@ -283,35 +370,16 @@ export default function Home() {
                 </span>
               </div>
             </section>
-            <section className="panel motivation-panel">
-              <div className="section-label">
-                <span>03 / A LITTLE REMINDER</span>
-                <Sparkles aria-hidden="true" size={12} />
-              </div>
-              <Heart
-                className="motivation-heart"
-                aria-hidden="true"
-                fill="currentColor"
-                size={40}
-              />
-              <h2>
-                You're doing
-                <br />
-                <em>amazing.</em>
-              </h2>
-              <p>
-                Showing up for yourself is the real win. Keep going, one quest
-                at a time.
-              </p>
-              <div className="motivation-bottom">
-                SELF-KINDNESS IS A SUPERPOWER
-                <ArrowUpRight aria-hidden="true" size={12} />
-              </div>
-            </section>
+            )}
+            {show("notes") && (
+            <NotesEditor selected={selected} note={page.note} />
+            )}
+            {show("quests") && (
             <Checklist
               title={quest.title}
               eyebrow="YOUR DAILY QUESTS"
               icon={<Sparkles aria-hidden="true" size={19} />}
+              sectionHref={`/quests?date=${selected}`}
               items={quest.tasks}
               prefix="daily"
               checked={checked}
@@ -321,11 +389,14 @@ export default function Home() {
               disabled={toggleFetcher.state !== "idle"}
               onToggle={toggleTask}
             />
+            )}
+            {show("routines") && (
             <div className="routine-grid">
               <Checklist
                 title="Morning routine"
                 eyebrow="RISE & SHINE"
                 icon={<Sun aria-hidden="true" size={19} />}
+                sectionHref={`/routines?date=${selected}`}
                 items={morningRoutine}
                 prefix="morning"
                 checked={checked}
@@ -341,6 +412,7 @@ export default function Home() {
                 title="Nightly routine"
                 eyebrow="WIND DOWN"
                 icon={<Moon aria-hidden="true" size={19} />}
+                sectionHref={`/routines?date=${selected}`}
                 items={nightRoutine}
                 prefix="night"
                 checked={checked}
@@ -353,10 +425,13 @@ export default function Home() {
                 onToggle={toggleTask}
               />
             </div>
+            )}
+            {show("synced-tasks") && (
             <Checklist
               title="Google & email tasks"
               eyebrow="SYNCED TASKS"
               icon={<RefreshCw aria-hidden="true" size={19} />}
+              sectionHref={`/synced-tasks?date=${selected}`}
               items={page.tasks.map((task) => task.title)}
               ids={externalIds}
               prefix="external"
@@ -366,12 +441,14 @@ export default function Home() {
               disabled={toggleFetcher.state !== "idle"}
               onToggle={toggleTask}
             />
+            )}
           </div>
 
           <aside className="right-column">
+            {show("progress") && (
             <section className="progress-panel">
               <div>
-                <p className="eyebrow">DAILY PROGRESS</p>
+                <Link className="eyebrow section-heading-link" to={`/progress?date=${selected}`}>DAILY PROGRESS</Link>
                 <strong>
                   {completed}
                   <span> / {total} TASKS COMPLETE</span>
@@ -401,9 +478,13 @@ export default function Home() {
                 </div>
               </div>
             </section>
-            <RewardShop balance={page.balance} redemptions={page.redemptions} />
+            )}
+            {show("rewards") && (
+            <RewardShop balance={page.balance} selected={selected} redemptions={page.redemptions} />
+            )}
+            {show("google") && (
             <GoogleIntegrationPanel email={page.email} selected={selected} />
-            <NotesEditor selected={selected} note={page.note} />
+            )}
           </aside>
         </div>
         <footer>

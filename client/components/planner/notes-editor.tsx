@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useFetcher } from "react-router";
+import { Link, useFetcher } from "react-router";
 import { Pencil } from "lucide-react";
 import type { PlannerActionResult } from "../../../shared/planner/types";
 
@@ -18,10 +18,10 @@ export function NotesEditor({ selected, note: savedNote }: NotesEditorProps) {
 
   return (
     <section className="panel notes-panel">
-      <div className="section-label">
+      <Link className="section-label section-link" to={`/notes?date=${selected}`}>
         <span>06 / BRAIN DUMP</span>
         <Pencil aria-hidden="true" size={12} />
-      </div>
+      </Link>
       <h2>Notes to self.</h2>
       <label className="sr-only" htmlFor="notes">
         Notes for {selected}

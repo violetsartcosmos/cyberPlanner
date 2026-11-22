@@ -1,4 +1,4 @@
-import { useFetcher } from "react-router";
+import { Link, useFetcher } from "react-router";
 import {
   ArrowUpRight,
   BookOpen,
@@ -41,18 +41,19 @@ type RewardRedemption = {
 
 type RewardShopProps = {
   balance: number;
+  selected: string;
   redemptions: readonly RewardRedemption[];
 };
 
-export function RewardShop({ balance, redemptions }: RewardShopProps) {
+export function RewardShop({ balance, selected, redemptions }: RewardShopProps) {
   const fetcher = useFetcher<PlannerActionResult>();
 
   return (
     <section className="panel rewards-panel">
-      <div className="section-label">
+      <Link className="section-label section-link" to={`/rewards?date=${selected}`}>
         <span>04 / REWARDS</span>
         <Sparkles aria-hidden="true" size={12} />
-      </div>
+      </Link>
       <h2>Celebrate the wins.</h2>
       <p>Spend points you have earned. Reopening tasks never refunds rewards.</p>
       <div className="reward-list">

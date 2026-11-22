@@ -165,12 +165,3 @@ npx tsx server/index.ts
 The API listens on port `3000`. Leave that terminal open while using the app.
 
 For an existing Prisma-managed CyberPlanner database, back it up and run `npm run db:migrate` to apply pending migrations.
-
-## Troubleshooting
-
-- **Missing configuration on the sign-in page:** Check that all seven entries in `.env` have values, save the file, and restart the server. The template `.env.example` is not loaded as your configuration.
-- **Database connection fails:** Confirm PostgreSQL is running, the database exists, and the URL contains the right host, port, user, encoded password, and any provider-required SSL settings. A hosted database must also allow your connection.
-- **`redirect_uri_mismatch`:** The URI in `.env` must exactly match an authorized redirect URI in the Google OAuth client, including scheme, hostname, port, and `/auth/callback`.
-- **Google denies access or says the app is unverified:** Confirm the correct Cloud project, enabled APIs, test-user email, consent scopes, and account. Testing and public publishing have different verification requirements.
-- **Google sync stops after working:** An external OAuth app in Testing can receive seven-day refresh tokens. Sign in again to reconnect. If the encryption key was changed, the old token cannot be decrypted.
-- **Database tests refuse to run:** Create a separate empty database and set `TEST_DATABASE_URL` to it; the test deliberately refuses databases with existing tables.

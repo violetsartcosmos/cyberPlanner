@@ -39,4 +39,5 @@ app.all("/api/*", (context) => context.notFound());
 app.all("/auth/*", (context) => context.notFound());
 if (process.env.NODE_ENV === "production") {
   app.get("*", serveStatic({ root: "./build/client" }));
+  app.get("*", serveStatic({ path: "./build/client/index.html" }));
 }

@@ -42,7 +42,7 @@ function taskChecks(value: unknown): string[] {
 export async function getPlannerSnapshot(date: string) {
   const db = getDatabase();
   const [days, externalTasks] = await Promise.all([
-    db.plannerDay.findMany({ select: { day: true, checks: true } }),
+    db.plannerDay.findMany({ select: { day: true, checks: true, journal: true } }),
     db.externalTask.findMany({
       where: {
         isDeleted: false,
@@ -55,6 +55,7 @@ export async function getPlannerSnapshot(date: string) {
     checks: Object.fromEntries(
       days.map((day) => [dateString(day.day), taskChecks(day.checks)]),
     ),
+    journalDates: days.filter((day) => day.journal.trim()).map((day) => dateString(day.day)),
     tasks: externalTasks.map(externalTask),
   };
 }
@@ -73,6 +74,23 @@ export async function savePlannerNote(date: string, note: string) {
     where: { day },
     create: { day, note },
     update: { note },
+  });
+}
+
+export async function getPlannerJournal(date: string) {
+  const day = await getDatabase().plannerDay.findUnique({
+    where: { day: databaseDate(date) },
+    select: { journal: true },
+  });
+  return day?.journal ?? "";
+}
+
+export async function savePlannerJournal(date: string, journal: string) {
+  const day = databaseDate(date);
+  await getDatabase().plannerDay.upsert({
+    where: { day },
+    create: { day, journal },
+    update: { journal },
   });
 }
 

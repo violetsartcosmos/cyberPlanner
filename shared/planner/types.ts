@@ -37,6 +37,8 @@ export type PlannerPage =
       checks: Record<string, string[]>;
       tasks: ExternalTask[];
       note: string;
+      journal: string;
+      journalDates: string[];
       balance: number;
       todayPoints: number;
       earnedTaskKeys: string[];

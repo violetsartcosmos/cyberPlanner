@@ -1,6 +1,6 @@
 # CyberPlanner
 
-A personal planner for daily quests, routines, notes, Google Tasks, and Gmail follow-ups. Complete tasks to earn points and redeem them for rewards.
+A personal planner for daily quests, routines, notes, journal entries, Google Tasks, and Gmail follow-ups. Complete tasks to earn points and redeem them for rewards.
 
 CyberPlanner is designed for one Google account. It stores planner data and an encrypted Google refresh token in PostgreSQL; Gmail message bodies are not stored.
 
@@ -16,6 +16,8 @@ npm run dev
 ```
 
 Open [localhost:5173](http://localhost:5173) and sign in.
+
+Use the section navigation to open each part of the dashboard on its own page. On the calendar page, select a date and choose **Add journal** to write or edit that day's journal entry. Journal entries are stored separately from notes; the calendar marks dates with entries. Use **Today** beneath the month or week heading to return to the current date. Run `npm run db:migrate` after updating to add journal storage.
 
 ## Commands
 

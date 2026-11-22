@@ -157,6 +157,80 @@ button:disabled {
   padding: 43px 4.1% 0;
 }
 
+.section-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 30px;
+}
+
+.section-navigation a {
+  padding: 9px 13px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface-variant);
+  text-decoration: none;
+  font: 10px var(--font-mono);
+}
+
+.section-navigation a:hover,
+.section-navigation a[aria-current="page"] {
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-primary);
+}
+
+.section-navigation a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.page-heading {
+  margin-bottom: 24px;
+}
+
+.section-page .dashboard-grid {
+  display: block;
+  max-width: 1000px;
+}
+
+.section-page .left-column,
+.section-page .main-column,
+.section-page .right-column {
+  display: contents;
+}
+
+.section-page .dashboard-grid > * > * {
+  margin-bottom: 17px;
+}
+
+.section-page .calendar-panel .calendar-day {
+  min-height: 65px;
+  aspect-ratio: auto;
+  background-color: var(--md-sys-color-surface-container);
+  font-size: 20px;
+}
+
+.section-page .calendar-panel .calendar-day.selected {
+  background-color: var(--md-sys-color-primary);
+}
+
+.section-page .journal-panel textarea {
+  min-height: 220px;
+}
+
+.notes-panel .journal-date {
+  margin-top: 10px;
+  color: var(--md-sys-color-secondary);
+  font-size: 10px;
+}
+
+.notes-panel .journal-prompt {
+  color: var(--md-sys-color-on-surface-variant);
+  font: 13px/1.6 "Space Grotesk", sans-serif;
+  letter-spacing: normal;
+  margin-top: 14px;
+}
+
 .intro {
   display: flex;
   align-items: end;
@@ -227,7 +301,7 @@ h1 em,
 .dashboard-grid {
   display: grid;
   grid-template-columns:
-    minmax(210px, 0.87fr) minmax(400px, 2.1fr)
+    minmax(260px, 0.87fr) minmax(400px, 2.1fr)
     minmax(210px, 0.86fr);
   gap: 17px;
   align-items: start;
@@ -237,6 +311,7 @@ h1 em,
 .main-column,
 .right-column {
   display: grid;
+  min-width: 0;
   gap: 17px;
 }
 
@@ -262,6 +337,34 @@ h1 em,
   display: inline-flex;
   align-items: center;
   color: var(--md-sys-color-primary);
+}
+
+.section-link,
+.section-heading-link {
+  text-decoration: none;
+}
+
+.section-heading-link {
+  color: inherit;
+}
+
+.section-link:hover,
+.section-heading-link:hover {
+  color: var(--md-sys-color-primary);
+}
+
+.section-link:hover span,
+.section-heading-link:hover h2,
+.section-heading-link:hover.eyebrow {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.section-link:focus-visible,
+.section-heading-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--md-sys-shape-corner-xs);
 }
 
 .panel h2 {
@@ -291,8 +394,28 @@ h1 em,
 }
 
 .month-nav strong {
-  font-size: 12px;
+  font-size: 15px;
   text-align: center;
+}
+
+.month-heading {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 4px;
+}
+
+.calendar-today {
+  border: 0;
+  padding: 3px 8px;
+  background: transparent;
+  color: var(--md-sys-color-secondary);
+  font: 9px var(--font-mono);
+}
+
+.calendar-today:hover {
+  color: var(--md-sys-color-primary);
+  text-decoration: underline;
 }
 
 .icon-button {
@@ -326,24 +449,27 @@ h1 em,
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
   text-align: center;
 }
 
 .weekday-labels {
-  font: 9px var(--font-mono);
+  font: 10px var(--font-mono);
   color: #826e7a;
   margin-bottom: 7px;
 }
 
 .calendar-day {
+  min-width: 0;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: var(--md-sys-shape-corner-md);
   background: transparent;
   color: #d8cbd1;
   aspect-ratio: 1;
-  font-size: 11px;
+  font-size: 16px;
+  font-weight: 600;
   position: relative;
   transition:
     background-color 160ms ease,
@@ -621,6 +747,7 @@ h1 em,
 }
 
 .progress-panel .eyebrow {
+  display: inline-block;
   font-size: 9px;
   margin-bottom: 7px;
 }
@@ -1024,6 +1151,30 @@ footer svg {
   background: #6a293c;
 }
 
+.calendar-day.has-journal {
+  box-shadow: inset 0 -3px var(--md-sys-color-tertiary);
+}
+
+.calendar-day.selected.has-journal {
+  box-shadow: inset 0 -3px #31564d;
+}
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font: 9px var(--font-mono);
+}
+
+.calendar-legend span {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--md-sys-color-tertiary);
+}
+
 .week-dates {
   gap: 2px;
 
@@ -1042,7 +1193,7 @@ footer svg {
 
 .week-day-name,
 .week-day-progress {
-  font: 8px var(--font-mono);
+  font: 10px var(--font-mono);
   color: #a998a2;
 }
 
@@ -1053,7 +1204,7 @@ footer svg {
 
 @media (max-width: 1100px) {
   .dashboard-grid {
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr);
   }
 
   .right-column {
@@ -1066,7 +1217,34 @@ footer svg {
   }
 }
 
+@media (max-width: 850px) {
+  .routine-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 700px) {
+  .section-navigation {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 18px;
+  }
+
+  .section-navigation a {
+    flex: 0 0 auto;
+  }
+
+  .section-page .progress-panel,
+  .section-page .motivation-panel {
+    display: grid;
+  }
+
+  .section-page .calendar-panel .calendar-day {
+    min-height: 48px;
+    font-size: 18px;
+  }
+
   .topbar {
     height: 60px;
     padding: 0 20px;
@@ -1170,10 +1348,6 @@ footer svg {
     order: 0;
     width: 100%;
 
-    .section-label {
-      display: none;
-    }
-
     .calendar-title h2 {
       font-size: 20px;
     }
@@ -1200,7 +1374,7 @@ footer svg {
 
     .calendar-day {
       border-radius: var(--md-sys-shape-corner-sm);
-      font-size: 13px;
+      font-size: 18px;
     }
 
     .today-button {
@@ -1219,13 +1393,18 @@ footer svg {
     width: 100%;
   }
 
-  .side-quote {
+  .left-column > .motivation-panel {
     order: 3;
     width: 100%;
   }
 
-  .right-column {
+  .side-quote {
     order: 4;
+    width: 100%;
+  }
+
+  .right-column {
+    order: 5;
     display: grid;
     grid-template-columns: 1fr;
   }
