@@ -167,6 +167,7 @@ export default function Home() {
   const selected = page.selected;
   const section = location.pathname.slice(1);
   const isDashboard = !section;
+  const isCalendar = section === "calendar" || section === "quests";
 
   function showSection(name: string) {
     return isDashboard || section === name;
@@ -215,7 +216,7 @@ export default function Home() {
   }
 
   function selectDate(next: string) {
-    const hash = section === "calendar" && location.hash === "#journal" ? "#journal" : "";
+    const hash = isCalendar && location.hash === "#journal" ? "#journal" : "";
     navigate(`${location.pathname}?date=${next}${hash}`);
   }
 
@@ -237,7 +238,7 @@ export default function Home() {
           {!isDashboard && section !== "profile" && (
             <div className="page-heading">
               <p className="eyebrow accent">CYBER PLANNER</p>
-              <h1>{getNavigationLabel(section)}</h1>
+              <h1>{getNavigationLabel(isCalendar ? "calendar" : section)}</h1>
             </div>
           )}
           {isDashboard && <>
@@ -313,26 +314,74 @@ export default function Home() {
         {isDashboard && <LevelHeader totalXp={page.totalXp} unlocked={getUnlockedAchievementCount(page.achievements)} />}
         {section === "profile" && <Profile checks={page.checks} today={today || page.today} balance={page.balance} totalXp={page.totalXp} achievements={page.achievements} />}
         {section === "quest-board" && <QuestBoard quests={page.quests} selected={selected} />}
-        <div className="dashboard-grid">
-          <aside className="left-column">
-            {showSection("calendar") && (
+        {isCalendar && (
+          <div className="calendar-layout">
+            <div className="calendar-tasks">
+              <TaskSection
+                kind="daily"
+                selected={selected}
+                weekday={weekday}
+                checked={checked}
+                earnedTaskKeys={page.earnedTaskKeys}
+                disabled={toggleFetcher.state !== "idle"}
+                onToggle={toggleTask}
+              />
+              <div id="routines">
+                <TaskSection
+                  kind="routines"
+                  selected={selected}
+                  checked={checked}
+                  earnedTaskKeys={page.earnedTaskKeys}
+                  disabled={toggleFetcher.state !== "idle"}
+                  onToggle={toggleTask}
+                />
+              </div>
+              <div id="synced-tasks">
+                <TaskSection
+                  kind="synced"
+                  selected={selected}
+                  tasks={page.tasks}
+                  checked={externalChecked}
+                  earnedTaskKeys={page.earnedTaskKeys}
+                  disabled={toggleFetcher.state !== "idle"}
+                  onToggle={toggleTask}
+                />
+              </div>
+            </div>
+            <div className="calendar-details">
               <CalendarSection
                 date={date}
                 selected={selected}
                 today={today || page.today}
                 checks={page.checks}
                 journalDates={page.journalDates}
-                showJournal={section === "calendar" && location.hash === "#journal"}
+                showJournal={location.hash === "#journal"}
                 journal={page.journal}
+                googleEnabled
                 onSelect={selectDate}
                 onToday={selectToday}
               />
-            )}
-            {section === "calendar" && (
-              <>
-                <WeeklyProtocolPanel selected={selected} weekday={weekday} />
-                <GoogleIntegrationPanel email={page.email} selected={selected} />
-              </>
+              <WeeklyProtocolPanel selected={selected} weekday={weekday} />
+              <GoogleIntegrationPanel email={page.email} selected={selected} />
+            </div>
+          </div>
+        )}
+        {!isCalendar && (
+        <div className="dashboard-grid">
+          <aside className="left-column">
+            {isDashboard && (
+              <CalendarSection
+                date={date}
+                selected={selected}
+                today={today || page.today}
+                checks={page.checks}
+                journalDates={page.journalDates}
+                showJournal={false}
+                journal={page.journal}
+                googleEnabled={false}
+                onSelect={selectDate}
+                onToday={selectToday}
+              />
             )}
             {isDashboard && (
             <TaskSection
@@ -380,44 +429,6 @@ export default function Home() {
             {showSection("notes") && (
             <NotesEditor selected={selected} note={page.note} />
             )}
-            {section === "quests" && (
-            <div className="daily-planner">
-              <TaskSection
-                kind="daily"
-                selected={selected}
-                weekday={weekday}
-                checked={checked}
-                earnedTaskKeys={page.earnedTaskKeys}
-                disabled={toggleFetcher.state !== "idle"}
-                onToggle={toggleTask}
-                illustrated
-              />
-              <div className="daily-planner-columns">
-                <div id="routines">
-                  <TaskSection
-                    kind="routines"
-                    selected={selected}
-                    checked={checked}
-                    earnedTaskKeys={page.earnedTaskKeys}
-                    disabled={toggleFetcher.state !== "idle"}
-                    onToggle={toggleTask}
-                  />
-                </div>
-                <div id="synced-tasks">
-                  <TaskSection
-                    kind="synced"
-                    selected={selected}
-                    tasks={page.tasks}
-                    checked={externalChecked}
-                    earnedTaskKeys={page.earnedTaskKeys}
-                    disabled={toggleFetcher.state !== "idle"}
-                    onToggle={toggleTask}
-                    illustrated
-                  />
-                </div>
-              </div>
-            </div>
-            )}
             {isDashboard && (
             <TaskSection
               kind="synced"
@@ -447,6 +458,7 @@ export default function Home() {
             )}
           </aside>
         </div>
+        )}
         <footer>
           <span>
             CYBERPLANNER <Sparkles aria-hidden="true" size={11} /> YOUR LIFE,

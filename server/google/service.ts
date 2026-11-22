@@ -40,7 +40,13 @@ async function getGoogleClients() {
   return {
     tasks: google.tasks({ version: "v1", auth: oauth }),
     gmail: google.gmail({ version: "v1", auth: oauth }),
+    calendar: google.calendar({ version: "v3", auth: oauth }),
   };
+}
+
+export async function getGoogleCalendarClient() {
+  const { calendar } = await getGoogleClients();
+  return calendar;
 }
 
 export async function syncGoogleTasks(today: string) {

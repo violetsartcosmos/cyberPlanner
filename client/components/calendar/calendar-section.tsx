@@ -10,12 +10,13 @@ type CalendarSectionProps = {
   journalDates: string[];
   showJournal: boolean;
   journal: string;
+  googleEnabled: boolean;
   onSelect: (date: string) => void;
   onToday: () => void;
 };
 
 export function CalendarSection({
-  date, selected, today, checks, journalDates, showJournal, journal,
+  date, selected, today, checks, journalDates, showJournal, journal, googleEnabled,
   onSelect, onToday,
 }: CalendarSectionProps) {
   const [journalOpen, setJournalOpen] = useState(showJournal);
@@ -45,6 +46,7 @@ export function CalendarSection({
         onToday={onToday}
         onAddJournal={openJournal}
         journalOpen={journalOpen}
+        googleEnabled={googleEnabled}
       />
       {journalOpen && (
         <JournalEditor key={selected} selected={selected} journal={journal} />

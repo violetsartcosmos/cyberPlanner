@@ -6,7 +6,6 @@ import {
   ChevronsRight,
   Gift,
   LayoutDashboard,
-  ListChecks,
   NotebookPen,
   Swords,
   UserRound,
@@ -18,7 +17,6 @@ type NavigationItem = readonly [string, string, LucideIcon];
 const dashboardNavigation: NavigationItem = ["", "Dashboard", LayoutDashboard];
 const calendarNavigation: NavigationItem = ["calendar", "Calendar", CalendarDays];
 const questBoardNavigation: NavigationItem = ["quest-board", "Create Quest", Swords];
-const questsNavigation: NavigationItem = ["quests", "Daily quests & tasks", ListChecks];
 const notesNavigation: NavigationItem = ["notes", "Notes", NotebookPen];
 const rewardsNavigation: NavigationItem = ["rewards", "Shop", Gift];
 const profileNavigation: NavigationItem = ["profile", "Profile", UserRound];
@@ -27,7 +25,6 @@ export const navigationSections: readonly NavigationItem[] = [
   dashboardNavigation,
   calendarNavigation,
   questBoardNavigation,
-  questsNavigation,
   notesNavigation,
   rewardsNavigation,
   profileNavigation,
@@ -52,7 +49,7 @@ function NavigationLink({
       to={`${path ? `/${path}` : "/"}?date=${selected}`}
       aria-label={label}
       title={label}
-      aria-current={section === path ? "page" : undefined}
+      aria-current={section === path || (path === "calendar" && section === "quests") ? "page" : undefined}
       onClick={onNavigate}
     >
       <Icon aria-hidden="true" size={17} />
@@ -220,7 +217,6 @@ export function PlannerNavigation({
           </NavigationGroup>
           <NavigationGroup title="PLANNER">
             <NavigationLink item={questBoardNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
-            <NavigationLink item={questsNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
             <NavigationLink item={notesNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
           </NavigationGroup>
           <NavigationGroup title="YOUR REWARDS">

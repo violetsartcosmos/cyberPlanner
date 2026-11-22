@@ -26,6 +26,33 @@ export type ExternalTask = {
   isDeleted?: boolean;
 };
 
+export type GoogleCalendar = {
+  id: string;
+  name: string;
+  writable: boolean;
+};
+
+export type CalendarEvent = {
+  id: string;
+  calendarId: string;
+  calendarName: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  editable: boolean;
+  etag: string;
+  recurring: boolean;
+  startTimeZone: string | null;
+  endTimeZone: string | null;
+};
+
+export type CalendarData = {
+  calendars: GoogleCalendar[];
+  events: CalendarEvent[];
+  unavailableCalendars: string[];
+};
+
 export type PlannerPage =
   | {
       authenticated: false;

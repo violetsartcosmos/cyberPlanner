@@ -185,7 +185,7 @@ export function TaskSection({
         title={dailyQuests[weekday].title}
         eyebrow="YOUR DAILY QUESTS"
         icon={<Sparkles aria-hidden="true" size={19} />}
-        sectionHref={`/quests?date=${selected}`}
+        sectionHref={`/calendar?date=${selected}`}
         items={dailyQuests[weekday].tasks}
         prefix="daily"
         checked={checked}
@@ -203,7 +203,7 @@ export function TaskSection({
         title="Google & email tasks"
         eyebrow="SYNCED TASKS"
         icon={<RefreshCw aria-hidden="true" size={19} />}
-        sectionHref={`/quests?date=${selected}#synced-tasks`}
+        sectionHref={`/calendar?date=${selected}#synced-tasks`}
         items={getSyncedTaskTitles(tasks)}
         ids={getSyncedTaskIds(tasks)}
         prefix="external"
@@ -242,7 +242,7 @@ export function TaskSection({
           title={activeRoutine === "morning" ? "Morning routine" : "Nightly routine"}
           eyebrow={activeRoutine === "morning" ? "RISE & SHINE" : "WIND DOWN"}
           icon={activeRoutine === "morning" ? <Sun aria-hidden="true" size={19} /> : <Moon aria-hidden="true" size={19} />}
-          sectionHref={`/quests?date=${selected}#routines`}
+          sectionHref={`/calendar?date=${selected}#routines`}
           items={activeRoutine === "morning" ? morningRoutine : nightRoutine}
           prefix={activeRoutine}
           checked={checked}

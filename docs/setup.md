@@ -75,7 +75,7 @@ Google Cloud controls which APIs are enabled, which account may authorize the ap
 
 1. Open the [Google Cloud Console](https://console.cloud.google.com/). Use the project selector at the top to create or select a project.
 2. Open [Google Tasks API](https://console.cloud.google.com/apis/library/tasks.googleapis.com) and click **Enable**.
-3. Open [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) and click **Enable**. The current sign-in flow requests both Tasks and Gmail access, even if you only plan to use Tasks.
+3. Open [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) and [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com), and click **Enable** for each. The sign-in flow requests Tasks, Gmail, and Calendar access.
 4. Open [Google Auth platform](https://console.cloud.google.com/auth/overview). If it says the platform is not configured, click **Get started**:
 
    - Enter an app name, such as `CyberPlanner`, and choose your email as the support email.
@@ -90,6 +90,8 @@ Google Cloud controls which APIs are enabled, which account may authorize the ap
    | `email` (may appear as `https://www.googleapis.com/auth/userinfo.email`) | Check the account's email against your allowed account.                              |
    | `https://www.googleapis.com/auth/tasks`                                    | Read and update Google Tasks.                                                        |
    | `https://www.googleapis.com/auth/gmail.readonly`                           | Search Gmail for follow-ups. This permission allows reading mail, not just metadata. |
+   | `https://www.googleapis.com/auth/calendar.events`                         | Read and change events on accessible calendars. |
+   | `https://www.googleapis.com/auth/calendar.calendarlist.readonly`           | List accessible calendars and their access levels. |
 
 The Gmail scope is restricted. Public publishing can require Google verification and a security assessment; see [Google&#39;s consent-screen instructions](https://developers.google.com/workspace/guides/configure-oauth-consent) and [Gmail scope requirements](https://developers.google.com/workspace/gmail/api/auth/scopes). An external app in Testing can receive refresh tokens that expire after seven days; sign in again if sync stops working.
 
@@ -155,6 +157,8 @@ npm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173), sign in with `GOOGLE_ALLOWED_EMAIL`, and approve the requested permissions. Select **Sync Google Tasks** to import tasks. Leave the terminal running while you use the app; press `Ctrl+C` to stop it.
+
+Existing users must enable the Calendar API, add the two Calendar scopes to the consent configuration, and sign in again to grant them. Calendar event data is loaded directly from Google; the app does not cache it in the planner database. Calendars shared with free/busy-only access cannot expose event details.
 
 `npm run dev` starts both the browser app and API. If the browser app is already running and you need to start just the API, open another terminal in the project folder and run:
 

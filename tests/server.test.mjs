@@ -30,6 +30,8 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.deepEqual(await page.json(), {
       authenticated: false, missingConfiguration: [], authError: "denied",
     });
+    const anonymousCalendar = await app.request("http://localhost/api/calendar");
+    assert.equal(anonymousCalendar.status, 401);
 
     const storage = createCookieSessionStorage({
       cookie: {
@@ -40,6 +42,8 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     const session = await storage.getSession();
     session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
     const cookie = await storage.commitSession(session);
+    const invalidCalendarRange = await app.request("http://localhost/api/calendar?start=bad&end=bad", { headers: { Cookie: cookie } });
+    assert.equal(invalidCalendarRange.status, 400);
     const submit = (origin, includeCookie = true) => app.request("http://localhost/api/planner", {
       method: "POST",
       headers: { Origin: origin, ...(includeCookie ? { Cookie: cookie } : {}) },
@@ -59,6 +63,8 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     const authorization = new URL(signIn.headers.get("location"));
     assert.equal(authorization.hostname, "accounts.google.com");
     assert.ok(authorization.searchParams.get("state"));
+    assert.match(authorization.searchParams.get("scope"), /calendar\.events/);
+    assert.match(authorization.searchParams.get("scope"), /calendar\.calendarlist\.readonly/);
     assert.match(signIn.headers.get("set-cookie"), /cyberplanner_session=/);
     for (const [state, includeCookie] of [
       [authorization.searchParams.get("state"), false],

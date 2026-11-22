@@ -5,6 +5,8 @@ import { redirect } from "react-router";
 import { beginGoogleAuthorization, completeGoogleAuthorization, endSession } from "./auth/service";
 import { handlePlannerAction } from "./planner/dispatch";
 import { getPlannerPage } from "./planner/page";
+import { getSignedInEmail } from "./auth/service";
+import { getCalendarData, validCalendarRange } from "./google/calendar";
 
 export const app = new Hono();
 
@@ -19,6 +21,24 @@ app.get("/api/planner", async (context) => {
 app.post("/api/planner", async (context) => {
   context.header("Cache-Control", "no-store");
   return context.json(await handlePlannerAction(context.req.raw));
+});
+
+app.get("/api/calendar", async (context) => {
+  context.header("Cache-Control", "no-store");
+  if (!(await getSignedInEmail(context.req.raw))) {
+    return context.json({ error: "Sign in with your configured Google account first." }, 401);
+  }
+  const start = context.req.query("start") ?? "";
+  const end = context.req.query("end") ?? "";
+  if (!validCalendarRange(start, end)) {
+    return context.json({ error: "Invalid calendar date range." }, 400);
+  }
+  try {
+    return context.json(await getCalendarData(start, end));
+  } catch {
+    console.error("Google Calendar load failed.");
+    return context.json({ error: "Could not load Google Calendar. Check that the Calendar API is enabled and reconnect Google to grant calendar access." }, 502);
+  }
 });
 
 app.get("/auth/google", () => beginGoogleAuthorization());
