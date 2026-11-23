@@ -81,7 +81,7 @@ export async function saveBookDetails(root: string, path: string, details: Wikip
   }
 }
 
-export async function bookResponse(root: string, path: string, range: string | null, library: LibraryName = "ebooks"): Promise<Response> {
+export async function bookResponse(root: string, path: string, range: string | null | undefined, library: LibraryName = "ebooks"): Promise<Response> {
   const format = formatOf(path, library);
   const parts = path.split("/");
   if (!format || parts.some((part) => !part || part === "." || part === ".." || part.includes("\\") || part.includes("\0"))) {

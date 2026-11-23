@@ -85,4 +85,6 @@ The [architecture and models guide](docs/models.md) explains the layers, request
 | `npm run test:database` | Run integration tests against a separate, empty, disposable database in `TEST_DATABASE_URL`. |
 | `npm run backup:books`, `npm run backup:audible` | Back up ebook or audiobook files (requires 7-Zip). |
 
-For details on backups, reading, rewards, and calendar behavior, see the [user guide](docs/guide.md). For deployment and OAuth configuration, see the [setup guide](docs/setup.md).
+For details on backups, reading, rewards, and calendar behavior, see the [user guide](docs/guide.md).
+For deployment and OAuth configuration, see the [setup guide](docs/setup.md).
+For endpoint behavior and request formats, see the [API reference](docs/api.md).

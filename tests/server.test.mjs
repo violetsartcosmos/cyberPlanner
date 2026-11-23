@@ -32,8 +32,15 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     });
     const anonymousCalendar = await app.request("http://localhost/api/calendar");
     assert.equal(anonymousCalendar.status, 401);
-    assert.equal((await app.request("http://localhost/api/books")).status, 401);
-    assert.equal((await app.request("http://localhost/api/books/file?path=test.epub")).status, 401);
+    const anonymousBooks = await app.request("http://localhost/api/books");
+    assert.equal(anonymousBooks.status, 401);
+    assert.equal(anonymousBooks.headers.get("cache-control"), "no-store");
+    const anonymousBookFile = await app.request("http://localhost/api/books/file?path=test.epub");
+    assert.equal(anonymousBookFile.status, 401);
+    assert.equal(anonymousBookFile.headers.get("cache-control"), "no-store");
+    assert.deepEqual(await anonymousBookFile.json(), {
+      error: "Sign in with your configured Google account first.",
+    });
     assert.equal((await app.request("http://localhost/api/books/file?library=audiblebooks&path=test.m4b")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/details?path=test.epub")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/progress?path=test.epub")).status, 401);
@@ -48,6 +55,9 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     const session = await storage.getSession();
     session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
     const cookie = await storage.commitSession(session);
+    const missingBookPath = await app.request("http://localhost/api/books/details", { headers: { Cookie: cookie } });
+    assert.equal(missingBookPath.status, 400);
+    assert.deepEqual(await missingBookPath.json(), { error: "Invalid book." });
     for (const input of [
       { path: "test.epub", position: "", revision: 0 },
       { path: "test.epub", position: "epubcfi(/6/2)", revision: -1 },
@@ -71,6 +81,51 @@ test("API routes preserve authentication and reject cross-origin submissions", a
       body: JSON.stringify({ path: "test.epub", details: { url: "https://example.com" } }),
     });
     assert.equal(invalidDetails.status, 400);
+    const emptyDetailsPath = await app.request("http://localhost/api/books/details", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path: "",
+        details: { url: "https://en.wikipedia.org/wiki/Test", description: "", image: null },
+      }),
+    });
+    assert.equal(emptyDetailsPath.status, 400);
+    assert.deepEqual(await emptyDetailsPath.json(), { error: "Invalid book details." });
+    const invalidCover = await app.request("http://localhost/api/books/details", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        path: "test.epub",
+        details: {
+          url: "https://en.wikipedia.org/wiki/Test",
+          description: "",
+          image: {
+            url: "https://upload.wikimedia.org/example",
+            page: "https://commons.wikimedia.org/wiki/File:Test.jpg",
+            title: "Test",
+            author: "Test",
+            license: "CC BY",
+          },
+        },
+        cover: { data: "bm90YW4=", type: "image/png" },
+      }),
+    });
+    assert.equal(invalidCover.status, 400);
+    assert.deepEqual(await invalidCover.json(), { error: "Invalid cover image." });
+    const invalidBookmark = await app.request("http://localhost/api/books/bookmarks", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
+      body: JSON.stringify({ path: "test.epub", position: { length: 1 }, label: {} }),
+    });
+    assert.equal(invalidBookmark.status, 400);
+    assert.deepEqual(await invalidBookmark.json(), { error: "Invalid bookmark." });
+    const invalidLibrary = await app.request("http://localhost/api/books/rename", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
+      body: JSON.stringify({ path: "test.epub", title: "Test", library: "unknown" }),
+    });
+    assert.equal(invalidLibrary.status, 400);
+    assert.deepEqual(await invalidLibrary.json(), { error: "Invalid library." });
     const largeDetails = await app.request("http://localhost/api/books/details", {
       method: "POST",
       headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
@@ -85,8 +140,11 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.deepEqual(await oversizedDetails.json(), { error: "Book details are too large." });
     const invalidBook = await app.request("http://localhost/api/books/file?path=..%2Fsecret.epub", { headers: { Cookie: cookie } });
     assert.equal(invalidBook.status, 404);
+    assert.equal(invalidBook.headers.get("cache-control"), "no-store");
     const invalidCalendarRange = await app.request("http://localhost/api/calendar?start=bad&end=bad", { headers: { Cookie: cookie } });
     assert.equal(invalidCalendarRange.status, 400);
+    const missingCalendarRange = await app.request("http://localhost/api/calendar", { headers: { Cookie: cookie } });
+    assert.equal(missingCalendarRange.status, 400);
     const submit = (origin, includeCookie = true) => app.request("http://localhost/api/planner", {
       method: "POST",
       headers: { Origin: origin, ...(includeCookie ? { Cookie: cookie } : {}) },
@@ -123,6 +181,7 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.equal(callback.status, 302);
     assert.match(callback.headers.get("location"), /^\/\?authError=/);
     assert.equal((await app.request("http://localhost/api/not-found")).status, 404);
+    assert.equal((await app.request("http://localhost/api/books/not-found")).status, 404);
 
     const api = serve({ fetch: app.fetch, port: 0 });
     await once(api, "listening");
