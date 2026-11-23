@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 const apiPort = process.env.PORT || "3000";
@@ -24,7 +23,6 @@ export default defineConfig({
         }
       },
     },
-    tailwindcss(),
   ],
   build: { outDir: "../build/client", emptyOutDir: true },
   server: {

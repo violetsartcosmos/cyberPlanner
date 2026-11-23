@@ -28,8 +28,8 @@ export default function DashboardPage() {
     if (achievement.earnedAt) earned += 1;
   }
   const dateSummary = (
-    <section className="panel date-summary" aria-label="Selected date summary">
-      <p className="eyebrow">DATE SUMMARY</p>
+    <section className="card p-3 date-summary" aria-label="Selected date summary">
+      <p className="text-label">DATE SUMMARY</p>
       <h2>{date.toLocaleDateString("en-US", {
         weekday: "long",
         month: "long",
@@ -46,8 +46,8 @@ export default function DashboardPage() {
   return (
     <>
       <LevelHeader totalXp={page.totalXp} earned={earned} />
-      <div className="dashboard-grid">
-        <aside className="left-column">
+      <div className="row g-3 align-items-start">
+        <aside className="col-12 col-lg-4 col-xl-3 d-grid gap-3">
           <CalendarSection
             date={date}
             selected={selected}
@@ -72,10 +72,10 @@ export default function DashboardPage() {
           />
         </aside>
 
-        <div className="main-column">
+        <div className="col-12 col-lg-8 col-xl-6 d-grid gap-3">
           <section className="hero-panel">
             <div className="hero-copy">
-              <p className="eyebrow">
+              <p className="text-label">
                 DAY'S MISSION <span>// {selected.replaceAll("-", ".")}</span>
               </p>
               <h2>
@@ -112,7 +112,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        <aside className="right-column">
+        <aside className="col-12 col-xl-3 d-grid gap-3">
           <TaskSection
             kind="routines"
             selected={selected}

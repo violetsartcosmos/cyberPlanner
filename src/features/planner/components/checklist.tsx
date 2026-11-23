@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
 type ChecklistProps = {
   title: string;
-  eyebrow: string;
+  label: string;
   icon: ReactNode;
   sectionHref: string;
   items: readonly string[];
@@ -43,14 +43,12 @@ function ChecklistItem({
     <div className="task-row" key={id}>
       <label className={`task ${checked ? "task-done" : ""}`}>
         <input
+          className="form-check-input"
           type="checkbox"
           checked={checked}
           disabled={disabled}
           onChange={handleTaskToggle}
         />
-        <span className="checkmark" aria-hidden="true">
-          <Check size={12} />
-        </span>
         <span>{item}</span>
         <span className="task-xp">
           {earned ? "EARNED" : "+10 PTS"}
@@ -89,7 +87,7 @@ function countCompleted(ids: readonly string[], checked: readonly string[]) {
 
 export function Checklist({
   title,
-  eyebrow,
+  label,
   icon,
   sectionHref,
   items,
@@ -122,15 +120,15 @@ export function Checklist({
   }
 
   return (
-    <section className={`panel checklist ${illustration ? "checklist-illustrated" : ""}`}>
+    <section className={`card p-3 checklist ${illustration ? "checklist-illustrated" : ""}`}>
       <div className="panel-heading">
         <Link className="heading-group section-heading-link" to={sectionHref}>
           <span className="heading-icon" aria-hidden="true">
             {icon}
           </span>
           <div>
-            <p className="eyebrow">{eyebrow}</p>
-            <h2>{title}</h2>
+            <p className="text-label">{label}</p>
+            <h2 className="h5">{title}</h2>
           </div>
         </Link>
         <span className="count">

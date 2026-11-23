@@ -59,15 +59,15 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
       hasQuestInGroup = true;
       questsInGroup.push(
         <article className="quest-card" key={quest.id}>
-          <div><span className="eyebrow">{quest.tier} · {quest.points} PTS / XP</span><h3>{quest.title}</h3>{quest.description && <p>{quest.description}</p>}</div>
+          <div><span className="text-label">{quest.tier} · {quest.points} PTS / XP</span><h3>{quest.title}</h3>{quest.description && <p>{quest.description}</p>}</div>
           <div className="quest-actions">
             {quest.completedAt ? <span className="quest-complete">COMPLETED</span> : <fetcher.Form method="post">
               <input type="hidden" name="intent" value="complete_quest" /><input type="hidden" name="id" value={quest.id} />
-              <button className="gamification-button primary" disabled={fetcher.state !== "idle"}>Complete</button>
+              <button className="btn btn-primary btn-sm" disabled={fetcher.state !== "idle"}>Complete</button>
             </fetcher.Form>}
             <fetcher.Form method="post" onSubmit={confirmQuestDelete(quest.title)}>
               <input type="hidden" name="intent" value="delete_quest" /><input type="hidden" name="id" value={quest.id} />
-              <button className="gamification-button" disabled={fetcher.state !== "idle"}>Delete</button>
+              <button className="btn btn-outline-secondary btn-sm" disabled={fetcher.state !== "idle"}>Delete</button>
             </fetcher.Form>
           </div>
         </article>,
@@ -76,7 +76,7 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
     questSections.push(
       <section className="quest-group" key={group.kind}>
         <div className="profile-section-heading">
-          <div><p className="eyebrow accent">{group.detail}</p><h2>{group.title}</h2></div>
+          <div><p className="text-label accent">{group.detail}</p><h2>{group.title}</h2></div>
         </div>
         {group.kind === "side" && <div className="quest-builtin">
           <span>Your daily quests, routines, and synced tasks are Side Quests worth 10 points each.</span>
@@ -90,21 +90,21 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
 
   return (
     <div className="quest-board">
-      <section className="panel quest-creator">
+      <section className="card p-3 quest-creator">
         <div className="quest-creator-copy">
-          <p className="eyebrow accent">YOUR NEXT ADVENTURE</p>
+          <p className="text-label accent">YOUR NEXT ADVENTURE</p>
           <h2>Create a quest</h2>
           <p>Set your own point value to match the effort. Completed quests award points and lifetime XP once.</p>
           <fetcher.Form method="post" className="gamification-form">
             <input type="hidden" name="intent" value="create_quest" />
-            <label>Quest title<input name="title" required maxLength={100} /></label>
-            <label>Description (optional)<textarea name="description" maxLength={500} /></label>
-            <div className="form-grid">
-              <label>Quest type<select name="kind" value={kind} onChange={handleKindChange}>{groupOptions}</select></label>
-              <label>Rarity<select name="tier" defaultValue="Rare">{tierOptions}</select></label>
-              <label>Points / XP<input name="points" type="number" min="1" max="100000" required value={points} onChange={handlePointsChange} /></label>
+            <label>Quest title<input className="form-control" name="title" required maxLength={100} /></label>
+            <label>Description (optional)<textarea className="form-control" name="description" maxLength={500} /></label>
+            <div className="row g-2">
+              <label className="col-12 col-md-4">Quest type<select className="form-select" name="kind" value={kind} onChange={handleKindChange}>{groupOptions}</select></label>
+              <label className="col-12 col-md-4">Rarity<select className="form-select" name="tier" defaultValue="Rare">{tierOptions}</select></label>
+              <label className="col-12 col-md-4">Points / XP<input className="form-control" name="points" type="number" min="1" max="100000" required value={points} onChange={handlePointsChange} /></label>
             </div>
-            <button className="gamification-button primary" disabled={fetcher.state !== "idle"}>Add quest</button>
+            <button className="btn btn-primary btn-sm" disabled={fetcher.state !== "idle"}>Add quest</button>
           </fetcher.Form>
           {fetcher.data?.message && <p className="quest-feedback" role="status">{fetcher.data.message}</p>}
           {fetcher.data?.error && <p className="inline-error" role="alert">{fetcher.data.error}</p>}

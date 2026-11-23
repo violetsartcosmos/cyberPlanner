@@ -103,7 +103,7 @@ function RoutineTab({
     : <Moon aria-hidden="true" size={15} />;
 
   return (
-    <button
+    <button className={`btn btn-outline-secondary btn-sm ${activeRoutine === routine ? "active" : ""}`}
       key={routine}
       id={`${tabId}-${routine}`}
       type="button"
@@ -184,7 +184,7 @@ export function TaskSection({
     return (
       <Checklist
         title={dailyQuests[weekday].title}
-        eyebrow="YOUR DAILY QUESTS"
+        label="YOUR DAILY QUESTS"
         icon={<Sparkles aria-hidden="true" size={19} />}
         sectionHref={`/calendar?date=${selected}`}
         items={dailyQuests[weekday].tasks}
@@ -202,7 +202,7 @@ export function TaskSection({
     return (
       <Checklist
         title="Google & email tasks"
-        eyebrow="SYNCED TASKS"
+        label="SYNCED TASKS"
         icon={<RefreshCw aria-hidden="true" size={19} />}
         sectionHref={`/calendar?date=${selected}#synced-tasks`}
         items={getSyncedTaskTitles(tasks)}
@@ -235,13 +235,13 @@ export function TaskSection({
 
   return (
     <div className="routine-tabs">
-      <div className="routine-tab-list" role="tablist" aria-label="Routines">
+      <div className="btn-group w-100" role="tablist" aria-label="Routines">
         {routineTabs}
       </div>
       <div role="tabpanel" id={`${tabId}-panel`} aria-labelledby={`${tabId}-${activeRoutine}`}>
         <Checklist
           title={activeRoutine === "morning" ? "Morning routine" : "Nightly routine"}
-          eyebrow={activeRoutine === "morning" ? "RISE & SHINE" : "WIND DOWN"}
+          label={activeRoutine === "morning" ? "RISE & SHINE" : "WIND DOWN"}
           icon={activeRoutine === "morning" ? <Sun aria-hidden="true" size={19} /> : <Moon aria-hidden="true" size={19} />}
           sectionHref={`/calendar?date=${selected}#routines`}
           items={activeRoutine === "morning" ? morningRoutine : nightRoutine}

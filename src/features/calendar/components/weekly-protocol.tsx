@@ -18,12 +18,12 @@ export function WeeklyProtocolPanel({ selected, weekday }: { selected: string; w
   }
 
   return (
-    <section className="panel week-panel" id="weekly">
+    <section className="card p-3 week-panel" id="weekly">
       <Link className="section-label section-link" to={`/calendar?date=${selected}#weekly`}>
         <span>02 / WEEKLY PROTOCOL</span>
         <Sparkles aria-hidden="true" size={12} />
       </Link>
-      <h2>Every day has a mission.</h2>
+      <h2 className="h5">Every day has a mission.</h2>
       <p>Small steps, one day at a time.</p>
       <div className="week-list">
         {weekItems}

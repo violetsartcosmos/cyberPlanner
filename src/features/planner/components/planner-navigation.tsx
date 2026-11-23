@@ -50,6 +50,7 @@ function NavigationLink({
   const [path, label, Icon] = item;
   return (
     <Link
+      className="nav-link"
       to={`${path ? `/${path}` : "/"}?date=${selected}`}
       aria-label={label}
       title={label}
@@ -90,14 +91,14 @@ export function PlannerNavigation({
   setExpanded,
 }: PlannerNavigationProps) {
   function getInitialNarrowScreen() {
-    return window.matchMedia("(max-width: 850px)").matches;
+    return window.matchMedia("(max-width: 991.98px)").matches;
   }
   const [narrowScreen, setNarrowScreen] = useState(getInitialNarrowScreen);
   const menuRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(function syncNarrowScreen() {
-    const media = window.matchMedia("(max-width: 850px)");
+    const media = window.matchMedia("(max-width: 991.98px)");
     function onChange(event: MediaQueryListEvent) {
       setNarrowScreen(event.matches);
     }
@@ -195,7 +196,7 @@ export function PlannerNavigation({
           </Link>
           <button
             ref={menuButtonRef}
-            className="sidebar-toggle"
+            className="sidebar-toggle btn"
             type="button"
             aria-label={expanded ? "Collapse menu" : "Expand menu"}
             title={expanded ? "Collapse menu" : "Expand menu"}
@@ -211,7 +212,7 @@ export function PlannerNavigation({
           </button>
         </div>
         <nav
-          className="section-navigation"
+          className="section-navigation nav flex-column flex-nowrap"
           id="planner-navigation"
           aria-label="Planner sections"
         >

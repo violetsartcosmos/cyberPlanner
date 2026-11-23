@@ -49,11 +49,11 @@ export function AchievementPreview({ achievements }: { achievements: Achievement
     .slice(0, 4);
 
   return (
-    <section className="panel achievement-preview" aria-labelledby="achievement-preview-heading">
+    <section className="card p-3 achievement-preview" aria-labelledby="achievement-preview-heading">
       <div className="achievement-preview-heading">
         <div>
-          <p className="eyebrow">YOUR WINS</p>
-          <h2 id="achievement-preview-heading">Achievements</h2>
+          <p className="text-label">YOUR WINS</p>
+          <h2 className="h5" id="achievement-preview-heading">Achievements</h2>
         </div>
       </div>
       <p className="achievement-preview-count">{earned.length} / {achievements.length} EARNED</p>
@@ -101,35 +101,35 @@ function AchievementDialog({ onClose, fetcher, onSubmit, error }: {
     <dialog ref={dialog} className="achievement-dialog" onClose={onClose} aria-labelledby="achievement-dialog-title">
       <div className="dialog-heading">
         <h2 id="achievement-dialog-title">Create achievement</h2>
-        <button type="button" className="gamification-button" onClick={closeDialog}>Close</button>
+        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={closeDialog}>Close</button>
       </div>
       <fetcher.Form method="post" className="gamification-form" onSubmit={onSubmit}>
         <input type="hidden" name="intent" value="save_achievement" />
         <input type="hidden" name="id" value="" />
-        <label>Title<input name="title" required maxLength={100} /></label>
-        <label>Description<textarea name="description" required maxLength={500} /></label>
-        <div className="form-grid">
-          <label>Category<select name="category" defaultValue={achievementCategories[0]}>{buildOptions(achievementCategories)}</select></label>
-          <label>Tier<select name="tier" defaultValue="Common">{buildOptions(tiers)}</select></label>
-          <label>XP reward<input name="xp" type="number" min="1" max="100000" required defaultValue={25} /></label>
-          <label>Target (points or days)<input name="target" type="number" min="1" max="3650" required defaultValue={1} /></label>
+        <label>Title<input className="form-control" name="title" required maxLength={100} /></label>
+        <label>Description<textarea className="form-control" name="description" required maxLength={500} /></label>
+        <div className="row g-2">
+          <label className="col-12 col-md-4">Category<select className="form-select" name="category" defaultValue={achievementCategories[0]}>{buildOptions(achievementCategories)}</select></label>
+          <label className="col-12 col-md-4">Tier<select className="form-select" name="tier" defaultValue="Common">{buildOptions(tiers)}</select></label>
+          <label className="col-12 col-md-4">XP reward<input className="form-control" name="xp" type="number" min="1" max="100000" required defaultValue={25} /></label>
+          <label className="col-12 col-md-4">Target (points or days)<input className="form-control" name="target" type="number" min="1" max="3650" required defaultValue={1} /></label>
         </div>
         <label>Progress tracking
-          <select name="tracking" value={tracking} onChange={handleTrackingChange}>
+          <select className="form-select" name="tracking" value={tracking} onChange={handleTrackingChange}>
             <option value="points">Lifetime task points</option>
             <option value="streak">Consecutive routine days</option>
           </select>
         </label>
         {tracking === "streak" && <label>Routine task
-          <select name="taskId" defaultValue="morning-0">
+          <select className="form-select" name="taskId" defaultValue="morning-0">
             <optgroup label="Morning">{buildIndexedOptions(morningRoutine, "morning")}</optgroup>
             <optgroup label="Night">{buildIndexedOptions(nightRoutine, "night")}</optgroup>
           </select>
         </label>}
-        <label>Personal reward (optional)<input name="reward" maxLength={200} placeholder="A treat, downtime, or something special" /></label>
+        <label>Personal reward (optional)<input className="form-control" name="reward" maxLength={200} placeholder="A treat, downtime, or something special" /></label>
         <p className="form-hint">Points goals use lifetime earned task points. Routine streaks award XP at each new milestone. Existing achievements cannot be edited.</p>
         {error && <p className="inline-error" role="alert">{error}</p>}
-        <button className="gamification-button primary" type="submit" disabled={fetcher.state !== "idle"}>Save achievement</button>
+        <button className="btn btn-primary btn-sm" type="submit" disabled={fetcher.state !== "idle"}>Save achievement</button>
       </fetcher.Form>
     </dialog>
   );
@@ -210,7 +210,8 @@ export function Achievements({ achievements }: { achievements: Achievement[] }) 
   for (const achievement of filtered) {
     const Icon = icons[achievement.icon] ?? Award;
     achievementCards.push(
-      <article className={`achievement-card tier-${achievement.tier.toLowerCase()} ${achievement.earnedAt ? "is-earned" : ""}`} key={achievement.id}>
+      <div className="col" key={achievement.id}>
+      <article className={`achievement-card h-100 tier-${achievement.tier.toLowerCase()} ${achievement.earnedAt ? "is-earned" : ""}`}>
         <div className="achievement-icon"><Icon aria-hidden="true" size={30} /></div>
         <div className="achievement-copy">
           <span className="achievement-status">{achievement.earnedAt ? <><Check aria-hidden="true" size={13} /> EARNED</> : "IN PROGRESS"} · {achievement.tier.toUpperCase()} · {achievement.earnedAt ? achievement.awardedXp : achievement.xp} XP</span>
@@ -220,11 +221,12 @@ export function Achievements({ achievements }: { achievements: Achievement[] }) 
           <p className="form-hint">{achievement.tracking === "points" ? "Lifetime task points" : `Next streak milestone · ${achievement.xp} XP`}</p>
           {achievement.reward && <p className="achievement-reward">{achievement.earnedAt ? "Your reward" : "Reward when earned"}: {achievement.reward}</p>}
           <div className="achievement-progress">
-            <div className="achievement-track" role="progressbar" aria-label={`${achievement.title} progress`} aria-valuemin={0} aria-valuemax={achievement.target} aria-valuenow={achievement.current}><span style={{ width: `${achievement.current / achievement.target * 100}%` }} /></div>
+            <div className="progress flex-grow-1" role="progressbar" aria-label={`${achievement.title} progress`} aria-valuemin={0} aria-valuemax={achievement.target} aria-valuenow={achievement.current}><div className="progress-bar" style={{ width: `${achievement.current / achievement.target * 100}%` }} /></div>
             <span>{achievement.current} / {achievement.target}</span>
           </div>
         </div>
-      </article>,
+      </article>
+      </div>,
     );
   }
 
@@ -232,19 +234,19 @@ export function Achievements({ achievements }: { achievements: Achievement[] }) 
     <section className="profile-achievements" id="achievements" aria-labelledby="achievements-heading">
       <div className="profile-section-heading">
         <div>
-          <p className="eyebrow accent">YOUR WINS // KEEP GOING</p>
+          <p className="text-label accent">YOUR WINS // KEEP GOING</p>
           <h2 id="achievements-heading">Achievements</h2>
           <p>{earned} / {achievements.length} earned. Little victories deserve to be celebrated.</p>
         </div>
-        <button className="gamification-button primary" onClick={openNewAchievement}>+ New achievement</button>
+        <button className="btn btn-primary btn-sm" onClick={openNewAchievement}>+ New achievement</button>
       </div>
-      {notice && <div className="achievement-notice" role={noticeIsError ? "alert" : "status"}>{notice}<button type="button" aria-label="Dismiss notification" onClick={dismissNotice}>×</button></div>}
+      {notice && <div className={`alert ${noticeIsError ? "alert-danger" : "alert-info"} d-flex justify-content-between align-items-center gap-3`} role={noticeIsError ? "alert" : "status"}>{notice}<button className="btn-close" type="button" aria-label="Dismiss notification" onClick={dismissNotice} /></div>}
       <div className="achievement-filters">
-        <label>Category<select value={category} onChange={handleCategoryChange}><option value="all">All categories</option>{buildOptions(achievementCategories)}</select></label>
-        <label>Tier<select value={tier} onChange={handleTierChange}><option value="all">All tiers</option>{buildOptions(tiers)}</select></label>
-        <label>Status<select value={status} onChange={handleStatusChange}><option value="all">All achievements</option><option value="progress">In progress</option><option value="earned">Earned</option></select></label>
+        <label>Category<select className="form-select" value={category} onChange={handleCategoryChange}><option value="all">All categories</option>{buildOptions(achievementCategories)}</select></label>
+        <label>Tier<select className="form-select" value={tier} onChange={handleTierChange}><option value="all">All tiers</option>{buildOptions(tiers)}</select></label>
+        <label>Status<select className="form-select" value={status} onChange={handleStatusChange}><option value="all">All achievements</option><option value="progress">In progress</option><option value="earned">Earned</option></select></label>
       </div>
-      <div className="achievement-grid">
+      <div className="row row-cols-1 row-cols-lg-2 row-cols-xl-3 g-3">
         {achievementCards}
       </div>
       {filtered.length === 0 && <p className="profile-note">No achievements match these filters.</p>}

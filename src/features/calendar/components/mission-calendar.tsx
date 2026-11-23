@@ -177,30 +177,30 @@ export function MissionCalendar({
   }
 
   return (
-    <section className="panel calendar-panel">
+    <section className="card p-3 calendar-panel">
       <Link className="calendar-title section-heading-link" to={`/calendar?date=${selected}`}>
         <div>
-          <p className="eyebrow">YOUR TIMELINE</p>
-          <h2>Mission calendar</h2>
+          <p className="text-label">YOUR TIMELINE</p>
+          <h2 className="h5">Mission calendar</h2>
         </div>
         <CalendarDays className="calendar-symbol" aria-hidden="true" />
       </Link>
-      <div className="calendar-views" role="group" aria-label="Calendar view">
-        <button
+      <div className="btn-group w-100 mt-3" role="group" aria-label="Calendar view">
+        <button className={`btn btn-outline-primary btn-sm ${view === "day" ? "active" : ""}`}
           type="button"
           aria-pressed={view === "day"}
           onClick={showDay}
         >
           Day
         </button>
-        <button
+        <button className={`btn btn-outline-primary btn-sm ${view === "week" ? "active" : ""}`}
           type="button"
           aria-pressed={view === "week"}
           onClick={showWeek}
         >
           Week
         </button>
-        <button
+        <button className={`btn btn-outline-primary btn-sm ${view === "month" ? "active" : ""}`}
           type="button"
           aria-pressed={view === "month"}
           onClick={showMonth}
@@ -210,7 +210,7 @@ export function MissionCalendar({
       </div>
       <div className="month-nav">
         <button
-          className="icon-button"
+          className="btn btn-outline-secondary btn-sm"
           type="button"
           onClick={navigatePrevious}
           aria-label={`Previous ${view}`}
@@ -219,10 +219,10 @@ export function MissionCalendar({
         </button>
         <div className="month-heading">
           <strong aria-live="polite">{range}</strong>
-          <button type="button" className="calendar-today" onClick={onToday}>Today</button>
+          <button type="button" className="btn btn-outline-primary btn-sm" onClick={onToday}>Today</button>
         </div>
         <button
-          className="icon-button"
+          className="btn btn-outline-secondary btn-sm"
           type="button"
           onClick={navigateNext}
           aria-label={`Next ${view}`}
@@ -260,8 +260,8 @@ export function MissionCalendar({
           <div className="calendar-event-heading">
             <strong>GOOGLE CALENDAR</strong>
             <div>
-              <button type="button" className="calendar-today" onClick={googleCalendar.refresh}>Refresh</button>
-              <button type="button" className="calendar-today" disabled={!googleCalendar.data?.calendars.some((calendar) => calendar.writable)} onClick={() => {
+              <button type="button" className="btn btn-outline-primary btn-sm" onClick={googleCalendar.refresh}>Refresh</button>
+              <button type="button" className="btn btn-outline-primary btn-sm" disabled={!googleCalendar.data?.calendars.some((calendar) => calendar.writable)} onClick={() => {
                 setEditingEvent(null);
                 setEditing(true);
                 setEventMessage("");
@@ -299,7 +299,7 @@ export function MissionCalendar({
           )}
         </div>
       )}
-      <button className="today-button" type="button" onClick={onAddJournal} aria-expanded={journalOpen} aria-controls={journalOpen ? "journal" : undefined}>
+      <button className="btn btn-outline-primary w-100" type="button" onClick={onAddJournal} aria-expanded={journalOpen} aria-controls={journalOpen ? "journal" : undefined}>
         ADD JOURNAL
       </button>
     </section>

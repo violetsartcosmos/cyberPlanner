@@ -174,26 +174,26 @@ export function EventEditor({ selected, calendars, event, onCancel, onSaved }: E
         {event ? (
           <><span>{event.calendarName}</span><input type="hidden" name="calendarId" value={event.calendarId} /></>
         ) : (
-          <select name="calendarId" required defaultValue={writable[0]?.id ?? ""}>
+          <select className="form-select" name="calendarId" required defaultValue={writable[0]?.id ?? ""}>
             {writable.map((calendar) => <option key={calendar.id} value={calendar.id}>{calendar.name}</option>)}
           </select>
         )}
       </label>
-      <label>Title<input name="title" defaultValue={event?.title ?? ""} maxLength={1024} required /></label>
+      <label>Title<input className="form-control" name="title" defaultValue={event?.title ?? ""} maxLength={1024} required /></label>
       <label className="calendar-all-day">
-        <input type="checkbox" checked={allDay} onChange={(change) => changeAllDay(change.target.checked)} />
+        <input className="form-check-input" type="checkbox" checked={allDay} onChange={(change) => changeAllDay(change.target.checked)} />
         All day
       </label>
       <label>Start
-        <input name="start" type={allDay ? "date" : "datetime-local"} step={allDay ? undefined : "0.001"} value={allDay ? dayStart : timedStart} onChange={(change) => allDay ? setDayStart(change.target.value) : setTimedStart(change.target.value)} required />
+        <input className="form-control" name="start" type={allDay ? "date" : "datetime-local"} step={allDay ? undefined : "0.001"} value={allDay ? dayStart : timedStart} onChange={(change) => allDay ? setDayStart(change.target.value) : setTimedStart(change.target.value)} required />
       </label>
       <label>{allDay ? "Last day" : "End"}
-        <input name="end" type={allDay ? "date" : "datetime-local"} step={allDay ? undefined : "0.001"} value={allDay ? dayEnd : timedEnd} onChange={(change) => allDay ? setDayEnd(change.target.value) : setTimedEnd(change.target.value)} required />
+        <input className="form-control" name="end" type={allDay ? "date" : "datetime-local"} step={allDay ? undefined : "0.001"} value={allDay ? dayEnd : timedEnd} onChange={(change) => allDay ? setDayEnd(change.target.value) : setTimedEnd(change.target.value)} required />
       </label>
       {error && <p className="inline-error" role="alert">{error}</p>}
       <div className="calendar-event-actions">
-        <button className="google-action" type="submit" disabled={busy}>{busy ? "SAVING..." : "SAVE EVENT"}</button>
-        <button className="google-action" type="button" disabled={busy} onClick={onCancel}>CANCEL</button>
+        <button className="btn btn-outline-primary btn-sm rounded-pill" type="submit" disabled={busy}>{busy ? "SAVING..." : "SAVE EVENT"}</button>
+        <button className="btn btn-outline-primary btn-sm rounded-pill" type="button" disabled={busy} onClick={onCancel}>CANCEL</button>
       </div>
     </form>
   );

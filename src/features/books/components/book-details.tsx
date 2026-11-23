@@ -202,9 +202,9 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
   const cover = wikiCover ? (wikiCover.cached ? bookCoverUrl(book) : wikiCover.url) : embedded?.cover;
 
   return (
-    <section className="panel library-details">
+    <section className="card p-3 library-details">
       <div className="library-reader-heading">
-        <button type="button" onClick={onClose}>Back to library</button>
+        <button className="btn btn-outline-secondary btn-sm" type="button" onClick={onClose}>Back to library</button>
         <span className="library-kicker">{book.format.toUpperCase()} · YOUR COLLECTION</span>
       </div>
       <div className="library-detail-content">
@@ -226,7 +226,7 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
           <BookAction book={book} onRead={onRead} epubLabel="Read EPUB" />
           <form className="library-rename" onSubmit={(event) => { void rename(event); }}>
             <label htmlFor="book-title">Filename</label>
-            <div><input id="book-title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required /> <button type="submit" disabled={renaming || title.trim() === book.title}>{renaming ? "Renaming..." : "Rename"}</button></div>
+            <div><input className="form-control" id="book-title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required /> <button className="btn btn-outline-secondary btn-sm" type="submit" disabled={renaming || title.trim() === book.title}>{renaming ? "Renaming..." : "Rename"}</button></div>
             {renameError && <p role="alert">{renameError}</p>}
           </form>
         </div>
@@ -260,13 +260,13 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
         <p>Import an article and optional cover image.</p>
         <label htmlFor="wiki-url">Wikipedia article URL</label>
         <div>
-          <input id="wiki-url" type="url" required disabled={!wikiReady} value={wikiUrl} onChange={(event) => setWikiUrl(event.target.value)} placeholder="https://en.wikipedia.org/wiki/..." />
+          <input className="form-control" id="wiki-url" type="url" required disabled={!wikiReady} value={wikiUrl} onChange={(event) => setWikiUrl(event.target.value)} placeholder="https://en.wikipedia.org/wiki/..." />
         </div>
         <label htmlFor="wiki-image-url">Wikipedia image URL (optional)</label>
         <div>
-          <input id="wiki-image-url" type="url" disabled={!wikiReady} value={wikiImageUrl} onChange={(event) => setWikiImageUrl(event.target.value)} placeholder="https://commons.wikimedia.org/wiki/File:..." />
+          <input className="form-control" id="wiki-image-url" type="url" disabled={!wikiReady} value={wikiImageUrl} onChange={(event) => setWikiImageUrl(event.target.value)} placeholder="https://commons.wikimedia.org/wiki/File:..." />
         </div>
-        <button type="submit" disabled={busy || !wikiReady}>{busy ? "Importing..." : "Import"}</button>
+        <button className="btn btn-outline-secondary btn-sm" type="submit" disabled={busy || !wikiReady}>{busy ? "Importing..." : "Import"}</button>
         {wikiError && <p role="alert">{wikiError}</p>}
         {wikiNotice && <p role="status">{wikiNotice}</p>}
       </form>

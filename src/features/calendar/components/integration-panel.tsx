@@ -27,7 +27,7 @@ export function GoogleIntegrationPanel({
           <input type="hidden" name="messageId" value={message.id} />
           <input type="hidden" name="date" value={selected} />
           <button
-            className="google-action"
+            className="btn btn-outline-primary btn-sm rounded-pill"
             type="submit"
             disabled={importFetcher.state !== "idle"}
           >
@@ -39,18 +39,18 @@ export function GoogleIntegrationPanel({
   }
 
   return (
-    <section className="panel google-panel" id="google">
+    <section className="card p-3 google-panel" id="google">
       <Link className="section-label section-link" to={`/calendar?date=${selected}#google`}>
         <span>05 / GOOGLE SYNC</span>
         <RefreshCw aria-hidden="true" size={12} />
       </Link>
-      <h2>Bring in your tasks.</h2>
+      <h2 className="h5">Bring in your tasks.</h2>
       <p>Signed in as {email}. Google Tasks syncs when you ask it to.</p>
       <syncFetcher.Form method="post">
         <input type="hidden" name="intent" value="sync_google_tasks" />
         <input type="hidden" name="date" value={selected} />
         <button
-          className="google-action"
+          className="btn btn-outline-primary btn-sm rounded-pill"
           type="submit"
           disabled={syncFetcher.state !== "idle"}
         >
@@ -76,10 +76,11 @@ export function GoogleIntegrationPanel({
         </p>
         <searchFetcher.Form method="post">
           <input type="hidden" name="intent" value="search_gmail" />
-          <label className="sr-only" htmlFor="gmail-query">
+          <label className="visually-hidden" htmlFor="gmail-query">
             Gmail search
           </label>
           <input
+            className="form-control"
             id="gmail-query"
             name="query"
             type="search"
@@ -88,7 +89,7 @@ export function GoogleIntegrationPanel({
             maxLength={256}
           />
           <button
-            className="google-action"
+            className="btn btn-outline-primary btn-sm rounded-pill"
             type="submit"
             disabled={searchFetcher.state !== "idle"}
           >

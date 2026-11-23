@@ -30,7 +30,7 @@ export default function CalendarPage() {
   const calendarSummary = (
     <section className="calendar-summary" aria-label="Selected date summary">
       <div className="calendar-summary-copy">
-        <p className="eyebrow accent">YOUR DAILY MISSION // {selected.replaceAll("-", ".")}</p>
+        <p className="text-label accent">YOUR DAILY MISSION // {selected.replaceAll("-", ".")}</p>
         <h2>{date.toLocaleDateString("en-US", {
           weekday: "long",
           month: "long",
@@ -40,8 +40,8 @@ export default function CalendarPage() {
         <p>{quest.message}</p>
         <div className="calendar-summary-progress">
           <div><span>MISSION PROGRESS</span><strong>{percent}%</strong></div>
-          <div className="calendar-summary-track" role="progressbar" aria-label="Selected date task progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
-            <span style={{ width: `${percent}%` }} />
+          <div className="progress" role="progressbar" aria-label="Selected date task progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+            <div className="progress-bar" style={{ width: `${percent}%` }} />
           </div>
           <span>{completed} / {total} BUILT-IN TASKS COMPLETE{page.journalDates.includes(selected) && " · JOURNAL ENTRY"}</span>
         </div>
@@ -54,8 +54,8 @@ export default function CalendarPage() {
   );
 
   return (
-    <div className="calendar-layout">
-      <div className="calendar-tasks">
+    <div className="calendar-layout row g-3">
+      <div className="calendar-tasks col-12 col-md-6">
         {calendarSummary}
         <TaskSection
           kind="daily"
@@ -88,7 +88,7 @@ export default function CalendarPage() {
           />
         </div>
       </div>
-      <div className="calendar-details">
+      <div className="calendar-details col-12 col-md-6">
         <CalendarSection
           date={date}
           selected={selected}

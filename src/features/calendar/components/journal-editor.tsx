@@ -22,13 +22,13 @@ export function JournalEditor({ selected, journal: savedJournal }: JournalEditor
   }
 
   return (
-    <section className="panel notes-panel journal-panel" id="journal">
+    <section className="card p-3 notes-panel journal-panel" id="journal">
       <div className="section-label">
         <span>YOUR JOURNAL</span>
         <BookOpen aria-hidden="true" size={14} />
       </div>
-      <p className="eyebrow">A MOMENT FOR YOU</p>
-      <h2>Make space to reflect.</h2>
+      <p className="text-label">A MOMENT FOR YOU</p>
+      <h2 className="h5">Make space to reflect.</h2>
       <p className="journal-date">{new Date(`${selected}T12:00:00`).toLocaleDateString("en-US", {
         weekday: "long", month: "long", day: "numeric", year: "numeric",
       })}</p>
@@ -36,8 +36,9 @@ export function JournalEditor({ selected, journal: savedJournal }: JournalEditor
       <fetcher.Form method="post">
         <input type="hidden" name="intent" value="save_journal" />
         <input type="hidden" name="date" value={selected} />
-        <label className="sr-only" htmlFor="journal-entry">Journal entry for {selected}</label>
+        <label className="visually-hidden" htmlFor="journal-entry">Journal entry for {selected}</label>
         <textarea
+          className="form-control"
           id="journal-entry"
           name="journal"
           placeholder="Start writing here..."
@@ -46,7 +47,7 @@ export function JournalEditor({ selected, journal: savedJournal }: JournalEditor
           disabled={fetcher.state !== "idle"}
           onChange={handleJournalChange}
         />
-        <button className="google-action" type="submit" disabled={fetcher.state !== "idle"}>
+        <button className="btn btn-outline-primary btn-sm rounded-pill" type="submit" disabled={fetcher.state !== "idle"}>
           {fetcher.state === "idle" ? "SAVE JOURNAL" : "SAVING..."}
         </button>
       </fetcher.Form>

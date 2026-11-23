@@ -17,7 +17,7 @@ export function SignInPanel({
 
   return (
     <main className="app-shell sign-in-shell">
-      <section className="panel sign-in-panel">
+      <section className="card p-3 sign-in-panel">
         <a className="brand" href="/" aria-label="CyberPlanner home">
           <span className="brand-logo-frame brand-logo-sign-in">
             <img
@@ -27,7 +27,7 @@ export function SignInPanel({
             />
           </span>
         </a>
-        <p className="eyebrow accent">CYBER PLANNER</p>
+        <p className="text-label accent">CYBER PLANNER</p>
         <h1>
           YOUR LIFE, <em>YOUR QUEST.</em>
         </h1>
@@ -51,7 +51,7 @@ export function SignInPanel({
               Sign in with the Google account configured for this private
               planner.
             </p>
-            <a className="google-login" href="/auth/google">
+            <a className="btn btn-outline-primary rounded-pill mt-3" href="/auth/google">
               SIGN IN WITH GOOGLE
             </a>
           </>

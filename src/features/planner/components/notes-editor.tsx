@@ -35,15 +35,15 @@ export function NotesEditor({ selected, note: savedNote, onSelect }: NotesEditor
   }
 
   return (
-    <section className="panel notes-panel notes-book">
+    <section className="card p-3 notes-panel notes-book">
       <Link className="section-label section-link" to={`/notes?date=${selected}`}>
         <span>06 / BRAIN DUMP</span>
         <Pencil aria-hidden="true" size={12} />
       </Link>
       <div className="notes-book-heading">
         <div>
-          <p className="eyebrow">A LITTLE SPACE FOR YOUR THOUGHTS</p>
-          <h2>Notes to self.</h2>
+          <p className="text-label">A LITTLE SPACE FOR YOUR THOUGHTS</p>
+          <h2 className="h5">Notes to self.</h2>
           <p>One page, one day, whatever is on your mind.</p>
         </div>
         <img src={witchyNotes} alt="" aria-hidden="true" />
@@ -55,10 +55,11 @@ export function NotesEditor({ selected, note: savedNote, onSelect }: NotesEditor
               weekday: "long", month: "long", day: "numeric", year: "numeric",
             })}
           </p>
-          <label className="sr-only" htmlFor="notes">
+          <label className="visually-hidden" htmlFor="notes">
             Notes for {selected}
           </label>
           <textarea
+            className="form-control"
             id="notes"
             placeholder="What's on your mind?"
             value={note}
@@ -70,7 +71,7 @@ export function NotesEditor({ selected, note: savedNote, onSelect }: NotesEditor
             <input type="hidden" name="intent" value="save_note" />
             <input type="hidden" name="date" value={selected} />
             <input type="hidden" name="note" value={note} />
-            <button className="google-action" type="submit" disabled={busy}>
+            <button className="btn btn-outline-primary btn-sm rounded-pill" type="submit" disabled={busy}>
               {busy ? "SAVING..." : "SAVE NOTE"}
             </button>
           </fetcher.Form>
@@ -83,11 +84,11 @@ export function NotesEditor({ selected, note: savedNote, onSelect }: NotesEditor
         </div>
       </div>
       <nav className="notes-book-navigation" aria-label="Note pages">
-        <button type="button" disabled={busy || !isValidDateKey(previous)} onClick={() => turnPage(previous)}>
+        <button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy || !isValidDateKey(previous)} onClick={() => turnPage(previous)}>
           <ChevronLeft aria-hidden="true" size={16} /> PREVIOUS DAY
         </button>
         <span>DAY BY DAY</span>
-        <button type="button" disabled={busy || !isValidDateKey(next)} onClick={() => turnPage(next)}>
+        <button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy || !isValidDateKey(next)} onClick={() => turnPage(next)}>
           NEXT DAY <ChevronRight aria-hidden="true" size={16} />
         </button>
       </nav>

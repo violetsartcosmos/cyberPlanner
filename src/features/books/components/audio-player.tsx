@@ -121,9 +121,9 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
   }
 
   return (
-    <section className="panel library-audio-player" aria-label={`Listening to ${book.title}`}>
+    <section className="card p-3 library-audio-player" aria-label={`Listening to ${book.title}`}>
       <div className="library-reader-heading">
-        <button type="button" onClick={() => { void closePlayer(); }}>Back to library</button>
+        <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => { void closePlayer(); }}>Back to library</button>
         <span className="library-kicker">YOUR AUDIO LIBRARY</span>
       </div>
       <div className="library-audio-main">
@@ -131,25 +131,25 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
         <p className="library-kicker">NOW LISTENING</p>
         <h2>{book.title}</h2>
         {chapterIndex >= 0 && <p>{chapters[chapterIndex].title}</p>}
-        <label className="sr-only" htmlFor="audio-progress">Playback position</label>
-        <input id="audio-progress" className="library-audio-progress" type="range" min={0} max={duration || 0} step="0.1" value={Math.min(current, duration)} onChange={(event) => seek(Number(event.target.value))} disabled={!duration} />
+        <label className="visually-hidden" htmlFor="audio-progress">Playback position</label>
+        <input id="audio-progress" className="form-range library-audio-progress" type="range" min={0} max={duration || 0} step="0.1" value={Math.min(current, duration)} onChange={(event) => seek(Number(event.target.value))} disabled={!duration} />
         <div className="library-audio-times"><span>{formatTime(current)}</span><span>{formatTime(Math.max(0, duration - current))} left</span><span>{formatTime(duration)}</span></div>
         <div className="library-audio-controls">
-          <button type="button" aria-label="Previous chapter" disabled={!chapters.length || chapterIndex < 0} onClick={() => seek(chapters[current - chapters[chapterIndex].start > 3 ? chapterIndex : Math.max(0, chapterIndex - 1)].start)}><SkipBack /></button>
-          <button type="button" aria-label="Back 30 seconds" onClick={() => seek(current - 30)}><RotateCcw /><span>30</span></button>
-          <button type="button" className="library-audio-play" aria-label={playing ? "Pause" : "Play"} onClick={() => { void togglePlayback(); }}>{playing ? <Pause /> : <Play />}</button>
-          <button type="button" aria-label="Forward 30 seconds" onClick={() => seek(current + 30)}><RotateCw /><span>30</span></button>
-          <button type="button" aria-label="Next chapter" disabled={chapterIndex + 1 >= chapters.length} onClick={() => seek(chapters[chapterIndex + 1].start)}><SkipForward /></button>
+          <button className="btn btn-outline-secondary btn-sm" type="button" aria-label="Previous chapter" disabled={!chapters.length || chapterIndex < 0} onClick={() => seek(chapters[current - chapters[chapterIndex].start > 3 ? chapterIndex : Math.max(0, chapterIndex - 1)].start)}><SkipBack /></button>
+          <button className="btn btn-outline-secondary btn-sm" type="button" aria-label="Back 30 seconds" onClick={() => seek(current - 30)}><RotateCcw /><span>30</span></button>
+          <button type="button" className="btn btn-primary library-audio-play" aria-label={playing ? "Pause" : "Play"} onClick={() => { void togglePlayback(); }}>{playing ? <Pause /> : <Play />}</button>
+          <button className="btn btn-outline-secondary btn-sm" type="button" aria-label="Forward 30 seconds" onClick={() => seek(current + 30)}><RotateCw /><span>30</span></button>
+          <button className="btn btn-outline-secondary btn-sm" type="button" aria-label="Next chapter" disabled={chapterIndex + 1 >= chapters.length} onClick={() => seek(chapters[chapterIndex + 1].start)}><SkipForward /></button>
         </div>
         <div className="library-audio-actions">
-          <button type="button" onClick={changeSpeed}><strong>{speed}x</strong><span>Speed</span></button>
-          <button type="button" aria-expanded={showChapters} onClick={() => setShowChapters(!showChapters)}><ListMusic /><span>Chapters</span></button>
-          <button type="button" disabled={busy || !duration} onClick={() => { void add(String(current), formatTime(current)); setShowBookmarks(true); }}><BookmarkPlus /><span>Add bookmark</span></button>
+          <button className="btn btn-outline-secondary btn-sm" type="button" onClick={changeSpeed}><strong>{speed}x</strong><span>Speed</span></button>
+          <button className="btn btn-outline-secondary btn-sm" type="button" aria-expanded={showChapters} onClick={() => setShowChapters(!showChapters)}><ListMusic /><span>Chapters</span></button>
+          <button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy || !duration} onClick={() => { void add(String(current), formatTime(current)); setShowBookmarks(true); }}><BookmarkPlus /><span>Add bookmark</span></button>
         </div>
-        {showChapters && <div className="library-audio-list"><h3>Chapters</h3>{chapters.length ? <ul>{chapters.map((chapter, index) => <li key={`${chapter.start}-${index}`}><button type="button" onClick={() => seek(chapter.start)}>{chapter.title} · {formatTime(chapter.start)}</button></li>)}</ul> : <p>No chapters available.</p>}</div>}
+        {showChapters && <div className="library-audio-list"><h3>Chapters</h3>{chapters.length ? <ul>{chapters.map((chapter, index) => <li key={`${chapter.start}-${index}`}><button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => seek(chapter.start)}>{chapter.title} · {formatTime(chapter.start)}</button></li>)}</ul> : <p>No chapters available.</p>}</div>}
         <div className="library-bookmarks">
-          <button type="button" aria-expanded={showBookmarks} onClick={() => setShowBookmarks(!showBookmarks)}>Bookmarks ({bookmarks.length})</button>
-          {showBookmarks && <ul>{bookmarks.map((bookmark) => <li key={bookmark.id}><button type="button" onClick={() => seek(Number(bookmark.position))}>{bookmark.label}</button><button type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>)}</ul>}
+          <button className="btn btn-outline-secondary btn-sm" type="button" aria-expanded={showBookmarks} onClick={() => setShowBookmarks(!showBookmarks)}>Bookmarks ({bookmarks.length})</button>
+          {showBookmarks && <ul>{bookmarks.map((bookmark) => <li key={bookmark.id}><button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => seek(Number(bookmark.position))}>{bookmark.label}</button><button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>)}</ul>}
         </div>
       </div>
       {progress && <audio
@@ -170,7 +170,7 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
         Your browser does not support audio playback.
       </audio>}
       {error && <p role="alert">{error}</p>}
-      {restoreError && <p role="alert">{restoreError} <button type="button" onClick={() => {
+      {restoreError && <p role="alert">{restoreError} <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => {
         setRestoreError("");
         restoringSeek.current = false;
         restored.current = true;

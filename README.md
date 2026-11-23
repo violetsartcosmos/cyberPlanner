@@ -65,7 +65,7 @@ The [architecture and models guide](docs/models.md) explains the layers, request
 
 | Area | Technology |
 | --- | --- |
-| Interface | React, React Router, TypeScript, Vite, Sass |
+| Interface | React, React Router, TypeScript, Vite, Bootstrap 5, Sass |
 | Server | Node.js, Hono |
 | Data | PostgreSQL, Prisma |
 | Integrations | Google OAuth, Tasks, Gmail, Calendar |

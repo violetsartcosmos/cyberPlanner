@@ -118,13 +118,13 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
     <section className="shop" aria-labelledby="shop-heading">
       <header className="shop-header">
         <div>
-          <p className="eyebrow">NYX'S LITTLE SHOP OF WINS</p>
+          <p className="text-label">NYX'S LITTLE SHOP OF WINS</p>
           <h2 id="shop-heading">Reward inventory</h2>
         </div>
         <span className="shop-balance"><Sparkles aria-hidden="true" size={15} /> {balance} PTS</span>
       </header>
-      <div className="shop-layout">
-        <div className="shop-inventory">
+      <div className="row g-3 m-0 p-3 p-lg-4 align-items-start">
+        <div className="shop-inventory col-12 col-lg-7">
           <div className="shop-inventory-heading">
             <h3 id="inventory-heading">Choose an item</h3>
             <span>{rewards.length} REWARDS</span>
@@ -133,27 +133,29 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
             {rewardItems}
           </div>
         </div>
-        <div className="shop-preview">
-          <img
-            src={shopkeeper}
-            alt="Pixel art of Nyx welcoming you from behind her shop counter."
-          />
-          <div className="shop-detail" aria-live="polite">
-            <p className="eyebrow">NYX'S PICK / {reward.cost} PTS</p>
-            <h3><SelectedIcon aria-hidden="true" size={21} /> {reward.title}</h3>
-            <p>{rewardDescriptions[reward.id]}</p>
-            {!canAfford && <p className="shop-shortfall">You need {reward.cost - balance} more points.</p>}
-            <fetcher.Form
-              method="post"
-              onSubmit={confirmRedemption}
-            >
-              <input type="hidden" name="intent" value="redeem_reward" />
-              <input type="hidden" name="rewardId" value={reward.id} />
-              <input type="hidden" name="date" value={selected} />
-              <button className="shop-purchase" type="submit" disabled={!canAfford || fetcher.state !== "idle"}>
-                {fetcher.state === "idle" ? `REDEEM / ${reward.cost} PTS` : "REDEEMING..."}
-              </button>
-            </fetcher.Form>
+        <div className="col-12 col-lg-5">
+          <div className="shop-preview">
+            <img
+              src={shopkeeper}
+              alt="Pixel art of Nyx welcoming you from behind her shop counter."
+            />
+            <div className="shop-detail" aria-live="polite">
+              <p className="text-label">NYX'S PICK / {reward.cost} PTS</p>
+              <h3><SelectedIcon aria-hidden="true" size={21} /> {reward.title}</h3>
+              <p>{rewardDescriptions[reward.id]}</p>
+              {!canAfford && <p className="shop-shortfall">You need {reward.cost - balance} more points.</p>}
+              <fetcher.Form
+                method="post"
+                onSubmit={confirmRedemption}
+              >
+                <input type="hidden" name="intent" value="redeem_reward" />
+                <input type="hidden" name="rewardId" value={reward.id} />
+                <input type="hidden" name="date" value={selected} />
+                <button className="btn btn-primary w-100" type="submit" disabled={!canAfford || fetcher.state !== "idle"}>
+                  {fetcher.state === "idle" ? `REDEEM / ${reward.cost} PTS` : "REDEEMING..."}
+                </button>
+              </fetcher.Form>
+            </div>
           </div>
         </div>
       </div>

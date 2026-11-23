@@ -23,7 +23,7 @@ export function Profile({ checks, selected, today, balance, totalXp, achievement
       <div className="profile-summary">
         <section className="profile-hero" aria-labelledby="profile-name">
           <div className="profile-intro">
-            <p className="eyebrow">PLAYER PROFILE <span>// YOUR LIFE, YOUR QUEST</span></p>
+            <p className="text-label">PLAYER PROFILE <span>// YOUR LIFE, YOUR QUEST</span></p>
             <h1 id="profile-name">Violet <Sparkles aria-hidden="true" size={23} /></h1>
             <p>Every little step is part of your story.</p>
             <ul className="profile-about">
@@ -42,11 +42,11 @@ export function Profile({ checks, selected, today, balance, totalXp, achievement
       </div>
 
       <LevelHeader totalXp={totalXp} earned={earned} />
-      <section className="profile-stats" aria-label="Violet's stats">
-        <div><span>QUESTS COMPLETED</span><strong>{stats.completedTasks}</strong><small>Built-in tasks checked</small></div>
-        <div><span>ACTIVE DAYS</span><strong>{stats.activeDays}</strong><small>Days with a built-in task</small></div>
-        <div><span>CURRENT STREAK</span><strong><Flame aria-hidden="true" size={20} /> {stats.activityStreak}</strong><small>Days with a built-in task</small></div>
-        <div><span>ACHIEVEMENTS</span><strong>{earned} <small>/ {achievements.length}</small></strong><small>Achievements earned</small></div>
+      <section className="profile-stats row row-cols-2 row-cols-lg-4 g-3 my-3" aria-label="Violet's stats">
+        <div className="col"><div className="card p-3 h-100"><span>QUESTS COMPLETED</span><strong>{stats.completedTasks}</strong><small>Built-in tasks checked</small></div></div>
+        <div className="col"><div className="card p-3 h-100"><span>ACTIVE DAYS</span><strong>{stats.activeDays}</strong><small>Days with a built-in task</small></div></div>
+        <div className="col"><div className="card p-3 h-100"><span>CURRENT STREAK</span><strong><Flame aria-hidden="true" size={20} /> {stats.activityStreak}</strong><small>Days with a built-in task</small></div></div>
+        <div className="col"><div className="card p-3 h-100"><span>ACHIEVEMENTS</span><strong>{earned} <small>/ {achievements.length}</small></strong><small>Achievements earned</small></div></div>
       </section>
       <Achievements achievements={achievements} />
     </div>

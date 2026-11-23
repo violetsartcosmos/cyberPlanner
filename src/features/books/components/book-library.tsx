@@ -77,17 +77,17 @@ function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void 
   }
 
   return (
-    <section className="panel library-reader" aria-label={`Reading ${book.title}`}>
+    <section className="card p-3 library-reader" aria-label={`Reading ${book.title}`}>
       <div className="library-reader-heading">
         <h2>{book.title}</h2>
-        <button type="button" onClick={() => { void closeReader(); }}>Back to library</button>
+        <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => { void closeReader(); }}>Back to library</button>
       </div>
       <ProgressStatus error={error} conflict={conflict} saving={saving} pendingPosition={pendingPosition} queue={queue.current} onUseDatabase={(value) => { interacted.current = false; setLocation(value.position ?? 0); }} />
       <div className="library-bookmarks">
-        <button type="button" disabled={busy || typeof location !== "string"} onClick={() => { void add(String(location), `Bookmark ${bookmarks.length + 1}`); }}>Add bookmark</button>
+        <button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy || typeof location !== "string"} onClick={() => { void add(String(location), `Bookmark ${bookmarks.length + 1}`); }}>Add bookmark</button>
         {bookmarkError && <p role="alert">{bookmarkError}</p>}
         {bookmarks.length > 0 && <details><summary>Bookmarks ({bookmarks.length})</summary><ul>{bookmarks.map((bookmark) => (
-          <li key={bookmark.id}><button type="button" disabled={!progress || location === null} onClick={() => { interacted.current = true; setLocation(bookmark.position); queue.current?.enqueue(bookmark.position); }}>{bookmark.label}</button><button type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>
+          <li key={bookmark.id}><button className="btn btn-outline-secondary btn-sm" type="button" disabled={!progress || location === null} onClick={() => { interacted.current = true; setLocation(bookmark.position); queue.current?.enqueue(bookmark.position); }}>{bookmark.label}</button><button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>
         ))}</ul></details>}
       </div>
       <div className="library-reader-view" onPointerDownCapture={() => { if (displayed.current) interacted.current = true; }} onKeyDownCapture={() => { if (displayed.current) interacted.current = true; }}>
@@ -160,7 +160,7 @@ export function BookLibrary() {
   const filtered = books?.filter(matchesFilter);
   const featured = library?.featuredOrder.find(matchesFilter);
   return (
-    <section className="panel library-panel">
+    <section className="card p-3 library-panel">
       <div className="library-heading">
         <div>
           <p className="library-kicker"><span /> YOUR PERSONAL LIBRARY</p>
@@ -169,14 +169,14 @@ export function BookLibrary() {
         </div>
         <label className="library-search">
           <Search size={18} aria-hidden="true" />
-          <span className="library-visually-hidden">Search books</span>
-          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title or folder" />
+          <span className="visually-hidden">Search books</span>
+          <input className="form-control" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title or folder" />
         </label>
       </div>
       <div className="library-filters" aria-label="Filter library">
-        <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All books</button>
-        <button type="button" aria-pressed={filter === "ebooks"} onClick={() => setFilter("ebooks")}>Ebooks</button>
-        <button type="button" aria-pressed={filter === "audio"} onClick={() => setFilter("audio")}>Audiobooks</button>
+        <button className="btn btn-outline-secondary btn-sm" type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All books</button>
+        <button className="btn btn-outline-secondary btn-sm" type="button" aria-pressed={filter === "ebooks"} onClick={() => setFilter("ebooks")}>Ebooks</button>
+        <button className="btn btn-outline-secondary btn-sm" type="button" aria-pressed={filter === "audio"} onClick={() => setFilter("audio")}>Audiobooks</button>
       </div>
       {error && <p role="alert">{error}</p>}
       {!books && !error && <p>Loading library...</p>}
@@ -188,7 +188,7 @@ export function BookLibrary() {
             <p className="library-kicker">A LITTLE SOMETHING FOR YOU</p>
             <h3>Make time<br />for a good book.</h3>
             <p>Your next escape is already on your shelf.</p>
-            <button type="button" onClick={() => setDetailsBook(featured)}>
+            <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setDetailsBook(featured)}>
               Explore this book <ArrowRight size={17} aria-hidden="true" />
             </button>
           </div>
@@ -208,15 +208,15 @@ export function BookLibrary() {
           <div><p className="library-kicker">YOUR COLLECTION</p><h3>On your bookshelf</h3></div>
           <span>{filtered.length} {filtered.length === 1 ? "book" : "books"}</span>
         </div>
-        <ul className="library-list">
+        <ul className="library-list row row-cols-2 row-cols-sm-3 row-cols-lg-4 row-cols-xl-5 g-3 list-unstyled">
           {filtered.map((book, index) => (
-            <li key={`${book.library ?? "ebooks"}:${book.path}`}>
+            <li className="col" key={`${book.library ?? "ebooks"}:${book.path}`}>
               <BookCover book={book} index={index} onClick={() => setDetailsBook(book)} />
               <strong className="library-book-title">{book.title}</strong>
               <small>{book.format.toUpperCase()} {book.path.includes("/") ? `· ${book.path.slice(0, book.path.lastIndexOf("/"))}` : ""}</small>
               <div className="library-book-actions">
                 <BookAction book={book} onRead={() => setSelected(book)} />
-                <button type="button" onClick={() => setDetailsBook(book)}>Details</button>
+                <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setDetailsBook(book)}>Details</button>
               </div>
             </li>
           ))}

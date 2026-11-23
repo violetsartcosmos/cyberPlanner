@@ -68,18 +68,18 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
         expanded={menuOpen}
         setExpanded={setMenuOpen}
       />
-      <main className={`dashboard ${isDashboard ? "" : "section-page"}`}>
-        <header className={`dashboard-header ${isDashboard ? "dashboard-header-home" : ""}`}>
+      <main className={`dashboard container-fluid ${isDashboard ? "" : "section-page"}`}>
+        <header className={`dashboard-header d-flex justify-content-between gap-3 ${isDashboard ? "dashboard-header-home" : ""}`}>
           {!isDashboard && section !== "profile" && (
             <div className="page-heading">
-              <p className="eyebrow accent">CYBER PLANNER</p>
+              <p className="text-label accent">CYBER PLANNER</p>
               <h1>{getNavigationLabel(pageHeadingSection)}</h1>
             </div>
           )}
           {isDashboard && <>
             <div className="intro">
               <div>
-                <p className="eyebrow accent">
+                <p className="text-label accent">
                   CYBER PLANNER <span>// 001</span>
                 </p>
                 <h1>
@@ -92,7 +92,7 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
             </div>
             <section className="mobile-welcome">
               <div>
-                <p className="eyebrow">YOUR LIFE, YOUR QUEST</p>
+                <p className="text-label">YOUR LIFE, YOUR QUEST</p>
                 <h1>
                   {selected === today
                     ? "Today"
@@ -131,17 +131,17 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
           </div>
         </header>
         {toggleFetcher.data?.error && (
-          <div className="storage-error" role="alert">
+          <div className="alert alert-danger" role="alert">
             {toggleFetcher.data.error}
           </div>
         )}
         {toggleFetcher.data?.earnedAchievements && toggleFetcher.data.earnedAchievements.length > 0 && (
-          <div className="achievement-notice" role="status">
+          <div className="alert alert-info" role="status">
             Achievement milestone earned: {toggleFetcher.data.earnedAchievements.join(", ")}!
           </div>
         )}
         {page.newlyEarned.length > 0 && (
-          <div className="achievement-notice" role="status">
+          <div className="alert alert-info" role="status">
             Achievement milestone earned: {page.newlyEarned.join(", ")}!
           </div>
         )}
@@ -153,7 +153,7 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
           </span>
           <span>
             <form method="post" action="/auth/logout">
-              <button className="logout-button" type="submit">SIGN OUT</button>
+              <button className="btn btn-outline-primary btn-sm rounded-pill" type="submit">SIGN OUT</button>
             </form>
           </span>
         </footer>
