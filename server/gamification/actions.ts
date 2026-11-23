@@ -2,8 +2,7 @@ import { morningRoutine, nightRoutine } from "../../shared/planner/definitions";
 import { achievementCategories, questKinds, tiers } from "../../shared/planner/gamification";
 import type { ActionHandler } from "../planner/dispatch";
 import {
-  advanceAchievement, completeQuest, createQuest, deleteAchievement,
-  deleteQuest, saveAchievement,
+  completeQuest, createQuest, deleteQuest, saveAchievement,
 } from "./service";
 
 function text(form: FormData, name: string, max: number, required = true) {
@@ -37,8 +36,8 @@ export const gamificationActions = {
     const tier = choice(form, "tier", tiers);
     const xp = positiveNumber(form, "xp", 100_000);
     const target = positiveNumber(form, "target", 3_650);
-    const tracking = choice(form, "tracking", ["manual", "streak"]);
-    if (tracking !== "manual" && tracking !== "streak") throw new Error("Choose a valid tracking method.");
+    const tracking = choice(form, "tracking", ["points", "streak"]);
+    if (tracking !== "points" && tracking !== "streak") throw new Error("Choose a valid tracking method.");
     const taskId = tracking === "streak" ? text(form, "taskId", 100) : null;
     const routineIds = [
       ...morningRoutine.map((_, index) => `morning-${index}`),
@@ -46,18 +45,10 @@ export const gamificationActions = {
     ];
     if (taskId !== null && !routineIds.includes(taskId)) throw new Error("Choose a valid routine task.");
     const reward = text(form, "reward", 200, false);
-    const unlockedAchievements = await saveAchievement(id || null, {
+    const earnedAchievements = await saveAchievement(id || null, {
       title, description, category, tier, xp, target, tracking, taskId, reward,
     });
-    return { ok: true, message: "Achievement saved.", unlockedAchievements };
-  },
-  async advance_achievement(form) {
-    const unlockedAchievements = await advanceAchievement(text(form, "id", 100));
-    return { ok: true, message: "Progress saved.", unlockedAchievements };
-  },
-  async delete_achievement(form) {
-    await deleteAchievement(text(form, "id", 100));
-    return { ok: true, message: "Achievement deleted. Earned XP is kept." };
+    return { ok: true, message: "Achievement saved.", earnedAchievements };
   },
   async create_quest(form) {
     await createQuest({

@@ -16,9 +16,11 @@ Google sync and weekly protocol are on the calendar page. Google Calendar requir
 
 Built-in daily quests, routines, and synced tasks are side quests worth 10 points each. On the quest board, create side quests, main quests, and end-game bosses with a rarity and point value. Completing a custom quest awards its points and equal XP once; deleting it does not remove earned points or XP.
 
-Your profile shows level, lifetime XP, activity, and achievements. Every 100 XP gains a level. Lifetime XP includes earned task points and one-time achievement XP; spending points does not lower it. Achievement XP is separate from the spendable balance.
+Your profile shows level, lifetime XP, activity, and achievements. Every 100 XP gains a level. Lifetime XP includes earned task points and achievement XP; spending points does not lower it. Achievement XP is separate from the spendable balance.
 
-Achievements can be created or edited with a target, rarity, XP, and optional personal reward. Most are self-reported: use **Unlock** or **+1 progress**, and observe any stated time limits yourself. For automatic consecutive-day tracking, choose a morning or night routine task. Streaks use the server's local date, so configure its time zone to match yours. Unlocked badges and earned XP remain even if checks are removed or an achievement is deleted. Changing an unfinished achievement's tracking method or routine task resets its progress.
+Achievements are earned automatically from lifetime task points or consecutive routine days. You can create new points or routine streak goals with a rarity, XP, and optional personal reward; existing goals cannot be edited or deleted from the page. Unverifiable seeded goals have been replaced with points milestones. Previously earned achievements and XP remain.
+
+Streak goals award XP at each new record milestone: for example, a seven-day goal advances to 14 days after it is reached. A broken streak starts over, but already earned milestones and XP remain; the next reward requires reaching the next record. Some seeded streaks count any built-in task, while routine streaks count the specified task. Streaks use the server's local date, so configure its time zone to match yours. To hide an achievement outside the app, use `npm run db:studio` and set its `deleted` field to true; earned XP is retained.
 
 In **Shop**, choose a reward and select **Redeem** to spend points. Purchases require confirmation and cannot be refunded.
 

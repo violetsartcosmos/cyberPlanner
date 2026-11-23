@@ -48,8 +48,12 @@ test("planner actions reject missing and file-valued fields", async () => {
       [{ intent: "import_legacy", payload: file }, "Unknown planner action."],
       [{ intent: "redeem_reward", rewardId: file }, "That reward is not available."],
       [{ intent: "create_quest", title: "Test", description: "", kind: "boss", tier: "Epic", points: "0" }, "points must be a whole number between 1 and 100000."],
-      [{ intent: "save_achievement", id: "", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "0", tracking: "manual", reward: "" }, "target must be a whole number between 1 and 3650."],
+      [{ intent: "save_achievement", id: "", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "0", tracking: "points", reward: "" }, "target must be a whole number between 1 and 3650."],
       [{ intent: "save_achievement", id: "", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "3", tracking: "streak", taskId: "morning-999", reward: "" }, "Choose a valid routine task."],
+      [{ intent: "advance_achievement", id: "water" }, "Unknown planner action."],
+      [{ intent: "delete_achievement", id: "water" }, "Unknown planner action."],
+      [{ intent: "save_achievement", id: "", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "1", tracking: "manual", reward: "" }, "Choose a valid tracking."],
+      [{ intent: "save_achievement", id: "water", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "1", tracking: "points", reward: "" }, "Existing achievements cannot be edited."],
     ];
     for (const [values, error] of cases) {
       assert.deepEqual(await submit(values), { ok: false, error });

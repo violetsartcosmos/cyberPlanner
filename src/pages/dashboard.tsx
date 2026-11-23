@@ -23,9 +23,9 @@ export default function DashboardPage() {
   } = usePlannerContext();
   const quest = dailyQuests[weekday];
   const { total, completed } = dayProgress(date, checked);
-  let unlocked = 0;
+  let earned = 0;
   for (const achievement of page.achievements) {
-    if (achievement.unlockedAt) unlocked += 1;
+    if (achievement.earnedAt) earned += 1;
   }
   const dateSummary = (
     <section className="panel date-summary" aria-label="Selected date summary">
@@ -45,7 +45,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <LevelHeader totalXp={page.totalXp} unlocked={unlocked} />
+      <LevelHeader totalXp={page.totalXp} earned={earned} />
       <div className="dashboard-grid">
         <aside className="left-column">
           <CalendarSection

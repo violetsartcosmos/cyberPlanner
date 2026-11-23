@@ -18,8 +18,9 @@ export type Achievement = {
   icon: string;
   tracking: string;
   taskId: string | null;
+  milestoneInterval: number | null;
   reward: string;
-  unlockedAt: string | null;
+  earnedAt: string | null;
 };
 
 export type Quest = {

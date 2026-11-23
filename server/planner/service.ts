@@ -2,7 +2,7 @@ import { databaseDate, dateString, getDatabase, serializableTransaction } from "
 import { awardTaskPoints } from "../points/service";
 import type { ExternalTask } from "../../shared/planner/types";
 import { dateKey } from "../../shared/planner/utils";
-import { refreshStreakAchievements } from "../gamification/service";
+import { refreshAchievements } from "../gamification/service";
 
 export type { ExternalTask } from "../../shared/planner/types";
 export type ExternalTaskSource = ExternalTask["source"];
@@ -116,8 +116,8 @@ export async function setBuiltinTaskCompletion(
     if (completed) {
       await awardTaskPoints(client, `builtin:${date}:${taskId}`, date);
     }
-    const unlockedAchievements = await refreshStreakAchievements(client, dateKey(new Date()));
-    return { checks, unlockedAchievements };
+    const earnedAchievements = await refreshAchievements(client, dateKey(new Date()));
+    return { checks, earnedAchievements };
   });
 }
 

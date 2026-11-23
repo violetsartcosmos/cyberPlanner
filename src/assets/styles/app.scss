@@ -566,7 +566,7 @@ button:disabled {
   color: var(--md-sys-color-secondary);
 }
 
-.achievement-preview-card.is-unlocked .achievement-preview-icon {
+.achievement-preview-card.is-earned .achievement-preview-icon {
   border-color: #54a9b9;
   background: #244b5a;
   color: var(--md-sys-color-primary);
@@ -2928,7 +2928,7 @@ button.calendar-event:hover {
   background: linear-gradient(135deg, #30213f, var(--md-sys-color-surface));
 }
 
-.achievement-card.is-unlocked {
+.achievement-card.is-earned {
   border-color: #438ba0;
   background: linear-gradient(135deg, #203b50, var(--md-sys-color-surface));
 }
@@ -2945,7 +2945,7 @@ button.calendar-event:hover {
   color: var(--md-sys-color-secondary);
 }
 
-.is-unlocked .achievement-icon {
+.is-earned .achievement-icon {
   border-color: #54a9b9;
   background: #244b5a;
   color: var(--md-sys-color-primary);
@@ -2962,7 +2962,7 @@ button.calendar-event:hover {
   gap: 4px;
 }
 
-.is-unlocked .achievement-status {
+.is-earned .achievement-status {
   color: var(--md-sys-color-primary);
 }
 
@@ -3253,7 +3253,7 @@ button.calendar-event:hover {
   position: relative;
 }
 
-.achievement-card:not(.is-unlocked) .achievement-icon {
+.achievement-card:not(.is-earned) .achievement-icon {
   filter: saturate(0.45);
 }
 

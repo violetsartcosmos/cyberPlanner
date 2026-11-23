@@ -62,7 +62,7 @@ The [Prisma schema](../prisma/schema.prisma) is the source of truth for fields, 
 | `GoogleConnection` | Singleton connection with the account email and encrypted refresh token. |
 | `ExternalTask` | Synced Google task or Gmail follow-up, keyed by source and external ID. |
 | `PointLedger` | Earn and spend entries. A partial unique index prevents duplicate earn entries for a task key. |
-| `Achievement` | Achievement definition, progress, tracking method, unlock state, and awarded XP. Deleted achievements retain awarded XP. |
+| `Achievement` | Achievement definition, progress, tracking method, earned state, and awarded XP. Deleted achievements retain awarded XP. |
 | `Quest` | Custom side, main, or boss quest with its point value and completion time. |
 | `BookData` | Metadata and revisioned progress keyed by library and path. |
 | `BookAlias` | Historical filename aliases retained in the database; no longer used for progress. |
@@ -162,15 +162,16 @@ Combines an achievement's definition and progress in one row. The database enfor
 | `description` | String | Explains what the achievement represents or how to earn it. |
 | `category` | String | Group for browsing and filtering: `Daily & Routine`, `Skill & Mastery`, `Career & Boss Battles`, `Health & Mind`, or `Exploration & Secrets`. |
 | `tier` | String | Rarity displayed in the UI: `Common`, `Rare`, `Epic`, or `Legendary`. |
-| `xp` | Integer | XP configured for this achievement when it is unlocked. |
-| `target` | Integer | Progress needed to unlock, such as a number of manual steps or consecutive routine days. |
-| `current` | Integer; `0` | Progress toward `target`; updated manually or from routine streaks. |
+| `xp` | Integer | XP configured for each earned achievement milestone. |
+| `target` | Integer | Lifetime task points needed, or the next consecutive-day milestone. |
+| `current` | Integer; `0` | Automatically calculated points or current streak toward `target`. |
 | `icon` | String; `"award"` | Icon key used when displaying the achievement. |
-| `tracking` | String; `"manual"` | `manual` increments progress through user actions; `streak` derives it from a routine task's consecutive checked days. |
-| `taskId` | String? | Built-in routine task ID, such as `morning-2`, used for `streak` tracking. Required for `streak` and null for `manual`. |
+| `tracking` | String; `"points"` | `points` uses lifetime earned task points; `streak` uses a specific routine task; `activity_streak` counts days with any built-in task. |
+| `taskId` | String? | Built-in routine task ID, such as `morning-2`; required for `streak` and null otherwise. |
+| `milestoneInterval` | Integer? | Streak milestone spacing; null for points achievements. |
 | `reward` | String; `""` | Optional personal reward description; separate from shop rewards and the points ledger. |
-| `unlockedAt` | Timestamp? | When the achievement was unlocked; null means it has not been unlocked. |
-| `awardedXp` | Integer; `0` | XP captured at unlock, preserving the earned amount even if the configured `xp` is later changed. |
+| `earnedAt` | Timestamp? | When the achievement was first earned; null means it is still in progress. Stored in the existing `unlocked_at` column. |
+| `awardedXp` | Integer; `0` | Total XP awarded, including each new streak record milestone. |
 | `deleted` | Boolean; `false` | Soft-delete flag: hides the achievement while retaining previously awarded XP. |
 | `createdAt` | Timestamp; current time | Creation time, used to order achievements. |
 

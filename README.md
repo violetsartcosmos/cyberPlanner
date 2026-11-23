@@ -10,7 +10,7 @@ A personal planner that turns routines and everyday tasks into quests. Plan your
 
 - **Plan your day:** track daily quests, morning and night routines, notes, and journal entries.
 - **See your schedule:** browse a calendar and connect Google Calendar, Tasks, and Gmail follow-ups.
-- **Celebrate progress:** earn points and XP, unlock achievements, and redeem rewards in the shop.
+- **Celebrate progress:** earn points, XP, and achievements, and redeem rewards in the shop.
 - **Build your library:** read EPUBs and PDFs or listen to M4B audiobooks from local folders.
 
 CyberPlanner is designed for **one Google account**. It stores planner data and an encrypted Google refresh token in PostgreSQL; Gmail message bodies are not stored.

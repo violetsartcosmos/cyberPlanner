@@ -4,7 +4,7 @@ export type PlannerActionResult = {
   ok: boolean;
   message?: string;
   error?: string;
-  unlockedAchievements?: string[];
+  earnedAchievements?: string[];
   emails?: Array<{
     id: string;
     subject: string;
@@ -73,7 +73,7 @@ export type PlannerPage =
       todayPoints: number;
       earnedTaskKeys: string[];
       totalXp: number;
-      newlyUnlocked: string[];
+      newlyEarned: string[];
       achievements: Achievement[];
       quests: Quest[];
       redemptions: Array<{

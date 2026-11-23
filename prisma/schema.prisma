@@ -68,10 +68,11 @@ model Achievement {
   target      Int
   current     Int       @default(0)
   icon        String    @default("award")
-  tracking    String    @default("manual")
+  tracking    String    @default("points")
   taskId      String?   @map("task_id")
+  milestoneInterval Int? @map("milestone_interval")
   reward      String    @default("")
-  unlockedAt  DateTime? @map("unlocked_at") @db.Timestamptz(6)
+  earnedAt    DateTime? @map("unlocked_at") @db.Timestamptz(6)
   awardedXp   Int       @default(0) @map("awarded_xp")
   deleted     Boolean   @default(false)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)

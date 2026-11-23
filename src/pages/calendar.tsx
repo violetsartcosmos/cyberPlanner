@@ -49,7 +49,7 @@ export default function CalendarPage() {
       <div className="calendar-summary-art" aria-hidden="true">
         <img src={witchyCalendar} alt="" />
       </div>
-      <AchievementPreview achievements={page.achievements} selected={selected} />
+      <AchievementPreview achievements={page.achievements} />
     </section>
   );
 

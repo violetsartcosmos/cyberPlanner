@@ -1,6 +1,4 @@
-import { useEffect } from "react";
 import { Award, Flame, Heart, Sparkles } from "lucide-react";
-import { useLocation } from "react-router";
 import { getProfileStats } from "../../../../shared/planner/profile";
 import type { Achievement } from "../../../../shared/planner/gamification";
 import { AchievementPreview, Achievements } from "./achievements";
@@ -17,16 +15,8 @@ type ProfileProps = {
 };
 
 export function Profile({ checks, selected, today, balance, totalXp, achievements }: ProfileProps) {
-  const { hash } = useLocation();
   const stats = getProfileStats(checks, today);
-  let unlocked = 0;
-  for (const achievement of achievements) {
-    if (achievement.unlockedAt) unlocked += 1;
-  }
-
-  useEffect(function showAchievements() {
-    if (hash === "#achievements") document.getElementById("achievements")?.scrollIntoView();
-  }, [hash]);
+  const earned = achievements.filter((achievement) => achievement.earnedAt).length;
 
   return (
     <div className="profile-page">
@@ -48,15 +38,15 @@ export function Profile({ checks, selected, today, balance, totalXp, achievement
             <img src={witchyPonder} alt="" />
           </div>
         </section>
-        <AchievementPreview achievements={achievements} selected={selected} onProfile />
+        <AchievementPreview achievements={achievements} />
       </div>
 
-      <LevelHeader totalXp={totalXp} unlocked={unlocked} />
+      <LevelHeader totalXp={totalXp} earned={earned} />
       <section className="profile-stats" aria-label="Violet's stats">
         <div><span>QUESTS COMPLETED</span><strong>{stats.completedTasks}</strong><small>Built-in tasks checked</small></div>
         <div><span>ACTIVE DAYS</span><strong>{stats.activeDays}</strong><small>Days with a built-in task</small></div>
         <div><span>CURRENT STREAK</span><strong><Flame aria-hidden="true" size={20} /> {stats.activityStreak}</strong><small>Days with a built-in task</small></div>
-        <div><span>ACHIEVEMENTS</span><strong>{unlocked} <small>/ {achievements.length}</small></strong><small>Badges unlocked</small></div>
+        <div><span>ACHIEVEMENTS</span><strong>{earned} <small>/ {achievements.length}</small></strong><small>Achievements earned</small></div>
       </section>
       <Achievements achievements={achievements} />
     </div>

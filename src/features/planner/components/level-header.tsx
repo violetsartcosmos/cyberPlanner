@@ -1,7 +1,7 @@
 import { Sparkles } from "lucide-react";
 import { levelProgress } from "../../../../shared/planner/profile";
 
-export function LevelHeader({ totalXp, unlocked }: { totalXp: number; unlocked: number }) {
+export function LevelHeader({ totalXp, earned }: { totalXp: number; earned: number }) {
   const level = levelProgress(totalXp);
   return (
     <section className="level-header" aria-label="Level and experience">
@@ -12,7 +12,7 @@ export function LevelHeader({ totalXp, unlocked }: { totalXp: number; unlocked: 
           <span style={{ width: `${level.current}%` }} />
         </div>
       </div>
-      <div className="level-totals"><strong>{totalXp} XP</strong><span>{unlocked} BADGES UNLOCKED</span></div>
+      <div className="level-totals"><strong>{totalXp} XP</strong><span>{earned} ACHIEVEMENTS EARNED</span></div>
     </section>
   );
 }

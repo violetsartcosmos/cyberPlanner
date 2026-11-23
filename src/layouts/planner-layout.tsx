@@ -135,14 +135,14 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
             {toggleFetcher.data.error}
           </div>
         )}
-        {toggleFetcher.data?.unlockedAchievements && toggleFetcher.data.unlockedAchievements.length > 0 && (
+        {toggleFetcher.data?.earnedAchievements && toggleFetcher.data.earnedAchievements.length > 0 && (
           <div className="achievement-notice" role="status">
-            Achievement unlocked: {toggleFetcher.data.unlockedAchievements.join(", ")}!
+            Achievement milestone earned: {toggleFetcher.data.earnedAchievements.join(", ")}!
           </div>
         )}
-        {page.newlyUnlocked.length > 0 && (
+        {page.newlyEarned.length > 0 && (
           <div className="achievement-notice" role="status">
-            Achievement unlocked: {page.newlyUnlocked.join(", ")}!
+            Achievement milestone earned: {page.newlyEarned.join(", ")}!
           </div>
         )}
         <Outlet context={outletContext} />

@@ -2,7 +2,7 @@ import type { Prisma } from "../generated/prisma/client";
 import { dateString, getDatabase, serializableTransaction } from "../db/client";
 import { awardTaskPoints } from "../points/service";
 import { streaks } from "../../shared/planner/profile";
-import { dateKey } from "../../shared/planner/utils";
+import { dateKey, dayProgress, parseDate } from "../../shared/planner/utils";
 
 type AchievementInput = {
   title: string;
@@ -11,43 +11,73 @@ type AchievementInput = {
   tier: string;
   xp: number;
   target: number;
-  tracking: "manual" | "streak";
+  tracking: "points" | "streak";
   taskId: string | null;
   reward: string;
 };
 
-export async function refreshStreakAchievements(client: Prisma.TransactionClient, today: string) {
-  const [achievements, days] = await Promise.all([
-    client.achievement.findMany({ where: { tracking: "streak", deleted: false, unlockedAt: null } }),
+export async function refreshAchievements(client: Prisma.TransactionClient, today: string) {
+  const [achievements, days, taskPoints] = await Promise.all([
+    client.achievement.findMany({ where: { deleted: false } }),
     client.plannerDay.findMany({ select: { day: true, checks: true } }),
+    client.pointLedger.aggregate({ where: { entryType: "earn" }, _sum: { amount: true } }),
   ]);
-  const unlocked: string[] = [];
+  const earnedAchievements: string[] = [];
   for (const achievement of achievements) {
+    if (achievement.tracking === "points") {
+      if (achievement.earnedAt) continue;
+      const current = Math.min(taskPoints._sum.amount ?? 0, achievement.target);
+      const earned = current >= achievement.target;
+      if (earned || current !== achievement.current) {
+        await client.achievement.update({
+          where: { id: achievement.id },
+          data: { current, ...(earned ? { earnedAt: new Date(), awardedXp: achievement.xp } : {}) },
+        });
+        if (earned) earnedAchievements.push(achievement.title);
+      }
+      continue;
+    }
+    if (achievement.tracking !== "streak" && achievement.tracking !== "activity_streak") {
+      throw new Error("Stored achievement tracking is invalid.");
+    }
+    if (!achievement.milestoneInterval || achievement.milestoneInterval < 1) {
+      throw new Error("Stored achievement milestone interval is invalid.");
+    }
     const dates = days.filter((day) => {
       if (!Array.isArray(day.checks) || !day.checks.every((item) => typeof item === "string")) {
         throw new Error("Stored planner checks are invalid.");
       }
+      if (achievement.tracking === "activity_streak") {
+        return dayProgress(parseDate(dateString(day.day)), day.checks).completed > 0;
+      }
       return achievement.taskId !== null && day.checks.includes(achievement.taskId);
     }).map((day) => dateString(day.day));
     const result = streaks(dates, today);
-    const earned = result.best >= achievement.target;
-    const current = earned ? achievement.target : Math.min(result.current, achievement.target);
-    if (earned || current !== achievement.current) {
+    const milestones = result.best >= achievement.target
+      ? Math.floor((result.best - achievement.target) / achievement.milestoneInterval) + 1
+      : 0;
+    const target = achievement.target + milestones * achievement.milestoneInterval;
+    const current = Math.min(result.current, target);
+    if (milestones || current !== achievement.current) {
       await client.achievement.update({
         where: { id: achievement.id },
-        data: earned
-          ? { current, unlockedAt: new Date(), awardedXp: achievement.xp }
-          : { current },
+        data: {
+          current, target,
+          ...(milestones ? {
+            earnedAt: achievement.earnedAt ?? new Date(),
+            awardedXp: achievement.awardedXp + milestones * achievement.xp,
+          } : {}),
+        },
       });
-      if (earned) unlocked.push(achievement.title);
+      if (milestones) earnedAchievements.push(achievement.title);
     }
   }
-  return unlocked;
+  return earnedAchievements;
 }
 
 export async function getGamification(today: string) {
   return serializableTransaction(async (client) => {
-    const newlyUnlocked = await refreshStreakAchievements(client, today);
+    const newlyEarned = await refreshAchievements(client, today);
     const [achievements, quests, taskXp, achievementXp] = await Promise.all([
       client.achievement.findMany({ where: { deleted: false }, orderBy: { createdAt: "asc" } }),
       client.quest.findMany({ orderBy: { createdAt: "desc" } }),
@@ -55,67 +85,28 @@ export async function getGamification(today: string) {
       client.achievement.aggregate({ _sum: { awardedXp: true } }),
     ]);
     return {
-      achievements: achievements.map(({ unlockedAt, ...achievement }) => ({
+      achievements: achievements.map(({ earnedAt, ...achievement }) => ({
         ...achievement,
-        unlockedAt: unlockedAt?.toISOString() ?? null,
+        earnedAt: earnedAt?.toISOString() ?? null,
       })),
       quests: quests.map(({ completedAt, ...quest }) => ({
         ...quest,
         completedAt: completedAt?.toISOString() ?? null,
       })),
       totalXp: (taskXp._sum.amount ?? 0) + (achievementXp._sum.awardedXp ?? 0),
-      newlyUnlocked,
+      newlyEarned,
     };
   });
 }
 
 export async function saveAchievement(id: string | null, input: AchievementInput) {
+  if (id) throw new Error("Existing achievements cannot be edited.");
   return serializableTransaction(async (client) => {
-    if (!id) {
-      await client.achievement.create({ data: input });
-    } else {
-      const existing = await client.achievement.findFirst({ where: { id, deleted: false } });
-      if (!existing) throw new Error("That achievement no longer exists.");
-      const changedTracking = existing.tracking !== input.tracking || existing.taskId !== input.taskId;
-      const current = existing.unlockedAt
-        ? input.target
-        : Math.min(changedTracking ? 0 : existing.current, input.target);
-      const earned = !existing.unlockedAt && input.tracking === "manual" && current >= input.target;
-      await client.achievement.update({
-        where: { id },
-        data: {
-          ...input, current,
-          ...(earned ? { unlockedAt: new Date(), awardedXp: input.xp } : {}),
-        },
-      });
-      if (earned) return [input.title];
-    }
-    return refreshStreakAchievements(client, dateKey(new Date()));
+    await client.achievement.create({ data: {
+      ...input, milestoneInterval: input.tracking === "streak" ? input.target : null,
+    } });
+    return refreshAchievements(client, dateKey(new Date()));
   });
-}
-
-export async function advanceAchievement(id: string) {
-  return serializableTransaction(async (client) => {
-    const achievement = await client.achievement.findFirst({ where: { id, deleted: false } });
-    if (!achievement) throw new Error("That achievement no longer exists.");
-    if (achievement.tracking !== "manual") throw new Error("This achievement is tracked from your routine.");
-    if (achievement.unlockedAt) throw new Error("That achievement is already unlocked.");
-    const current = Math.min(achievement.current + 1, achievement.target);
-    const earned = current === achievement.target;
-    await client.achievement.update({
-      where: { id },
-      data: { current, ...(earned ? { unlockedAt: new Date(), awardedXp: achievement.xp } : {}) },
-    });
-    return earned ? [achievement.title] : [];
-  });
-}
-
-export async function deleteAchievement(id: string) {
-  const result = await getDatabase().achievement.updateMany({
-    where: { id, deleted: false },
-    data: { deleted: true },
-  });
-  if (result.count !== 1) throw new Error("That achievement no longer exists.");
 }
 
 export async function createQuest(input: {

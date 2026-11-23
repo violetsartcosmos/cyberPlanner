@@ -143,27 +143,26 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal(initial.achievements.length, 30);
       assert.ok(initial.achievements.some((item) => item.id === "daily-early-bird"));
       await gamification.saveAchievement(null, {
-        title: "Test milestone", description: "Two steps", category: "Daily & Routine",
-        tier: "Rare", xp: 75, target: 2, tracking: "manual", taskId: null, reward: "Break",
+        title: "Test milestone", description: "Earn points", category: "Daily & Routine",
+        tier: "Rare", xp: 75, target: 50, tracking: "points", taskId: null, reward: "Break",
       });
-      const manual = await db.achievement.findFirstOrThrow({ where: { title: "Test milestone" } });
-      await Promise.all([gamification.advanceAchievement(manual.id), gamification.advanceAchievement(manual.id)]);
-      assert.equal((await db.achievement.findUniqueOrThrow({ where: { id: manual.id } })).awardedXp, 75);
-      await assert.rejects(gamification.advanceAchievement(manual.id), /already unlocked/);
-      await gamification.deleteAchievement(manual.id);
-      assert.equal((await gamification.getGamification(today)).totalXp, initial.totalXp + 75);
+      const milestone = await db.achievement.findFirstOrThrow({ where: { title: "Test milestone" } });
+      assert.equal(milestone.awardedXp, 0);
 
       await gamification.createQuest({ title: "Test boss", description: "", kind: "boss", tier: "Epic", points: 150 });
       const boss = await db.quest.findFirstOrThrow({ where: { title: "Test boss" } });
       const completions = await Promise.allSettled([gamification.completeQuest(boss.id), gamification.completeQuest(boss.id)]);
       assert.equal(completions.filter((result) => result.status === "fulfilled").length, 1);
-      assert.equal((await gamification.getGamification(today)).totalXp, initial.totalXp + 225);
+      await Promise.all([gamification.getGamification(today), gamification.getGamification(today)]);
+      assert.equal((await db.achievement.findUniqueOrThrow({ where: { id: milestone.id } })).awardedXp, 75);
+      const earnedTotal = (await gamification.getGamification(today)).totalXp;
+      assert.ok(earnedTotal >= initial.totalXp + 225);
       await gamification.deleteQuest(boss.id);
-      assert.equal((await gamification.getGamification(today)).totalXp, initial.totalXp + 225);
+      assert.equal((await gamification.getGamification(today)).totalXp, earnedTotal);
       const beforeSpending = await points.getPointsSummary(today);
       assert.equal((await points.redeemReward({ id: "xp-test", name: "XP test", cost: 20 })).redeemed, true);
       assert.equal((await points.getPointsSummary(today)).balance, beforeSpending.balance - 20);
-      assert.equal((await gamification.getGamification(today)).totalXp, initial.totalXp + 225);
+      assert.equal((await gamification.getGamification(today)).totalXp, earnedTotal);
 
       await gamification.saveAchievement(null, {
         title: "Test routine streak", description: "Two days", category: "Daily & Routine",
@@ -172,10 +171,10 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const yesterday = utils.dateKey(utils.addDays(new Date(), -1));
       await planner.setBuiltinTaskCompletion(yesterday, "morning-0", true);
       const result = await planner.setBuiltinTaskCompletion(today, "morning-0", true);
-      assert.ok(result.unlockedAchievements.includes("Test routine streak"));
+      assert.ok(result.earnedAchievements.includes("Test routine streak"));
       await planner.setBuiltinTaskCompletion(yesterday, "morning-0", false);
       const streak = await db.achievement.findFirstOrThrow({ where: { title: "Test routine streak" } });
-      assert.ok(streak.unlockedAt);
+      assert.ok(streak.earnedAt);
       assert.equal(streak.awardedXp, 40);
 
       await assert.rejects(client.query(
