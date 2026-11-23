@@ -11,7 +11,6 @@ datasource db {
 model PlannerDay {
   day    DateTime @id @db.Date
   checks Json     @default("[]")
-  note   String   @default("")
   journal String  @default("")
 
   @@map("planner_days")

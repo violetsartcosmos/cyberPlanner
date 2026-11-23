@@ -27,7 +27,6 @@ type MissionCalendarProps = {
   onSelect: (date: string) => void;
   onToday: () => void;
   onAddJournal: () => void;
-  journalOpen: boolean;
   googleEnabled: boolean;
 };
 
@@ -40,7 +39,6 @@ export function MissionCalendar({
   onSelect,
   onToday,
   onAddJournal,
-  journalOpen,
   googleEnabled,
 }: MissionCalendarProps) {
   const [view, setView] = useState<"day" | "week" | "month">("month");
@@ -299,8 +297,8 @@ export function MissionCalendar({
           )}
         </div>
       )}
-      <button className="btn btn-outline-primary w-100" type="button" onClick={onAddJournal} aria-expanded={journalOpen} aria-controls={journalOpen ? "journal" : undefined}>
-        ADD JOURNAL
+      <button className="btn btn-outline-primary w-100" type="button" onClick={onAddJournal}>
+        OPEN JOURNAL
       </button>
     </section>
   );

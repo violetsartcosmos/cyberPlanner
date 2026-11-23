@@ -352,13 +352,138 @@ body {
 }
 
 
-.section-page .notes-book,
 .section-page .profile-summary,
 .section-page .shop {
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.sidebar-level {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 6px;
+  color: var(--md-sys-color-primary);
+  font: 10px var(--font-mono);
+  white-space: nowrap;
+}
+
+.sidebar-level span {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.journal-layout {
+  display: grid;
+  grid-template-columns: minmax(160px, 210px) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: start;
+}
+
+.journal-browser label,
+.journal-browser h2 {
+  color: var(--md-sys-color-on-surface-variant);
+  font: 11px var(--font-mono);
+}
+
+.journal-browser h2 {
+  margin: 24px 0 10px;
+}
+
+.journal-browser ul {
+  list-style: none;
+  padding: 0;
+}
+
+.journal-browser li button {
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  text-align: left;
+}
+
+.journal-browser li button:hover,
+.journal-browser li button[aria-current] {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-primary);
+}
+
+.journal-entry {
+  min-width: 0;
+  max-width: 960px;
+}
+
+.journal-entry-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.journal-entry-heading h2 {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 34px);
+}
+
+.journal-entry-heading span,
+.journal-hint {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 11px;
+}
+
+.journal-hint {
+  margin: 12px 0 24px;
+}
+
+.journal-editor .bn-container {
+  --bn-colors-editor-background: transparent;
+  --bn-colors-editor-text: var(--md-sys-color-on-surface);
+  --bn-font-family: var(--font-mono);
+}
+
+.journal-editor {
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-md);
+}
+
+.journal-editor:focus-within {
+  border-color: var(--md-sys-color-primary);
+}
+
+.journal-editor .bn-editor {
+  min-height: 360px;
+  padding: 18px 20px 18px 48px;
+}
+
+.journal-navigation-warning {
+  margin-top: 16px;
+}
+
+.journal-navigation-warning button + button {
+  margin-left: 8px;
+}
+
+@media (max-width: 700px) {
+  .journal-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .journal-browser ul {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .journal-browser li {
+    flex: 0 0 auto;
+  }
 }
 
 .section-page .calendar-panel .calendar-day {
@@ -370,10 +495,6 @@ body {
 
 .section-page .calendar-panel .calendar-day.selected {
   background-color: var(--md-sys-color-primary);
-}
-
-.section-page .journal-panel textarea {
-  min-height: 220px;
 }
 
 .calendar-tasks,
@@ -557,19 +678,6 @@ body {
 .achievement-preview-card > span:last-child {
   color: var(--md-sys-color-on-surface-variant);
   font: 9px var(--font-mono);
-}
-
-.notes-panel .journal-date {
-  margin-top: 10px;
-  color: var(--md-sys-color-secondary);
-  font-size: 10px;
-}
-
-.notes-panel .journal-prompt {
-  color: var(--md-sys-color-on-surface-variant);
-  font: 13px/1.6 var(--font-mono);
-  letter-spacing: normal;
-  margin-top: 14px;
 }
 
 .intro {
@@ -1636,116 +1744,6 @@ h1 em,
   border-color: #87537f;
 }
 
-.notes-panel textarea {
-  width: 100%;
-  min-height: 115px;
-  resize: vertical;
-  margin-top: 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-md);
-  background: var(--md-sys-color-surface-container-low);
-  padding: 11px;
-  color: var(--md-sys-color-on-surface);
-  font-size: 12px;
-  line-height: 1.5;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.notes-panel textarea:hover {
-  border-color: var(--md-sys-color-outline);
-}
-
-.notes-panel textarea::placeholder {
-  color: #ac9dbd;
-}
-
-.notes-panel > p {
-  font: 8px var(--font-mono);
-  letter-spacing: 0.1em;
-  color: #ad9fbe;
-  margin: 8px 0 0;
-}
-
-.notes-book-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.notes-book-heading h2 {
-  margin: 8px 0;
-}
-
-.notes-book-heading p:not(.text-label) {
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: 12px;
-}
-
-.notes-book-heading img {
-  width: min(28%, 145px);
-  max-height: 165px;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-
-.notes-book-pages {
-  padding: 5px 5px 9px;
-  border: 1px solid #76518c;
-  border-radius: 8px 14px 14px 8px;
-  background: #291a3d;
-  box-shadow: 3px 4px 0 #161025, 5px 6px 0 #504064;
-}
-
-.notes-book-page {
-  padding: 16px;
-  border: 1px solid #68517e;
-  border-radius: 3px 9px 9px 3px;
-  background: linear-gradient(90deg, #21152f, #302141 7%, #241932);
-}
-
-.notes-book-date {
-  margin: 0;
-  color: var(--md-sys-color-secondary);
-  font: 10px var(--font-mono);
-  line-height: 1.5;
-}
-
-.notes-book-page textarea {
-  min-height: 160px;
-}
-
-.notes-book-navigation {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.notes-book-navigation button {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 8px 6px;
-  border: 0;
-  background: transparent;
-  color: var(--md-sys-color-primary);
-  font: 10px var(--font-mono);
-}
-
-.notes-book-navigation button:hover:not(:disabled) {
-  color: var(--md-sys-color-secondary);
-}
-
-.notes-book-navigation > span {
-  color: var(--md-sys-color-on-surface-variant);
-  font: 9px var(--font-mono);
-  text-align: center;
-}
-
 .storage-error {
   border: 1px solid var(--md-sys-color-error);
   border-radius: var(--md-sys-shape-corner-md);
@@ -2027,8 +2025,7 @@ button.calendar-event:hover {
     order: -2;
   }
 
-  .calendar-layout .calendar-panel,
-  .calendar-layout .journal-panel {
+  .calendar-layout .calendar-panel {
     order: -1;
   }
 
@@ -2349,10 +2346,6 @@ button.calendar-event:hover {
   -webkit-line-clamp: 3;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 10px;
-}
-
-.notes-panel form {
-  margin-top: 9px;
 }
 
 @media (max-width: 767.98px) {

@@ -1,14 +1,14 @@
 # Using CyberPlanner
 
-Use the sidebar to move between the dashboard, calendar, quest board, notes, library, shop, and profile. The double arrows expand or minimize the sidebar.
+Use the sidebar to move between the dashboard, calendar, quest board, journal, library, shop, and profile. The double arrows expand or minimize the sidebar. Your level appears in the sidebar and your points balance in the page header.
 
 ## Daily planning
 
-The dashboard combines a calendar, daily quests, routines, and notes. Routines default to morning before noon and night from noon using your device's local time; switch tabs whenever you like. The affirmation changes with the local date.
+The dashboard combines a calendar, daily quests, and routines. Routines default to morning before noon and night from noon using your device's local time; switch tabs whenever you like. The affirmation changes with the local date.
 
 On the calendar, switch between day, week, and month, select a date, or use **Today**. The selected day's built-in and synced tasks appear alongside Google Calendar events. Day view separates all-day events from its 24-hour timeline. You can add events to writable calendars and edit an event's title and time; edits to a recurring event apply only to the selected occurrence. Use **Refresh** to pick up external changes. Calendars shared with free/busy-only access cannot show event details.
 
-Choose **Add journal** on the dashboard or calendar to edit a journal entry for the selected day. Journal entries are separate from notes, and the calendar marks dates with entries. On the dashboard or notes page, save your note before using **Previous day** or **Next day**, or confirm that you want to discard changes.
+Open **Journal** from the sidebar or calendar to write for the selected date. Use the date picker or entry list to browse entries, and type `/` for blocks such as headings and checklists. Changes save automatically; the status shows when a save is pending or fails. Retry a failed save before leaving, or explicitly discard the unsaved changes. The calendar marks dates with entries. An abrupt browser or device closure can lose changes that have not finished saving.
 
 Google sync and weekly protocol are on the calendar page. Google Calendar requires the additional API and permissions described in the [setup guide](setup.md).
 

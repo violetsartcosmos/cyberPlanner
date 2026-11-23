@@ -3,7 +3,6 @@ import { isValidDateKey, parseDate, weekdayIndex } from "../../shared/planner/ut
 import {
   getExternalTask,
   savePlannerJournal,
-  savePlannerNote,
   setBuiltinTaskCompletion,
   setExternalTaskCompletion,
 } from "./service";
@@ -63,21 +62,12 @@ export const plannerFormActions = {
     return { ok: true };
   },
 
-  async save_note(form) {
-    const date = form.get("date");
-    const note = form.get("note");
-    if (typeof date !== "string" || !isValidDateKey(date)) return { ok: false, error: "That planner date is invalid." };
-    if (typeof note !== "string") return { ok: false, error: "That note is invalid." };
-    if (note.length > 10_000) return { ok: false, error: "Notes must be under 10,000 characters." };
-    await savePlannerNote(date, note);
-    return { ok: true, message: "Note saved." };
-  },
   async save_journal(form) {
     const date = form.get("date");
     const journal = form.get("journal");
     if (typeof date !== "string" || !isValidDateKey(date)) return { ok: false, error: "That planner date is invalid." };
     if (typeof journal !== "string") return { ok: false, error: "That journal entry is invalid." };
-    if (journal.length > 10_000) return { ok: false, error: "Journal entries must be under 10,000 characters." };
+    if (journal.length > 1_000_000) return { ok: false, error: "Journal entries must be under 1,000,000 characters." };
     await savePlannerJournal(date, journal);
     return { ok: true, message: "Journal saved." };
   },

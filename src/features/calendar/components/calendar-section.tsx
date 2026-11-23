@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { JournalEditor } from "./journal-editor";
+import { useNavigate } from "react-router";
 import { MissionCalendar } from "./mission-calendar";
 
 type CalendarSectionProps = {
@@ -8,34 +7,22 @@ type CalendarSectionProps = {
   today: string;
   checks: Record<string, string[]>;
   journalDates: string[];
-  showJournal: boolean;
-  journal: string;
   googleEnabled: boolean;
   onSelect: (date: string) => void;
   onToday: () => void;
 };
 
 export function CalendarSection({
-  date, selected, today, checks, journalDates, showJournal, journal, googleEnabled,
+  date, selected, today, checks, journalDates, googleEnabled,
   onSelect, onToday,
 }: CalendarSectionProps) {
-  const [journalOpen, setJournalOpen] = useState(showJournal);
-
-  useEffect(function syncJournalOpen() {
-    if (showJournal) setJournalOpen(true);
-  }, [showJournal]);
-
-  useEffect(function focusJournalEntry() {
-    if (journalOpen) document.getElementById("journal-entry")?.focus();
-  }, [journalOpen, selected]);
+  const navigate = useNavigate();
 
   function openJournal() {
-    if (journalOpen) document.getElementById("journal-entry")?.focus();
-    else setJournalOpen(true);
+    navigate(`/journal?date=${selected}`);
   }
 
   function selectCalendarDate(next: string) {
-    setJournalOpen(false);
     onSelect(next);
   }
 
@@ -50,12 +37,8 @@ export function CalendarSection({
         onSelect={selectCalendarDate}
         onToday={onToday}
         onAddJournal={openJournal}
-        journalOpen={journalOpen}
         googleEnabled={googleEnabled}
       />
-      {journalOpen && (
-        <JournalEditor key={selected} selected={selected} journal={journal} />
-      )}
     </>
   );
 }

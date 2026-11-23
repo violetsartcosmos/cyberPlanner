@@ -14,12 +14,13 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import cyberplannerLogo from "@/assets/images/cyberplanner-logo.png";
+import { levelProgress } from "../../../../shared/planner/profile";
 
 type NavigationItem = readonly [string, string, LucideIcon];
 const dashboardNavigation: NavigationItem = ["", "Dashboard", LayoutDashboard];
 const calendarNavigation: NavigationItem = ["calendar", "Calendar", CalendarDays];
 const questBoardNavigation: NavigationItem = ["quest-board", "Create Quest", Swords];
-const notesNavigation: NavigationItem = ["notes", "Notes", NotebookPen];
+const journalNavigation: NavigationItem = ["journal", "Journal", NotebookPen];
 const booksNavigation: NavigationItem = ["books", "Library", BookOpen];
 const rewardsNavigation: NavigationItem = ["rewards", "Shop", Gift];
 const profileNavigation: NavigationItem = ["profile", "Profile", UserRound];
@@ -28,7 +29,7 @@ export const navigationSections: readonly NavigationItem[] = [
   dashboardNavigation,
   calendarNavigation,
   questBoardNavigation,
-  notesNavigation,
+  journalNavigation,
   booksNavigation,
   rewardsNavigation,
   profileNavigation,
@@ -81,6 +82,7 @@ type PlannerNavigationProps = {
   selected: string;
   section: string;
   expanded: boolean;
+  totalXp: number;
   setExpanded: Dispatch<SetStateAction<boolean>>;
 };
 
@@ -88,6 +90,7 @@ export function PlannerNavigation({
   selected,
   section,
   expanded,
+  totalXp,
   setExpanded,
 }: PlannerNavigationProps) {
   function getInitialNarrowScreen() {
@@ -211,6 +214,10 @@ export function PlannerNavigation({
             )}
           </button>
         </div>
+        <div className="sidebar-level" aria-label={`Level ${levelProgress(totalXp).level}`}>
+          <strong>LVL {levelProgress(totalXp).level}</strong>
+          <span className="sidebar-label">{totalXp} XP</span>
+        </div>
         <nav
           className="section-navigation nav flex-column flex-nowrap"
           id="planner-navigation"
@@ -222,7 +229,7 @@ export function PlannerNavigation({
           </NavigationGroup>
           <NavigationGroup title="PLANNER">
             <NavigationLink item={questBoardNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
-            <NavigationLink item={notesNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+            <NavigationLink item={journalNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
             <NavigationLink item={booksNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
           </NavigationGroup>
           <NavigationGroup title="YOUR REWARDS">

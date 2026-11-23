@@ -1,6 +1,5 @@
 import { Sparkles } from "lucide-react";
 import { CalendarSection } from "@/features/calendar/components/calendar-section";
-import { NotesEditor } from "@/features/planner/components/notes-editor";
 import { LevelHeader } from "@/features/planner/components/level-header";
 import { TaskSection } from "@/features/planner/components/navigation-sections";
 import { dailyQuests } from "../../shared/planner/definitions";
@@ -54,8 +53,6 @@ export default function DashboardPage() {
             today={today}
             checks={page.checks}
             journalDates={page.journalDates}
-            showJournal={false}
-            journal={page.journal}
             googleEnabled={false}
             onSelect={onSelectDate}
             onToday={() => onSelectDate(today)}
@@ -100,7 +97,6 @@ export default function DashboardPage() {
               </span>
             </div>
           </section>
-          <NotesEditor selected={selected} note={page.note} onSelect={onSelectDate} />
           <TaskSection
             kind="synced"
             selected={selected}

@@ -49,13 +49,12 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         planner.setBuiltinTaskCompletion(date, "daily-1", true),
       ]);
       await planner.setBuiltinTaskCompletion(date, "daily-0", true);
-      await planner.savePlannerNote(date, "Keep this note");
-      await planner.savePlannerJournal(date, "A moment to remember");
+      const journal = JSON.stringify([{ type: "paragraph", content: "A moment to remember" }]);
+      await planner.savePlannerJournal(date, journal);
       await planner.setBuiltinTaskCompletion(date, "daily-2", true);
       const snapshot = await planner.getPlannerSnapshot(date);
       assert.deepEqual(new Set(snapshot.checks[date]), new Set(["daily-0", "daily-1", "daily-2"]));
-      assert.equal(await planner.getPlannerNote(date), "Keep this note");
-      assert.equal(await planner.getPlannerJournal(date), "A moment to remember");
+      assert.equal(await planner.getPlannerJournal(date), journal);
       assert.ok(snapshot.journalDates.includes(date));
       assert.equal((await points.getPointsSummary(date)).todayPoints, 30);
 
@@ -110,11 +109,11 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
           body: new URLSearchParams(values),
         }));
       }
-      assert.equal((await submit({ intent: "save_note" }, false)).ok, false);
+      assert.equal((await submit({ intent: "save_journal" }, false)).ok, false);
       assert.deepEqual(await submit({ intent: "__proto__" }), {
         ok: false, error: "Unknown planner action.",
       });
-      assert.deepEqual(await submit({ intent: "save_note", date: "bad", note: "x" }), {
+      assert.deepEqual(await submit({ intent: "save_journal", date: "bad", journal: "x" }), {
         ok: false, error: "That planner date is invalid.",
       });
       assert.deepEqual(await submit({ intent: "toggle_builtin", date: extraDate, taskId: "bad" }), {
@@ -126,12 +125,8 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.deepEqual(await submit({ intent: "redeem_reward", rewardId: "missing" }), {
         ok: false, error: "That reward is not available.",
       });
-      assert.equal((await submit({ intent: "save_note", date: extraDate, note: "Updated" })).ok, true);
-      assert.equal(await planner.getPlannerNote(extraDate), "Updated");
-      assert.equal((await submit({ intent: "save_note", date: extraDate, note: "" })).ok, true);
-      assert.equal(await planner.getPlannerNote(extraDate), "");
-      assert.equal((await submit({ intent: "save_journal", date: extraDate, journal: "Reflections" })).ok, true);
-      assert.equal(await planner.getPlannerJournal(extraDate), "Reflections");
+      assert.equal((await submit({ intent: "save_journal", date: extraDate, journal })).ok, true);
+      assert.equal(await planner.getPlannerJournal(extraDate), journal);
       assert.equal((await submit({ intent: "save_journal", date: extraDate, journal: "" })).ok, true);
       assert.equal(await planner.getPlannerJournal(extraDate), "");
       assert.ok(!(await planner.getPlannerSnapshot(extraDate)).journalDates.includes(extraDate));

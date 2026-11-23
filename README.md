@@ -8,7 +8,7 @@ A personal planner that turns routines and everyday tasks into quests. Plan your
 
 ## What you can do
 
-- **Plan your day:** track daily quests, morning and night routines, notes, and journal entries.
+- **Plan your day:** track daily quests, morning and night routines, and journal entries.
 - **See your schedule:** browse a calendar and connect Google Calendar, Tasks, and Gmail follow-ups.
 - **Celebrate progress:** earn points, XP, and achievements, and redeem rewards in the shop.
 - **Build your library:** read EPUBs and PDFs or listen to M4B audiobooks from local folders.
@@ -21,7 +21,7 @@ The screenshots show fictional sample data, captured in Chrome at desktop and mo
 
 ### Dashboard
 
-<img src="docs/screenshots/dashboard-desktop.png" alt="Desktop dashboard with daily mission, calendar, notes and routine" width="800">
+<img src="docs/screenshots/dashboard-desktop.png" alt="Desktop dashboard with daily mission, calendar and routine" width="800">
 <img src="docs/screenshots/dashboard-mobile.png" alt="Mobile dashboard with daily progress and calendar" width="250">
 
 ### Calendar
@@ -66,6 +66,7 @@ The [architecture and models guide](docs/models.md) explains the layers, request
 | Area | Technology |
 | --- | --- |
 | Interface | React, React Router, TypeScript, Vite, Bootstrap 5, Sass |
+| Journal editor | BlockNote |
 | Server | Node.js, Hono |
 | Data | PostgreSQL, Prisma |
 | Integrations | Google OAuth, Tasks, Gmail, Calendar |

@@ -67,6 +67,7 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
         selected={selected}
         section={section}
         expanded={menuOpen}
+        totalXp={page.totalXp}
         setExpanded={setMenuOpen}
       />
       <main className={`dashboard container-fluid ${isDashboard ? "" : "section-page"}`}>
@@ -127,9 +128,8 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
           </>}
           <div className="header-utilities">
             <div className="hero-actions">
-              {isRewards ? (
-                <span className="shop-balance"><Sparkles aria-hidden="true" size={15} /> {page.balance} PTS</span>
-              ) : (
+              <span className="shop-balance"><Sparkles aria-hidden="true" size={15} /> {page.balance} PTS</span>
+              {!isRewards && (
                 <span className="hero-date">
                   {date
                     .toLocaleDateString("en-US", {

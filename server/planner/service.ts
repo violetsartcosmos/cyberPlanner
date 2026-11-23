@@ -62,23 +62,6 @@ export async function getPlannerSnapshot(date: string) {
   };
 }
 
-export async function getPlannerNote(date: string) {
-  const day = await getDatabase().plannerDay.findUnique({
-    where: { day: databaseDate(date) },
-    select: { note: true },
-  });
-  return day?.note ?? "";
-}
-
-export async function savePlannerNote(date: string, note: string) {
-  const day = databaseDate(date);
-  await getDatabase().plannerDay.upsert({
-    where: { day },
-    create: { day, note },
-    update: { note },
-  });
-}
-
 export async function getPlannerJournal(date: string) {
   const day = await getDatabase().plannerDay.findUnique({
     where: { day: databaseDate(date) },

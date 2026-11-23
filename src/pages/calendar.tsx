@@ -5,12 +5,10 @@ import { WeeklyProtocolPanel } from "@/features/calendar/components/weekly-proto
 import { TaskSection } from "@/features/planner/components/navigation-sections";
 import { dailyQuests } from "../../shared/planner/definitions";
 import { dayProgress } from "../../shared/planner/utils";
-import { useLocation } from "react-router";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import witchyCalendar from "@/assets/images/witchycalendar.png";
 
 export default function CalendarPage() {
-  const location = useLocation();
   const {
     page,
     selected,
@@ -95,8 +93,6 @@ export default function CalendarPage() {
           today={today}
           checks={page.checks}
           journalDates={page.journalDates}
-          showJournal={location.hash === "#journal"}
-          journal={page.journal}
           googleEnabled
           onSelect={onSelectDate}
           onToday={onSelectToday}

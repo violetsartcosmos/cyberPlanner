@@ -66,7 +66,6 @@ export type PlannerPage =
       selected: string;
       checks: Record<string, string[]>;
       tasks: ExternalTask[];
-      note: string;
       journal: string;
       journalDates: string[];
       balance: number;

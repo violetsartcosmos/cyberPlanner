@@ -32,7 +32,7 @@ In development, Vite serves the browser app and proxies `/api` and `/auth` to th
 | [`src/features/`](../src/features/) | Domain-specific UI, hooks, and services organized by feature. |
 | [`src/assets/`](../src/assets/) | Global styles and browser images. |
 | [`server/index.ts`](../server/index.ts), [`server/app.ts`](../server/app.ts) | HTTP entry point, middleware, auth and API routes. |
-| [`server/planner/`](../server/planner/) | Planner page assembly, action dispatch, notes, journals, and task state. |
+| [`server/planner/`](../server/planner/) | Planner page assembly, action dispatch, journals, and task state. |
 | [`server/auth/`](../server/auth/), [`server/google/`](../server/google/) | Session and OAuth handling; Google Tasks, Gmail, and Calendar integration. |
 | [`server/points/`](../server/points/), [`server/gamification/`](../server/gamification/) | Points ledger, rewards, quests, achievements, and XP. |
 | [`server/books/`](../server/books/) | Library files, metadata, bookmarks, and saved references. |
@@ -58,7 +58,7 @@ The [Prisma schema](../prisma/schema.prisma) is the source of truth for fields, 
 
 | Model | Purpose |
 | --- | --- |
-| `PlannerDay` | One row per date containing built-in task checks, a note, and a separate journal entry. |
+| `PlannerDay` | One row per date containing built-in task checks and a journal entry. |
 | `GoogleConnection` | Singleton connection with the account email and encrypted refresh token. |
 | `ExternalTask` | Synced Google task or Gmail follow-up, keyed by source and external ID. |
 | `PointLedger` | Earn and spend entries. A partial unique index prevents duplicate earn entries for a task key. |
@@ -98,14 +98,13 @@ The names below are **Prisma field names**; fields mapped with `@map` use snake_
 
 ### `PlannerDay` (`planner_days`)
 
-Stores the state of built-in tasks, notes, and the journal for a particular day. Task definitions themselves live in [`shared/planner/definitions.ts`](../shared/planner/definitions.ts), not in this table.
+Stores the state of built-in tasks and the journal for a particular day. Task definitions themselves live in [`shared/planner/definitions.ts`](../shared/planner/definitions.ts), not in this table.
 
 | Field | Type / default | What it holds and why |
 | --- | --- | --- |
 | `day` | Date; primary key | The planner date; ensures at most one row per day. |
 | `checks` | JSON; `[]` | Array of completed built-in task IDs, such as `daily-0` or `morning-2`. Used to display progress and calculate routine streaks. |
-| `note` | String; `""` | The editable daily note, kept separately from the journal. |
-| `journal` | String; `""` | The day's journal entry; nonempty entries also mark dates on the calendar. |
+| `journal` | String; `""` | The day's BlockNote JSON document; nonempty entries also mark dates on the calendar. |
 
 ### `GoogleConnection` (`google_connections`)
 
