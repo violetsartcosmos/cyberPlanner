@@ -15,7 +15,8 @@ test("book data survives migration, renaming and bookmark changes", async () => 
   if (process.env.TEST_DATABASE_URL) process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
   const prefix = `cyberplanner-test-${randomUUID()}`;
   const original = `${prefix}.m4b`;
-  const renamed = `${prefix}-renamed.m4b`;
+  const renamedTitle = `${prefix} Apollyon (Left Behind Series 05)`;
+  const renamed = `${renamedTitle}.m4b`;
   const collision = `${prefix}-existing.m4b`;
   const root = await mkdtemp(join(tmpdir(), "cyberplanner-book-data-"));
   const db = getDatabase();
@@ -40,7 +41,7 @@ test("book data survives migration, renaming and bookmark changes", async () => 
       await assert.rejects(() => renameBook(root, "audiblebooks", original, prefix.toUpperCase()), /capitalization/);
       assert.equal(await readFile(join(root, original), "utf8"), "test audio");
     }
-    const updated = await renameBook(root, "audiblebooks", original, `${prefix}-renamed`);
+    const updated = await renameBook(root, "audiblebooks", original, renamedTitle);
     assert.equal(updated.path, renamed);
     assert.equal(updated.storagePath, original);
     assert.equal(await readFile(join(root, renamed), "utf8"), "test audio");

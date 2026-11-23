@@ -6,7 +6,7 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { BookAction } from "../client/components/books/book-action.tsx";
-import { matchesLibraryFilter, shuffleBooks } from "../client/components/books/library-utils.ts";
+import { matchesLibraryFilter, renameErrorMessage, shuffleBooks } from "../client/components/books/library-utils.ts";
 import { commonsFileTitle, parseWikipediaExtract, wikipediaImageReference } from "../client/components/books/wikipedia-utils.ts";
 import { isWikipediaDetails, MAX_WIKIPEDIA_TEXT_LENGTH } from "../shared/planner/books.ts";
 import { bookResponse, getBookDetails, listBooks, saveBookDetails } from "../server/books/library.ts";
@@ -96,6 +96,15 @@ test("book actions preserve format-specific labels and PDF links", () => {
   assert.match(render({ path: "A.epub", title: "A", format: "epub" }, "Read EPUB"), />Read EPUB<\/button>/);
   assert.match(render({ path: "A.m4b", title: "A", format: "m4b" }), />Listen<\/button>/);
   assert.match(render({ path: "A.pdf", title: "A", format: "pdf" }), /href="\/api\/books\/file\?path=A.pdf"[^>]*>Open PDF<\/a>/);
+});
+
+test("rename failures report server errors and stale API responses", async () => {
+  assert.equal(await renameErrorMessage(new Response("404 Not Found", { status: 404 })),
+    "Rename API not found. Restart the server to load the latest version.");
+  assert.equal(await renameErrorMessage(Response.json({ error: "A file with that name already exists." }, { status: 409 })),
+    "A file with that name already exists.");
+  assert.equal(await renameErrorMessage(new Response("bad json", { status: 500, headers: { "Content-Type": "application/json" } })),
+    "Could not rename the file (HTTP 500).");
 });
 
 test("library lists nested EPUBs and PDFs and serves only valid book paths", async () => {

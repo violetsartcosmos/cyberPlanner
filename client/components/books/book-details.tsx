@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { ExternalLink } from "lucide-react";
 import { isWikipediaDetails, isWikipediaUrl, MAX_WIKIPEDIA_TEXT_LENGTH, type LibraryBook, type WikipediaDetails } from "../../../shared/planner/books";
 import { BookAction } from "./book-action";
+import { renameErrorMessage } from "./library-utils";
 import { wikipediaImageReference, parseWikipediaExtract } from "./wikipedia-utils";
 import { bookCoverUrl } from "./book-url";
 import { useEmbeddedDetails } from "./use-embedded-details";
@@ -187,8 +188,7 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
         body: JSON.stringify({ path: book.path, library: book.library, title }),
       });
       if (!response.ok) {
-        const data: unknown = await response.json();
-        throw new Error(typeof record(data).error === "string" ? string(record(data).error) : "Could not rename the file.");
+        throw new Error(await renameErrorMessage(response));
       }
       onRenamed(await response.json() as LibraryBook);
     } catch (error) {

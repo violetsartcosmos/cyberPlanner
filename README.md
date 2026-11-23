@@ -54,7 +54,7 @@ Run commands in the project folder.
 | Command | Purpose |
 | --- | --- |
 | `npm install` | Install dependencies and generate Prisma Client. |
-| `npm run dev` | Start the API on localhost:3000 and the Vite development server on localhost:5173. The client proxies API and sign-in requests to the API. |
+| `npm run dev` | Start the API on localhost:3000 and the Vite development server on localhost:5173. The client proxies API and sign-in requests to the API. Restart the command after changing server files. |
 | `npm run build` | Build the browser client and API server. |
 | `npm run start` | Serve the production client and API together at localhost:3000; build first. |
 | `npm run db:migrate` | Apply committed database migrations. |
