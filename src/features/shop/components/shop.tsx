@@ -116,13 +116,6 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
 
   return (
     <section className="shop" aria-labelledby="shop-heading">
-      <header className="shop-header">
-        <div>
-          <p className="text-label">NYX'S LITTLE SHOP OF WINS</p>
-          <h2 id="shop-heading">Reward inventory</h2>
-        </div>
-        <span className="shop-balance"><Sparkles aria-hidden="true" size={15} /> {balance} PTS</span>
-      </header>
       <div className="row g-3 m-0 p-3 p-lg-4 align-items-start">
         <div className="shop-inventory col-12 col-lg-7">
           <div className="shop-inventory-heading">

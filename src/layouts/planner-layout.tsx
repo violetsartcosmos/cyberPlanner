@@ -52,6 +52,7 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
   } = usePlannerController(page);
   const section = location.pathname === "/" ? "" : location.pathname.slice(1);
   const isDashboard = section === "";
+  const isRewards = section === "rewards";
   const { total, completed, percent } = dayProgress(date, checked);
   const pageHeadingSection = section === "quests" ? "calendar" : section;
 
@@ -72,8 +73,17 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
         <header className={`dashboard-header d-flex justify-content-between gap-3 ${isDashboard ? "dashboard-header-home" : ""}`}>
           {!isDashboard && section !== "profile" && (
             <div className="page-heading">
-              <p className="text-label accent">CYBER PLANNER</p>
-              <h1>{getNavigationLabel(pageHeadingSection)}</h1>
+              {isRewards ? (
+                <>
+                  <p className="text-label accent">NYX'S LITTLE SHOP OF WINS</p>
+                  <h1 id="shop-heading">Reward inventory</h1>
+                </>
+              ) : (
+                <>
+                  <p className="text-label accent">CYBER PLANNER</p>
+                  <h1>{getNavigationLabel(pageHeadingSection)}</h1>
+                </>
+              )}
             </div>
           )}
           {isDashboard && <>
@@ -117,15 +127,19 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
           </>}
           <div className="header-utilities">
             <div className="hero-actions">
-              <span className="hero-date">
-                {date
-                  .toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })
-                  .toUpperCase()}
-              </span>
+              {isRewards ? (
+                <span className="shop-balance"><Sparkles aria-hidden="true" size={15} /> {page.balance} PTS</span>
+              ) : (
+                <span className="hero-date">
+                  {date
+                    .toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                    .toUpperCase()}
+                </span>
+              )}
             </div>
             {isDashboard && <DailyAffirmation today={today} />}
           </div>
