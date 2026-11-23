@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { listCalendarData, saveCalendarEvent, validCalendarRange } from "../server/google/calendar.ts";
-import { eventHour, eventOccursOnDate } from "../client/components/calendar/google-calendar.tsx";
+import { eventHour, eventOccursOnDate } from "../src/features/calendar/components/google-calendar.tsx";
 import { parseDate } from "../shared/planner/utils.ts";
 
 test("calendar loads all pages and distinguishes writable, read-only and free-busy calendars", async () => {

@@ -1,0 +1,109 @@
+import { AchievementPreview } from "@/features/planner/components/achievements";
+import { CalendarSection } from "@/features/calendar/components/calendar-section";
+import { GoogleIntegrationPanel } from "@/features/calendar/components/integration-panel";
+import { WeeklyProtocolPanel } from "@/features/calendar/components/weekly-protocol";
+import { TaskSection } from "@/features/planner/components/navigation-sections";
+import { dailyQuests } from "../../shared/planner/definitions";
+import { dayProgress } from "../../shared/planner/utils";
+import { useLocation } from "react-router";
+import { usePlannerContext } from "@/features/planner/hooks/planner-context";
+import witchyCalendar from "@/assets/images/witchycalendar.png";
+
+export default function CalendarPage() {
+  const location = useLocation();
+  const {
+    page,
+    selected,
+    today,
+    date,
+    weekday,
+    checked,
+    externalChecked,
+    tasksDisabled,
+    onToggleTask,
+    onSelectDate,
+    onSelectToday,
+  } = usePlannerContext();
+  const quest = dailyQuests[weekday];
+  const { total, completed, percent } = dayProgress(date, checked);
+
+  const calendarSummary = (
+    <section className="calendar-summary" aria-label="Selected date summary">
+      <div className="calendar-summary-copy">
+        <p className="eyebrow accent">YOUR DAILY MISSION // {selected.replaceAll("-", ".")}</p>
+        <h2>{date.toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}</h2>
+        <p>{quest.message}</p>
+        <div className="calendar-summary-progress">
+          <div><span>MISSION PROGRESS</span><strong>{percent}%</strong></div>
+          <div className="calendar-summary-track" role="progressbar" aria-label="Selected date task progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+            <span style={{ width: `${percent}%` }} />
+          </div>
+          <span>{completed} / {total} BUILT-IN TASKS COMPLETE{page.journalDates.includes(selected) && " · JOURNAL ENTRY"}</span>
+        </div>
+      </div>
+      <div className="calendar-summary-art" aria-hidden="true">
+        <img src={witchyCalendar} alt="" />
+      </div>
+      <AchievementPreview achievements={page.achievements} selected={selected} />
+    </section>
+  );
+
+  return (
+    <div className="calendar-layout">
+      <div className="calendar-tasks">
+        {calendarSummary}
+        <TaskSection
+          kind="daily"
+          selected={selected}
+          weekday={weekday}
+          checked={checked}
+          earnedTaskKeys={page.earnedTaskKeys}
+          disabled={tasksDisabled}
+          onToggle={onToggleTask}
+        />
+        <div id="routines">
+          <TaskSection
+            kind="routines"
+            selected={selected}
+            checked={checked}
+            earnedTaskKeys={page.earnedTaskKeys}
+            disabled={tasksDisabled}
+            onToggle={onToggleTask}
+          />
+        </div>
+        <div id="synced-tasks">
+          <TaskSection
+            kind="synced"
+            selected={selected}
+            tasks={page.tasks}
+            checked={externalChecked}
+            earnedTaskKeys={page.earnedTaskKeys}
+            disabled={tasksDisabled}
+            onToggle={onToggleTask}
+          />
+        </div>
+      </div>
+      <div className="calendar-details">
+        <CalendarSection
+          date={date}
+          selected={selected}
+          today={today}
+          checks={page.checks}
+          journalDates={page.journalDates}
+          showJournal={location.hash === "#journal"}
+          journal={page.journal}
+          googleEnabled
+          onSelect={onSelectDate}
+          onToday={onSelectToday}
+        />
+        <WeeklyProtocolPanel selected={selected} weekday={weekday} />
+        <GoogleIntegrationPanel email={page.email} selected={selected} />
+      </div>
+    </div>
+  );
+}

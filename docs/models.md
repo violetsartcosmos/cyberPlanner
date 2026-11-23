@@ -27,10 +27,10 @@ In development, Vite serves the browser app and proxies `/api` and `/auth` to th
 
 | Location | Responsibility |
 | --- | --- |
-| [`client/main.tsx`](../client/main.tsx) | Browser entry point and React Router configuration. |
-| [`client/routes/home.tsx`](../client/routes/home.tsx) | Page loader, actions, and section selection. |
-| [`client/components/`](../client/components/) | UI grouped by feature: planner, calendar, books, shop, and layout. |
-| [`client/styles/`](../client/styles/) and [`client/public/`](../client/public/) | Styles and browser assets. |
+| [`src/main.tsx`](../src/main.tsx), [`src/App.tsx`](../src/App.tsx), [`src/routes/router.tsx`](../src/routes/router.tsx) | Browser entry point, app composition, and React Router configuration. |
+| [`src/layouts/planner-layout.tsx`](../src/layouts/planner-layout.tsx), [`src/pages/`](../src/pages/) | Shared planner shell and thin route-level views. |
+| [`src/features/`](../src/features/) | Domain-specific UI, hooks, and services organized by feature. |
+| [`src/assets/`](../src/assets/) | Global styles and browser images. |
 | [`server/index.ts`](../server/index.ts), [`server/app.ts`](../server/app.ts) | HTTP entry point, middleware, auth and API routes. |
 | [`server/planner/`](../server/planner/) | Planner page assembly, action dispatch, notes, journals, and task state. |
 | [`server/auth/`](../server/auth/), [`server/google/`](../server/google/) | Session and OAuth handling; Google Tasks, Gmail, and Calendar integration. |

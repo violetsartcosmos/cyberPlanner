@@ -5,9 +5,9 @@ import { join } from "node:path";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { BookAction } from "../client/components/books/book-action.tsx";
-import { matchesLibraryFilter, renameErrorMessage, shuffleBooks } from "../client/components/books/library-utils.ts";
-import { commonsFileTitle, parseWikipediaExtract, wikipediaImageReference } from "../client/components/books/wikipedia-utils.ts";
+import { BookAction } from "../src/features/books/components/book-action.tsx";
+import { matchesLibraryFilter, renameErrorMessage, shuffleBooks } from "../src/features/books/utils/library-utils.ts";
+import { commonsFileTitle, parseWikipediaExtract, wikipediaImageReference } from "../src/features/books/utils/wikipedia-utils.ts";
 import { isWikipediaDetails, MAX_WIKIPEDIA_TEXT_LENGTH } from "../shared/planner/books.ts";
 import { bookResponse, getBookDetails, listBooks, saveBookDetails } from "../server/books/library.ts";
 

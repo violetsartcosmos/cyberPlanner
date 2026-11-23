@@ -7,7 +7,12 @@ const apiPort = process.env.PORT || "3000";
 const backendDirectory = resolve("server");
 
 export default defineConfig({
-  root: "client",
+  root: "src",
+  resolve: {
+    alias: {
+      "@": resolve("src"),
+    },
+  },
   plugins: [
     {
       name: "prevent-server-imports",

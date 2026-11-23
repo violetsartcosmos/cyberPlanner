@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { validBookPosition } from "../shared/planner/books.ts";
-import { ProgressQueue } from "../client/components/books/use-book-progress.ts";
-import { audioPositionToSave, restoredAudioSeconds } from "../client/components/books/audio-progress.ts";
+import { ProgressQueue } from "../src/features/books/hooks/use-book-progress.ts";
+import { audioPositionToSave, restoredAudioSeconds } from "../src/features/books/utils/audio-progress.ts";
 
 const book = { path: "New.epub", title: "New", format: "epub" };
 const cfi = "epubcfi(/6/2!/4/2)";
