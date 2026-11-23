@@ -53,6 +53,18 @@ test("API routes preserve authentication and reject cross-origin submissions", a
       body: JSON.stringify({ path: "test.epub", details: { url: "https://example.com" } }),
     });
     assert.equal(invalidDetails.status, 400);
+    const largeDetails = await app.request("http://localhost/api/books/details", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
+      body: JSON.stringify({ path: "test.epub", details: { text: "x".repeat(25000) } }),
+    });
+    assert.deepEqual(await largeDetails.json(), { error: "Invalid book details." });
+    const oversizedDetails = await app.request("http://localhost/api/books/details", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
+      body: JSON.stringify({ path: "test.epub", details: { text: "x".repeat(8_000_000) } }),
+    });
+    assert.deepEqual(await oversizedDetails.json(), { error: "Book details are too large." });
     const invalidBook = await app.request("http://localhost/api/books/file?path=..%2Fsecret.epub", { headers: { Cookie: cookie } });
     assert.equal(invalidBook.status, 404);
     const invalidCalendarRange = await app.request("http://localhost/api/calendar?start=bad&end=bad", { headers: { Cookie: cookie } });

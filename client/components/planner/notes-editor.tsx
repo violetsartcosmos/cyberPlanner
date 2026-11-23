@@ -14,7 +14,6 @@ type NotesEditorProps = {
 export function NotesEditor({ selected, note: savedNote, onSelect }: NotesEditorProps) {
   const fetcher = useFetcher<PlannerActionResult>();
   const [note, setNote] = useState(savedNote);
-  const [direction, setDirection] = useState<"previous" | "next">("next");
   const [submittedDate, setSubmittedDate] = useState("");
 
   useEffect(function syncSavedNote() {
@@ -29,9 +28,8 @@ export function NotesEditor({ selected, note: savedNote, onSelect }: NotesEditor
   const next = dateKey(addDays(parseDate(selected), 1));
   const busy = fetcher.state !== "idle";
 
-  function turnPage(date: string, pageDirection: "previous" | "next") {
+  function turnPage(date: string) {
     if (note !== savedNote && !window.confirm("Discard your unsaved changes to this note?")) return;
-    setDirection(pageDirection);
     onSelect(date);
   }
 
@@ -50,7 +48,7 @@ export function NotesEditor({ selected, note: savedNote, onSelect }: NotesEditor
         <img src="/witchynotessingle.png" alt="" aria-hidden="true" />
       </div>
       <div className="notes-book-pages">
-        <div className={`notes-book-page notes-book-page--${direction}`} key={selected}>
+        <div className="notes-book-page">
           <p className="notes-book-date" aria-live="polite">
             {parseDate(selected).toLocaleDateString("en-US", {
               weekday: "long", month: "long", day: "numeric", year: "numeric",
@@ -84,11 +82,11 @@ export function NotesEditor({ selected, note: savedNote, onSelect }: NotesEditor
         </div>
       </div>
       <nav className="notes-book-navigation" aria-label="Note pages">
-        <button type="button" disabled={busy || !isValidDateKey(previous)} onClick={() => turnPage(previous, "previous")}>
+        <button type="button" disabled={busy || !isValidDateKey(previous)} onClick={() => turnPage(previous)}>
           <ChevronLeft aria-hidden="true" size={16} /> PREVIOUS DAY
         </button>
         <span>DAY BY DAY</span>
-        <button type="button" disabled={busy || !isValidDateKey(next)} onClick={() => turnPage(next, "next")}>
+        <button type="button" disabled={busy || !isValidDateKey(next)} onClick={() => turnPage(next)}>
           NEXT DAY <ChevronRight aria-hidden="true" size={16} />
         </button>
       </nav>

@@ -91,3 +91,29 @@ model Quest {
 
   @@map("quests")
 }
+
+model BookData {
+  library      String
+  path         String
+  storagePath  String         @map("storage_path")
+  wikipedia    Json?
+  cover        Bytes?
+  coverType    String?        @map("cover_type")
+  bookmarks    BookBookmark[]
+
+  @@id([library, path])
+  @@map("book_data")
+}
+
+model BookBookmark {
+  id        String   @id @default(uuid())
+  library   String
+  path      String
+  position  String
+  label     String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  book      BookData @relation(fields: [library, path], references: [library, path], onUpdate: Cascade, onDelete: Cascade)
+
+  @@index([library, path])
+  @@map("book_bookmarks")
+}

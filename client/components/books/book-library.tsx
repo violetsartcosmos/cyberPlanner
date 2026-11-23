@@ -3,14 +3,23 @@ import { ReactReader } from "react-reader";
 import { ArrowRight, BookOpen, Headphones, Search } from "lucide-react";
 import type { LibraryBook } from "../../../shared/planner/books";
 import { BookDetails } from "./book-details";
-import { bookUrl } from "./book-url";
+import { BookAction } from "./book-action";
+import { bookCoverUrl, bookUrl } from "./book-url";
 import { AudioPlayer } from "./audio-player";
+import { matchesLibraryFilter, shuffleBooks, type LibraryFilter } from "./library-utils";
 import { useEmbeddedDetails } from "./use-embedded-details";
+import { useSavedWikipedia } from "./use-saved-wikipedia";
+import { useBookmarks } from "./use-bookmarks";
 
 function BookCover({ book, index, onClick }: { book: LibraryBook; index: number; onClick: () => void }) {
   const ref = useRef<HTMLButtonElement>(null);
   const [visible, setVisible] = useState(false);
   const { embedded, error } = useEmbeddedDetails(book, visible);
+  const { wiki, error: wikiError } = useSavedWikipedia(book, visible);
+  const [failedWikiImage, setFailedWikiImage] = useState("");
+  const wikiCover = wiki?.image && wiki.image.url !== failedWikiImage ? wiki.image : null;
+  const cover = wikiCover ? (wikiCover.cached ? bookCoverUrl(book) : wikiCover.url) : embedded?.cover;
+  const coverError = wikiError || (wiki?.image && !wikiCover ? "Wikipedia cover could not be loaded." : error);
 
   useEffect(() => {
     const element = ref.current;
@@ -21,11 +30,11 @@ function BookCover({ book, index, onClick }: { book: LibraryBook; index: number;
   }, []);
 
   return (
-    <button ref={ref} type="button" className={`library-book-cover library-book-cover-${index % 5}`} onClick={onClick} aria-label={`View details for ${book.title}`} title={error ? `Cover unavailable: ${error}` : undefined}>
-      {embedded?.cover
-        ? <img src={embedded.cover} alt="" />
+    <button ref={ref} type="button" className={`library-book-cover library-book-cover-${index % 5}`} onClick={onClick} aria-label={`View details for ${book.title}`} title={coverError ? `Cover unavailable: ${coverError}` : undefined}>
+      {cover
+        ? <img src={cover} alt="" referrerPolicy={wikiCover ? "no-referrer" : undefined} onError={wikiCover ? () => setFailedWikiImage(wikiCover.url) : undefined} />
         : <>
-          <span>{error ? "COVER UNAVAILABLE" : book.format === "m4b" ? "AUDIOBOOK" : "YOUR LIBRARY"}</span>
+          <span>{coverError ? "COVER UNAVAILABLE" : book.format === "m4b" ? "AUDIOBOOK" : "YOUR LIBRARY"}</span>
           <strong>{book.title}</strong>
           {book.format === "m4b" ? <Headphones size={22} aria-hidden="true" /> : <BookOpen size={22} aria-hidden="true" />}
         </>}
@@ -34,7 +43,7 @@ function BookCover({ book, index, onClick }: { book: LibraryBook; index: number;
 }
 
 function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void }) {
-  const storageKey = `cyberplanner-book:${book.path}`;
+  const storageKey = `cyberplanner-book:${book.storagePath ?? book.path}`;
   const [position, setPosition] = useState<{ location: string | number; error: string }>(() => {
     try {
       return { location: localStorage.getItem(storageKey) ?? 0, error: "" };
@@ -42,6 +51,7 @@ function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void 
       return { location: 0, error: "Reading position could not be loaded from this browser." };
     }
   });
+  const { bookmarks, add, remove, error: bookmarkError, busy } = useBookmarks(book);
 
   function locationChanged(next: string) {
     try {
@@ -59,6 +69,13 @@ function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void 
         <button type="button" onClick={onClose}>Back to library</button>
       </div>
       {position.error && <p role="alert">{position.error}</p>}
+      <div className="library-bookmarks">
+        <button type="button" disabled={busy || typeof position.location !== "string"} onClick={() => { void add(String(position.location), `Bookmark ${bookmarks.length + 1}`); }}>Add bookmark</button>
+        {bookmarkError && <p role="alert">{bookmarkError}</p>}
+        {bookmarks.length > 0 && <details><summary>Bookmarks ({bookmarks.length})</summary><ul>{bookmarks.map((bookmark) => (
+          <li key={bookmark.id}><button type="button" onClick={() => setPosition({ location: bookmark.position, error: "" })}>{bookmark.label}</button><button type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>
+        ))}</ul></details>}
+      </div>
       <div className="library-reader-view">
         <ReactReader
           url={bookUrl(book)}
@@ -73,10 +90,10 @@ function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void 
 }
 
 export function BookLibrary() {
-  const [books, setBooks] = useState<LibraryBook[] | null>(null);
+  const [library, setLibrary] = useState<{ books: LibraryBook[]; featuredOrder: LibraryBook[] } | null>(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "ebooks" | "audio">("all");
+  const [filter, setFilter] = useState<LibraryFilter>("all");
   const [selected, setSelected] = useState<LibraryBook | null>(null);
   const [detailsBook, setDetailsBook] = useState<LibraryBook | null>(null);
 
@@ -86,7 +103,8 @@ export function BookLibrary() {
       try {
         const response = await fetch("/api/books", { signal: controller.signal });
         if (!response.ok) throw new Error(`Could not load the library (${response.status}).`);
-        setBooks(await response.json() as LibraryBook[]);
+        const books = await response.json() as LibraryBook[];
+        setLibrary({ books, featuredOrder: shuffleBooks(books) });
       } catch (error) {
         if (!controller.signal.aborted) {
           setError(error instanceof Error ? error.message : "Could not load the library.");
@@ -104,14 +122,22 @@ export function BookLibrary() {
     return <EpubReader key={selected.path} book={selected} onClose={() => setSelected(null)} />;
   }
   if (detailsBook) {
-    return <BookDetails key={detailsBook.path} book={detailsBook} onClose={() => setDetailsBook(null)} onRead={() => setSelected(detailsBook)} />;
+    return <BookDetails key={detailsBook.path} book={detailsBook} onClose={() => setDetailsBook(null)} onRead={() => setSelected(detailsBook)} onRenamed={(renamed) => {
+      setLibrary((current) => current && {
+        books: current.books.map((book) => book === detailsBook ? renamed : book),
+        featuredOrder: current.featuredOrder.map((book) => book === detailsBook ? renamed : book),
+      });
+      setDetailsBook(renamed);
+    }} />;
   }
 
-  const filtered = books?.filter((book) =>
-    book.path.toLocaleLowerCase().includes(query.toLocaleLowerCase()) &&
-    (filter === "all" || (filter === "audio" ? book.format === "m4b" : book.format !== "m4b")),
-  );
-  const featured = filtered?.[0];
+  function matchesFilter(book: LibraryBook) {
+    return matchesLibraryFilter(book, query, filter);
+  }
+
+  const books = library?.books;
+  const filtered = books?.filter(matchesFilter);
+  const featured = library?.featuredOrder.find(matchesFilter);
   return (
     <section className="panel library-panel">
       <div className="library-heading">
@@ -168,11 +194,7 @@ export function BookLibrary() {
               <strong className="library-book-title">{book.title}</strong>
               <small>{book.format.toUpperCase()} {book.path.includes("/") ? `· ${book.path.slice(0, book.path.lastIndexOf("/"))}` : ""}</small>
               <div className="library-book-actions">
-                {book.format === "epub"
-                  ? <button type="button" onClick={() => setSelected(book)}>Read</button>
-                  : book.format === "m4b"
-                    ? <button type="button" onClick={() => setSelected(book)}>Listen</button>
-                    : <a href={bookUrl(book)} target="_blank" rel="noopener noreferrer">Open PDF</a>}
+                <BookAction book={book} onRead={() => setSelected(book)} />
                 <button type="button" onClick={() => setDetailsBook(book)}>Details</button>
               </div>
             </li>

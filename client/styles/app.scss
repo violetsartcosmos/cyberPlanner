@@ -1054,7 +1054,7 @@ h1 em,
 .library-book-actions a,
 .library-reader-heading button,
 .library-detail-content button,
-.library-detail-content a,
+.library-detail-content > div:last-child > a,
 .library-wikipedia button {
   padding: 8px 12px;
   border: 1px solid #494039;
@@ -1075,7 +1075,7 @@ h1 em,
 
 .library-book-actions > :first-child,
 .library-detail-content button,
-.library-detail-content a,
+.library-detail-content > div:last-child > a,
 .library-wikipedia button {
   border-color: #ffc43c;
   background: #ffc43c;
@@ -1089,7 +1089,7 @@ h1 em,
 .library-feature-copy button:hover,
 .library-book-actions > :first-child:hover,
 .library-detail-content button:hover,
-.library-detail-content a:hover,
+.library-detail-content > div:last-child > a:hover,
 .library-wikipedia button:hover { background: #ffda7c; }
 
 .library-detail-content {
@@ -1099,12 +1099,17 @@ h1 em,
   margin: 36px 0;
 }
 
-.library-cover {
-  width: 220px;
+.library-cover-frame {
+  flex: 0 0 220px;
   max-width: 35%;
+}
+
+.library-cover {
+  width: 100%;
   height: auto;
   border-radius: 5px 12px 12px 5px;
   box-shadow: 0 12px 30px #0007;
+  object-fit: contain;
 }
 
 .library-cover-placeholder {
@@ -1119,6 +1124,16 @@ h1 em,
 
 .library-cover-placeholder span { font-size: 10px; letter-spacing: 0.15em; }
 .library-cover-placeholder strong { font-family: Georgia, serif; font-size: 22px; overflow-wrap: anywhere; }
+.library-detail-content .library-cover-credit {
+  margin: 10px 0 0;
+  color: #bdb4ac;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.library-cover-credit a { color: #ffca50; }
+.library-cover-credit a,
+.library-article-source a { display: inline-flex; vertical-align: middle; }
 .library-details .library-detail-content h2,
 .library-audio-player h2 { margin: 0 0 14px; font-size: clamp(26px, 3vw, 38px); line-height: 1.12; }
 .library-detail-content p:not(.library-kicker),
@@ -1126,11 +1141,40 @@ h1 em,
 .library-wikipedia p,
 .library-wikipedia-result { color: #bdb4ac; line-height: 1.6; }
 .library-detail-content button,
-.library-detail-content a { display: inline-block; margin-top: 10px; }
+.library-detail-content > div:last-child > a { display: inline-block; margin-top: 10px; }
+
+.library-rename { margin-top: 20px; }
+.library-rename label { display: block; font-size: 12px; }
+.library-rename div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.library-rename input {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid #494039;
+  border-radius: 8px;
+  background: #1b1a1b;
+  color: #f7f3ed;
+  font: inherit;
+}
+.library-rename button { margin-top: 0; }
+.library-rename button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .library-wikipedia {
-  border-top: 1px solid #39322e;
-  padding-top: 24px;
+  margin-top: 32px;
+  padding: 24px;
+  border: 1px solid #39322e;
+  border-radius: 16px;
+  background: #191818;
+}
+
+.library-wikipedia h3 {
+  margin: 0;
+}
+
+.library-wikipedia label {
+  display: block;
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .library-wikipedia > div {
@@ -1151,39 +1195,120 @@ h1 em,
   font: inherit;
 }
 
+.library-wikipedia button {
+  margin-top: 16px;
+}
+
+.library-wikipedia button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.library-wikipedia-result {
+  padding-top: 28px;
+  border-top: 1px solid #39322e;
+}
+
+.library-article-heading h3,
+.library-article-sections h3 {
+  margin: 0 0 16px;
+  color: #f7f3ed;
+  font-size: 18px;
+}
+
+.library-wikipedia-result > p,
+.library-article-section p {
+  max-width: 75ch;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.library-article-sections {
+  margin-top: 28px;
+}
+
+.library-article-section {
+  border-top: 1px solid #39322e;
+  padding: 14px 0;
+}
+
+.library-article-section:last-child {
+  border-bottom: 1px solid #39322e;
+}
+
+.library-article-section summary {
+  color: #f7f3ed;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.library-article-section--level-3,
+.library-article-section--level-4,
+.library-article-section--level-5,
+.library-article-section--level-6 {
+  padding-left: 20px;
+}
+
 .library-wikipedia-result a {
   color: #ffca50;
 }
 
-.library-wikipedia-result figure {
-  margin: 16px 0 0;
-}
-
-.library-wikipedia-result img {
-  max-width: min(256px, 100%);
-}
-
-.library-wikipedia-result figcaption {
-  color: var(--md-sys-color-on-surface-variant);
+.library-wikipedia-result .library-article-source {
+  margin-top: 24px;
   font-size: 12px;
-}
-
-.library-audio-player audio {
-  display: block;
-  width: min(100%, 600px);
-  margin-top: 20px;
 }
 
 .library-audio-art {
   display: grid;
   place-items: center;
-  width: min(100%, 600px);
-  min-height: 210px;
-  margin: 30px 0;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  margin: 30px auto 24px;
   border: 1px solid #8a5a2c;
   border-radius: 18px;
   color: #ffdb8d;
   background: radial-gradient(circle at 50% 40%, #c67627, #56301c 48%, #201816);
+  overflow: hidden;
+}
+
+.library-audio-art img { width: 100%; height: 100%; object-fit: contain; }
+.library-audio-main { width: min(100%, 560px); margin: 0 auto; text-align: center; }
+.library-audio-main h2 { overflow-wrap: anywhere; }
+.library-audio-main > p { color: #bdb4ac; }
+.library-audio-progress { width: 100%; margin-top: 24px; accent-color: #ffc43c; }
+.library-audio-times { display: flex; justify-content: space-between; gap: 8px; color: #bdb4ac; font-size: 12px; }
+.library-audio-controls, .library-audio-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 28px; }
+.library-audio-controls button, .library-audio-actions button {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #f7f3ed;
+  font: inherit;
+}
+.library-audio-controls button:disabled, .library-audio-actions button:disabled { opacity: 0.4; }
+.library-audio-controls button span { position: absolute; top: 17px; font-size: 9px; font-weight: 700; }
+.library-audio-controls .library-audio-play { width: 70px; height: 70px; background: #ffc43c; color: #21180b; }
+.library-audio-actions button { min-width: 80px; border-radius: 8px; font-size: 12px; }
+.library-audio-actions strong { font-size: 20px; }
+.library-audio-list, .library-bookmarks { margin-top: 24px; text-align: left; }
+.library-audio-list ul, .library-bookmarks ul { margin: 8px 0; padding: 0; list-style: none; }
+.library-audio-list li, .library-bookmarks li { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.library-audio-list button, .library-bookmarks button {
+  padding: 8px 12px;
+  border: 1px solid #494039;
+  border-radius: 8px;
+  background: #24211f;
+  color: #f7f3ed;
+  font: inherit;
 }
 
 @media (max-width: 600px) {
@@ -1197,7 +1322,7 @@ h1 em,
   .library-feature-art::before { width: 120px; height: 120px; }
   .library-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 14px; }
   .library-detail-content { align-items: flex-start; flex-direction: column; }
-  .library-cover { max-width: 100%; }
+  .library-cover-frame { width: min(220px, 100%); max-width: 100%; flex-basis: auto; }
   .library-cover-placeholder { flex-basis: auto; }
 }
 
@@ -1789,7 +1914,6 @@ h1 em,
   border-radius: 8px 14px 14px 8px;
   background: #291a3d;
   box-shadow: 3px 4px 0 #161025, 5px 6px 0 #504064;
-  perspective: 1200px;
 }
 
 .notes-book-page {
@@ -1797,13 +1921,6 @@ h1 em,
   border: 1px solid #68517e;
   border-radius: 3px 9px 9px 3px;
   background: linear-gradient(90deg, #21152f, #302141 7%, #241932);
-  transform-origin: left center;
-  animation: notes-page-next 420ms ease-out both;
-}
-
-.notes-book-page--previous {
-  transform-origin: right center;
-  animation-name: notes-page-previous;
 }
 
 .notes-book-date {
@@ -1844,22 +1961,6 @@ h1 em,
   color: var(--md-sys-color-on-surface-variant);
   font: 9px var(--font-mono);
   text-align: center;
-}
-
-@keyframes notes-page-next {
-  from { opacity: 0; transform: rotateY(-55deg); }
-  to { opacity: 1; transform: rotateY(0); }
-}
-
-@keyframes notes-page-previous {
-  from { opacity: 0; transform: rotateY(55deg); }
-  to { opacity: 1; transform: rotateY(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .notes-book-page {
-    animation: none;
-  }
 }
 
 .storage-error {
