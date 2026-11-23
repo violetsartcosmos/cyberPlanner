@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { SyntheticEvent } from "react";
+import { Headphones } from "lucide-react";
 import type { LibraryBook } from "../../../shared/planner/books";
 import { bookUrl } from "./book-url";
 
@@ -48,9 +49,12 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
   return (
     <section className="panel library-audio-player" aria-label={`Listening to ${book.title}`}>
       <div className="library-reader-heading">
-        <h2>{book.title}</h2>
         <button type="button" onClick={closePlayer}>Back to library</button>
+        <span className="library-kicker">YOUR AUDIO LIBRARY</span>
       </div>
+      <div className="library-audio-art" aria-hidden="true"><Headphones size={54} strokeWidth={1.2} /></div>
+      <p className="library-kicker">NOW LISTENING</p>
+      <h2>{book.title}</h2>
       <p>Listening position is saved in this browser on this device.</p>
       <audio
         controls
