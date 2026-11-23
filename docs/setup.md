@@ -2,6 +2,8 @@
 
 Follow these steps to run CyberPlanner locally.
 
+For the source layout, architecture diagram, and database models, see [architecture and models](models.md). For feature and backup instructions, see the [user guide](guide.md).
+
 ## Requirements
 
 - [Node.js](https://nodejs.org/en/download) 22.22 or newer and npm (included with Node.js).

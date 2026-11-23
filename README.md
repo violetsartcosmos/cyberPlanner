@@ -1,113 +1,87 @@
 # CyberPlanner
 
-A personal planner for daily quests, routines, notes, journal entries, Google Tasks, and Gmail follow-ups. Complete tasks to earn points and redeem them for rewards.
+**Your life, your quest.**
 
-CyberPlanner is designed for one Google account. It stores planner data and an encrypted Google refresh token in PostgreSQL; Gmail message bodies are not stored.
+A personal planner that turns routines and everyday tasks into quests. Plan your day, earn points, track achievements, and make time for the things you enjoy.
 
-## Getting started
+[Get started](docs/setup.md) · [Using CyberPlanner](docs/guide.md) · [Architecture & models](docs/models.md)
 
-You need Node.js 22.22 or newer, PostgreSQL, and a Google Cloud project. Follow the [setup guide](docs/setup.md) for database creation, OAuth credentials, and secrets.
+## What you can do
 
-Once configured, run:
+- **Plan your day:** track daily quests, morning and night routines, notes, and journal entries.
+- **See your schedule:** browse a calendar and connect Google Calendar, Tasks, and Gmail follow-ups.
+- **Celebrate progress:** earn points and XP, unlock achievements, and redeem rewards in the shop.
+- **Build your library:** read EPUBs and PDFs or listen to M4B audiobooks from local folders.
+
+CyberPlanner is designed for **one Google account**. It stores planner data and an encrypted Google refresh token in PostgreSQL; Gmail message bodies are not stored.
+
+## A look inside
+
+The screenshots show fictional sample data, captured in Chrome at desktop and mobile sizes.
+
+### Dashboard
+
+<img src="docs/screenshots/dashboard-desktop.png" alt="Desktop dashboard with daily mission, calendar, notes and routine" width="800">
+<img src="docs/screenshots/dashboard-mobile.png" alt="Mobile dashboard with daily progress and calendar" width="250">
+
+### Calendar
+
+<img src="docs/screenshots/calendar-desktop.png" alt="Desktop calendar with daily mission and achievements" width="800">
+<img src="docs/screenshots/calendar-mobile.png" alt="Mobile calendar and daily mission" width="250">
+
+### Profile
+
+<img src="docs/screenshots/profile-desktop.png" alt="Desktop profile showing points, achievements and level" width="800">
+<img src="docs/screenshots/profile-mobile.png" alt="Mobile profile showing points and achievements" width="250">
+
+## Get started
+
+You'll need Node.js 22.22 or newer, PostgreSQL, and a Google Cloud project. The [setup guide](docs/setup.md) walks through the database, Google OAuth, and secrets.
+
+Once configured:
 
 ```powershell
+npm install
 npm run db:migrate
 npm run dev
 ```
 
-Open [localhost:5173](http://localhost:5173) and sign in.
+Open [localhost:5173](http://localhost:5173) and sign in with the configured Google account.
 
-Use the icons in the left sidebar to open each part of the dashboard, including Violet's profile and the Quest Board. Use the double arrows to expand or minimize the sidebar. After updating, run `npx prisma generate` and `npm run db:migrate`, then restart the server. The migration creates the achievement and quest tables and seeds the supplied achievements.
+## How it fits together
 
-The profile displays level, lifetime XP, activity, and achievements. Every 100 XP gains one level. Lifetime XP includes all earned task points (including existing awards) and one-time achievement XP; spending points never lowers XP. Achievement XP is separate from the spendable points balance. The supplied achievements are self-reported: use **Unlock** or **+1 progress**, and observe any time limits described yourself. Create or edit achievements to change their target, rarity, XP, and optional personal reward. For automatic consecutive-day tracking, choose a morning or night routine task; Workout Queen starts with a five-day target. Streaks use the server's current local date, so configure its time zone to match yours. Earned badges and XP remain unlocked even if past checks are removed or the achievement is deleted. Editing an unfinished achievement's tracking method or routine task resets its progress.
+```mermaid
+flowchart LR
+    Browser["React app<br/>Browser"] -->|HTTP| API["Hono API<br/>Node.js"]
+    API -->|Prisma| DB[("PostgreSQL")]
+    API -->|OAuth and APIs| Google["Google<br/>Tasks, Gmail, Calendar"]
+    API -->|read and rename| Files["Local ebook and<br/>audiobook folders"]
+    Browser -.->|optional book reference import| Wiki["Wikipedia / Wikimedia"]
+```
 
-Existing daily quests, routines, and synced tasks are Side Quests worth 10 points each. On the Quest Board, create additional Side Quests, Main Quests, and End-Game Bosses with your own rarity and point value. Completing a custom quest awards its points and equal XP once; deleting it does not remove earned points or XP.
+The [architecture and models guide](docs/models.md) explains the layers, request flow, storage, and database models.
 
-On the calendar page, daily quests, morning and night routines, and synced tasks appear beside the calendar. Switch between day, week, and month views and select a date to see its tasks and Google Calendar events. Day view shows timed events in a 24-hour timeline and all-day events separately. Add events to writable calendars or select an event to edit its title and time; recurring-event edits apply only to the selected occurrence. Google Calendar loads live, and **Refresh** picks up external changes. Calendars with free/busy-only access cannot show event details. Enable the Calendar API and sign in again with the new permissions as described in the [setup guide](docs/setup.md). On the dashboard or calendar page, choose **Add journal** to open the editor in place for the selected day. Journal entries are stored separately from notes; the calendar marks dates with entries. Use **Today** beneath the calendar heading to return to the current date. Weekly protocol and Google sync are also on the calendar page.
+## Tech stack
 
-On the notes page or dashboard, use **Previous day** and **Next day** to turn through daily notes. Save changes before turning the page, or confirm that you want to discard them.
+| Area | Technology |
+| --- | --- |
+| Interface | React, React Router, TypeScript, Vite, Sass |
+| Server | Node.js, Hono |
+| Data | PostgreSQL, Prisma |
+| Integrations | Google OAuth, Tasks, Gmail, Calendar |
+| Library | React Reader / EPUB.js, PDF.js, music-metadata |
 
-Open **Library** in the sidebar to browse EPUB and PDF files in the local `ebooks` folder and M4B audiobooks in `audiblebooks`, including their subfolders. Search by title or folder, or filter by ebook and audiobook. A randomly selected matching book is featured until the library is reloaded or the search or filter changes. The shelf loads embedded EPUB covers and PDF first-page previews as they enter view; books without an available image use a placeholder. EPUBs open in the built-in reader, PDFs open in a browser tab, and compatible M4Bs play in the browser with chapters when available. EPUB reading and audiobook listening positions are saved in the current browser on this device; bookmarks are saved in PostgreSQL. Use **Details** to rename the actual file. On Windows, change the name to something different first if you only want to change its capitalization. Add or remove files and refresh the page to update the shelf. DRM-protected, incomplete, or damaged files may not open; browser codec support varies. AAXC files are not playable here. Only use books from sources you trust.
-
-Choose **Details** to see information and a cover embedded in an EPUB, or PDF metadata and its first page. Embedded M4B descriptions and covers are not currently read. When information is missing, a placeholder is shown. To add a reference, paste a specific Wikipedia article URL and choose **Import** to save its introduction and text sections. Optionally paste a Wikipedia or Wikimedia file-page, media-viewer, or image URL to choose a freely reusable cover; otherwise, the article's Commons image is used when available. The chosen image also appears on the shelf. Only the article and image you select are requested from Wikipedia and Wikimedia, not your library list or book files. Imported text, attribution, and newly imported covers are saved in PostgreSQL and can be displayed without an internet connection while the local server and database are running. Existing sidecar text is moved into the database when accessed; reimport older references to cache their remote covers and add sections. Check the image's source and license before reusing it.
-
-The `ebooks` and `audiblebooks` folders are excluded from Git and Docker build contexts and served only to the signed-in account, not from public assets. They are not backed up or deployed automatically. For Docker, mount them at `/app/ebooks` and `/app/audiblebooks`; for a remote deployment, the files must be present on that server.
-
-### Back up your books
-
-Install [7-Zip](https://www.7-zip.org/) (or `7zz` on Linux/macOS), then run `npm run backup:books`. This creates and verifies a dated, maximum-compression `.7z` snapshot of the entire `ebooks` folder in `ebook-backups`. Previous snapshots are kept; this folder is excluded from Git and Docker. Don't change files during a backup. EPUBs and many PDFs are already compressed, so savings vary and maximum compression may take time.
-
-Run `npm run backup:audible` separately to snapshot the entire `audiblebooks` folder, including non-M4B files. Wait for downloads to finish first. Audio is already compressed, so each snapshot can be nearly as large as the original and may take a long time. Both commands keep previous versions in `ebook-backups`.
-
-These archives do not include database bookmarks, imported Wikipedia details, or cached covers. Back up PostgreSQL separately to preserve them. Browser-local reading and listening positions also need a separate browser backup.
-
-Copy an archive to another device and extract it in the CyberPlanner project folder to restore its original folder; install a 7z-compatible extractor there first. Archives are **not encrypted** and are not an off-device backup until copied elsewhere. They can contain private files and do not establish rights to the books.
-
-The dashboard shows daily quests beneath the calendar and routine tabs beneath daily progress. Routines default to morning before noon and night from noon, using your device's local time; you can switch tabs at any time. The dashboard affirmation is selected based on the current local date.
-
-Visit **Shop** in the sidebar, select a reward in the inventory, and choose **Redeem** to spend points at Nyx's counter. Purchases require confirmation and cannot be refunded.
-
-## Commands
-
-Run commands in the project folder.
+## Useful commands
 
 | Command | Purpose |
 | --- | --- |
-| `npm install` | Install dependencies and generate Prisma Client. |
-| `npm run dev` | Start the API on localhost:3000 and the Vite development server on localhost:5173. The client proxies API and sign-in requests to the API. Restart the command after changing server files. |
-| `npm run build` | Build the browser client and API server. |
-| `npm run start` | Serve the production client and API together at localhost:3000; build first. |
+| `npm run dev` | Run the API and development client. |
+| `npm run build` / `npm run start` | Build and serve the production app. |
 | `npm run db:migrate` | Apply committed database migrations. |
-| `npm run db:studio` | Open Prisma Studio to browse and edit the configured database; also available as `npx prisma studio`. |
-| `npm run generate-secrets` | Print new secret entries to copy into `.env`; keep the output private. |
-| `npm run backup:books` | Create and verify a dated 7z snapshot of the complete ebook folder. |
-| `npm run backup:audible` | Create and verify a separate dated 7z snapshot of the complete audiobook folder. |
-| `npx prisma generate` | Regenerate Prisma Client after changing the schema. |
-| `npx prisma migrate dev --name describe_your_change` | Create and apply a migration on a development database; review reset prompts carefully. |
+| `npm run db:studio` | Browse the database with Prisma Studio. |
 | `npm run typecheck` | Check TypeScript. |
-| `npm run test:profile` | Test profile stats and achievement streaks. |
-| `npm run test:server` | Test API authentication, request validation, and form validation without a database. |
-| `npm run test:books` | Test library listing and book file access. |
-| `npm run test:database` | Run integration tests against a separate, empty, disposable database specified by `TEST_DATABASE_URL`. |
+| `npm run test:server`, `npm run test:profile`, `npm run test:books` | Run focused test suites. |
+| `npm run test:database` | Run integration tests against a separate, empty, disposable database in `TEST_DATABASE_URL`. |
+| `npm run backup:books`, `npm run backup:audible` | Back up ebook or audiobook files (requires 7-Zip). |
 
-### Run the API separately
-
-Normally, `npm run dev` starts both the browser app and API. If the browser app is already running and you need to start just the API, open another terminal in the project folder and run:
-
-```powershell
-npx tsx server/index.ts
-```
-
-The API listens on port `3000`. Leave this terminal open while using the app.
-
-For production, use HTTPS and your host's secret settings, apply migrations as a release step, and start the built server. The included [Dockerfile](Dockerfile) starts the server but does not apply migrations.
-
-## Project layout
-
-- [client](client): React pages, components, styles, and static assets.
-- [server](server): API, authentication, and database logic grouped by feature.
-- [shared/planner](shared/planner): task definitions, request types, and date utilities shared by client and server.
-- [prisma](prisma): database schema and migrations.
-- [tests](tests): integration tests.
-
-Edit built-in tasks and rewards in [definitions.ts](shared/planner/definitions.ts).
-
-## Libraries
-
-Direct dependencies and their purposes:
-
-| Library | Purpose |
-| --- | --- |
-| [React and React DOM](https://react.dev/learn) | User interface. |
-| [React Router](https://reactrouter.com/) | Client-side navigation and server-side session cookies. |
-| [Hono](https://hono.dev/) and [@hono/node-server](https://github.com/honojs/node-server) | API routing, request protection, and HTTP serving. |
-| [React Reader](https://github.com/gerhardsletten/react-reader) and EPUB.js | EPUB reading in the browser. |
-| [music-metadata](https://github.com/Borewit/music-metadata) | Read audiobook chapter metadata. |
-| [Prisma](https://www.prisma.io/docs/orm) (`prisma`, `@prisma/client`, `@prisma/adapter-pg`) and [pg](https://node-postgres.com/) | PostgreSQL queries, migrations, and driver. |
-| [googleapis](https://github.com/googleapis/google-api-nodejs-client) | Google OAuth, Tasks, and Gmail. |
-| [dotenv](https://github.com/motdotla/dotenv#readme) | Local environment configuration. |
-| [TypeScript](https://www.typescriptlang.org/docs/) and [type definitions](https://github.com/DefinitelyTyped/DefinitelyTyped) | Type checking. |
-| [Vite](https://vite.dev/guide/), [Sass](https://sass-lang.com/documentation/), and [Tailwind CSS](https://tailwindcss.com/docs) | Build and styling tools. |
-| [tsx](https://tsx.is/) and [concurrently](https://github.com/open-cli-tools/concurrently) | Run the development API and client together. |
-
-Exact versions are recorded in [package-lock.json](package-lock.json).
+For details on backups, reading, rewards, and calendar behavior, see the [user guide](docs/guide.md). For deployment and OAuth configuration, see the [setup guide](docs/setup.md).
