@@ -7,12 +7,20 @@ import { handlePlannerAction } from "./planner/dispatch";
 import { getPlannerPage } from "./planner/page";
 import { getSignedInEmail } from "./auth/service";
 import { getCalendarData, validCalendarRange } from "./google/calendar";
-import { bookResponse, libraryDirectory, listBooks } from "./books/library";
+import { audiobookDirectory, bookResponse, getBookDetails, libraryDirectory, listBooks, saveBookDetails } from "./books/library";
+import type { LibraryName } from "./books/library";
+import { isWikipediaDetails } from "../shared/planner/books";
 
 export const app = new Hono();
 
 app.use("/api/*", csrf());
 app.use("/auth/*", csrf());
+
+function librarySelection(value: unknown): { name: LibraryName; root: string } | null {
+  if (value === undefined || value === "ebooks") return { name: "ebooks", root: libraryDirectory };
+  if (value === "audiblebooks") return { name: "audiblebooks", root: audiobookDirectory };
+  return null;
+}
 
 app.get("/api/books", async (context) => {
   context.header("Cache-Control", "no-store");
@@ -20,7 +28,11 @@ app.get("/api/books", async (context) => {
     return context.json({ error: "Sign in with your configured Google account first." }, 401);
   }
   try {
-    return context.json(await listBooks(libraryDirectory));
+    const [books, audiobooks] = await Promise.all([
+      listBooks(libraryDirectory),
+      listBooks(audiobookDirectory, "audiblebooks"),
+    ]);
+    return context.json([...books, ...audiobooks].sort((a, b) => a.title.localeCompare(b.title) || a.path.localeCompare(b.path)));
   } catch (error) {
     console.error("Could not load ebook library.", error);
     return context.json({ error: "Could not load the ebook library." }, 500);
@@ -31,11 +43,56 @@ app.get("/api/books/file", async (context) => {
   if (!(await getSignedInEmail(context.req.raw))) {
     return context.json({ error: "Sign in with your configured Google account first." }, 401);
   }
+  const library = librarySelection(context.req.query("library"));
+  if (!library) return context.json({ error: "Invalid library." }, 400);
   try {
-    return await bookResponse(libraryDirectory, context.req.query("path") ?? "", context.req.header("range") ?? null);
+    return await bookResponse(library.root, context.req.query("path") ?? "", context.req.header("range") ?? null, library.name);
   } catch (error) {
     console.error("Could not open ebook.", error);
     return context.json({ error: "Could not open the book." }, 500);
+  }
+});
+
+app.get("/api/books/details", async (context) => {
+  context.header("Cache-Control", "no-store");
+  if (!(await getSignedInEmail(context.req.raw))) {
+    return context.json({ error: "Sign in with your configured Google account first." }, 401);
+  }
+  const library = librarySelection(context.req.query("library"));
+  if (!library) return context.json({ error: "Invalid library." }, 400);
+  try {
+    return context.json(await getBookDetails(library.root, context.req.query("path") ?? "", library.name));
+  } catch (error) {
+    console.error("Could not load book details.", error);
+    return context.json({ error: "Could not load book details." }, 500);
+  }
+});
+
+app.post("/api/books/details", async (context) => {
+  context.header("Cache-Control", "no-store");
+  if (!(await getSignedInEmail(context.req.raw))) {
+    return context.json({ error: "Sign in with your configured Google account first." }, 401);
+  }
+  const body = await context.req.text();
+  if (body.length > 20000) return context.json({ error: "Book details are too large." }, 400);
+  let input: unknown;
+  try {
+    input = JSON.parse(body);
+  } catch {
+    return context.json({ error: "Invalid book details." }, 400);
+  }
+  if (typeof input !== "object" || input === null || !("path" in input) || typeof input.path !== "string" ||
+      !("details" in input) || !isWikipediaDetails(input.details)) {
+    return context.json({ error: "Invalid book details." }, 400);
+  }
+  const library = librarySelection("library" in input ? input.library : undefined);
+  if (!library) return context.json({ error: "Invalid library." }, 400);
+  try {
+    await saveBookDetails(library.root, input.path, input.details, library.name);
+    return context.json({ ok: true });
+  } catch (error) {
+    console.error("Could not save book details.", error);
+    return context.json({ error: "Could not save book details." }, 500);
   }
 });
 

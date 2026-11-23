@@ -20,7 +20,7 @@ test("API routes preserve authentication and reject cross-origin submissions", a
   const vite = await createServer({
     configFile: false,
     appType: "custom",
-    server: { middlewareMode: true, hmr: false, ws: false },
+    server: { middlewareMode: true, hmr: false, ws: false, watch: { ignored: ["**/audiblebooks/**"] } },
   });
   try {
     const { app } = await vite.ssrLoadModule("/server/app.ts");
@@ -34,6 +34,8 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.equal(anonymousCalendar.status, 401);
     assert.equal((await app.request("http://localhost/api/books")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/file?path=test.epub")).status, 401);
+    assert.equal((await app.request("http://localhost/api/books/file?library=audiblebooks&path=test.m4b")).status, 401);
+    assert.equal((await app.request("http://localhost/api/books/details?path=test.epub")).status, 401);
 
     const storage = createCookieSessionStorage({
       cookie: {
@@ -44,6 +46,13 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     const session = await storage.getSession();
     session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
     const cookie = await storage.commitSession(session);
+    assert.equal((await app.request("http://localhost/api/books/file?library=unknown&path=test.m4b", { headers: { Cookie: cookie } })).status, 400);
+    const invalidDetails = await app.request("http://localhost/api/books/details", {
+      method: "POST",
+      headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
+      body: JSON.stringify({ path: "test.epub", details: { url: "https://example.com" } }),
+    });
+    assert.equal(invalidDetails.status, 400);
     const invalidBook = await app.request("http://localhost/api/books/file?path=..%2Fsecret.epub", { headers: { Cookie: cookie } });
     assert.equal(invalidBook.status, 404);
     const invalidCalendarRange = await app.request("http://localhost/api/calendar?start=bad&end=bad", { headers: { Cookie: cookie } });

@@ -9,7 +9,7 @@ test("planner actions reject missing and file-valued fields", async () => {
   const vite = await createServer({
     configFile: false,
     appType: "custom",
-    server: { middlewareMode: true, hmr: false, ws: false },
+    server: { middlewareMode: true, hmr: false, ws: false, watch: { ignored: ["**/audiblebooks/**"] } },
   });
   try {
     const { handlePlannerAction } = await vite.ssrLoadModule("/server/planner/dispatch.ts");

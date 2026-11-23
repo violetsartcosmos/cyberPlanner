@@ -5,3 +5,5 @@ README.md
 .env
 .env.*
 ebooks
+ebook-backups
+audiblebooks

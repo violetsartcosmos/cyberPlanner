@@ -27,9 +27,19 @@ On the calendar page, daily quests, morning and night routines, and synced tasks
 
 On the notes page or dashboard, use **Previous day** and **Next day** to turn through daily notes. Save changes before turning the page, or confirm that you want to discard them.
 
-Open **Library** in the sidebar to browse EPUB and PDF files in the local `ebooks` folder, including its subfolders. EPUBs open in the built-in reader; PDFs open in a browser tab. EPUB reading positions are saved in the current browser on this device. Add or remove files in the folder and refresh the page to update the shelf. DRM-protected or damaged files may not open. Only use books from sources you trust.
+Open **Library** in the sidebar to browse EPUB and PDF files in the local `ebooks` folder and M4B audiobooks in `audiblebooks`, including their subfolders. EPUBs open in the built-in reader, PDFs open in a browser tab, and compatible M4Bs play in the browser. EPUB reading and audiobook listening positions are saved in the current browser on this device. Add or remove files and refresh the page to update the shelf. DRM-protected, incomplete, or damaged files may not open; browser codec support varies. AAXC files are not playable here. Only use books from sources you trust.
 
-The `ebooks` folder is excluded from Git and Docker build contexts and is served only to the signed-in account, not from the public assets folder. It is not backed up or deployed automatically. For Docker, mount your book folder at `/app/ebooks`; for a remote deployment, the files must be present on that server.
+Choose **Details** to see information and a cover embedded in an EPUB, or PDF metadata and its first page. Embedded M4B descriptions and covers are not currently read. When information is missing, a placeholder is shown. To add a reference, paste a specific Wikipedia article URL and choose **Import**: only that article and its associated Wikimedia Commons image are requested, not your library list or book files. Text and source information are saved alongside the book in its library folder; Commons images load from Wikimedia when displayed and need an internet connection. Check the image's source and license before reusing it. Not every article has a Commons image with the required attribution.
+
+The `ebooks` and `audiblebooks` folders are excluded from Git and Docker build contexts and served only to the signed-in account, not from public assets. They are not backed up or deployed automatically. For Docker, mount them at `/app/ebooks` and `/app/audiblebooks`; for a remote deployment, the files must be present on that server.
+
+### Back up your books
+
+Install [7-Zip](https://www.7-zip.org/) (or `7zz` on Linux/macOS), then run `npm run backup:books`. This creates and verifies a dated, maximum-compression `.7z` snapshot of the entire `ebooks` folder, including any saved Wikipedia details, in `ebook-backups`. Previous snapshots are kept; this folder is excluded from Git and Docker. Don't change files during a backup. EPUBs and many PDFs are already compressed, so savings vary and maximum compression may take time.
+
+Run `npm run backup:audible` separately to snapshot the entire `audiblebooks` folder, including non-M4B files and saved details. Wait for downloads to finish first. Audio is already compressed, so each snapshot can be nearly as large as the original and may take a long time. Both commands keep previous versions in `ebook-backups`.
+
+Copy an archive to another device and extract it in the CyberPlanner project folder to restore its original folder; install a 7z-compatible extractor there first. Archives are **not encrypted** and are not an off-device backup until copied elsewhere. They can contain private files and do not establish rights to the books.
 
 The dashboard shows daily quests beneath the calendar and routine tabs beneath daily progress. Routines default to morning before noon and night from noon, using your device's local time; you can switch tabs at any time. The dashboard affirmation is selected based on the current local date.
 
@@ -48,6 +58,8 @@ Run commands in the project folder.
 | `npm run db:migrate` | Apply committed database migrations. |
 | `npm run db:studio` | Open Prisma Studio to browse and edit the configured database; also available as `npx prisma studio`. |
 | `npm run generate-secrets` | Print new secret entries to copy into `.env`; keep the output private. |
+| `npm run backup:books` | Create and verify a dated 7z snapshot of the complete ebook folder. |
+| `npm run backup:audible` | Create and verify a separate dated 7z snapshot of the complete audiobook folder. |
 | `npx prisma generate` | Regenerate Prisma Client after changing the schema. |
 | `npx prisma migrate dev --name describe_your_change` | Create and apply a migration on a development database; review reset prompts carefully. |
 | `npm run typecheck` | Check TypeScript. |

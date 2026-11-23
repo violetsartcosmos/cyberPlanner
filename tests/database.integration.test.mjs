@@ -34,7 +34,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
     const vite = await createServer({
       configFile: false,
       appType: "custom",
-      server: { middlewareMode: true, hmr: false, ws: false },
+      server: { middlewareMode: true, hmr: false, ws: false, watch: { ignored: ["**/audiblebooks/**"] } },
     });
     let db;
     try {

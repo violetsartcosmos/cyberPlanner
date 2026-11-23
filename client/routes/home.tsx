@@ -508,7 +508,6 @@ export default function Home() {
             CYBERPLANNER <Sparkles aria-hidden="true" size={11} /> YOUR LIFE,
             YOUR QUEST.
           </span>
-          <span>BUILT FOR THE BEAUTIFULLY HUMAN EXPERIENCE</span>
         </footer>
       </main>
     </div>

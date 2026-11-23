@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { ReactReader } from "react-reader";
 import type { LibraryBook } from "../../../shared/planner/books";
-
-function bookUrl(book: LibraryBook) {
-  return `/api/books/file?${new URLSearchParams({ path: book.path })}`;
-}
+import { BookDetails } from "./book-details";
+import { bookUrl } from "./book-url";
+import { AudioPlayer } from "./audio-player";
 
 function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void }) {
   const storageKey = `cyberplanner-book:${book.path}`;
@@ -50,6 +49,7 @@ export function BookLibrary() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<LibraryBook | null>(null);
+  const [detailsBook, setDetailsBook] = useState<LibraryBook | null>(null);
 
   useEffect(function loadLibrary() {
     const controller = new AbortController();
@@ -69,7 +69,13 @@ export function BookLibrary() {
   }, []);
 
   if (selected) {
+    if (selected.format === "m4b") {
+      return <AudioPlayer key={selected.path} book={selected} onClose={() => setSelected(null)} />;
+    }
     return <EpubReader key={selected.path} book={selected} onClose={() => setSelected(null)} />;
+  }
+  if (detailsBook) {
+    return <BookDetails key={detailsBook.path} book={detailsBook} onClose={() => setDetailsBook(null)} onRead={() => setSelected(detailsBook)} />;
   }
 
   const filtered = books?.filter((book) => book.path.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
@@ -79,7 +85,7 @@ export function BookLibrary() {
         <div>
           <p className="eyebrow accent">YOUR READING SPACE</p>
           <h2>Bookshelf</h2>
-          <p>EPUBs open here; PDFs open in your browser.</p>
+          <p>Read EPUBs, open PDFs, or listen to compatible M4B audiobooks.</p>
         </div>
         <label>
           <span>Search books</span>
@@ -88,19 +94,24 @@ export function BookLibrary() {
       </div>
       {error && <p role="alert">{error}</p>}
       {!books && !error && <p>Loading library...</p>}
-      {books && books.length === 0 && <p>No books found. Add EPUB or PDF files to the ebooks folder and refresh this page.</p>}
+      {books && books.length === 0 && <p>No books found. Add EPUBs or PDFs to ebooks, or M4B files to audiblebooks, and refresh this page.</p>}
       {books && books.length > 0 && filtered?.length === 0 && <p>No books match your search.</p>}
       {filtered && filtered.length > 0 && (
         <ul className="library-list">
           {filtered.map((book) => (
-            <li key={book.path}>
+            <li key={`${book.library ?? "ebooks"}:${book.path}`}>
               <div>
                 <strong>{book.title}</strong>
-                <small>{book.path.includes("/") ? book.path.slice(0, book.path.lastIndexOf("/")) : "Library"} · {book.format.toUpperCase()}</small>
+                <small>{book.library === "audiblebooks" ? "Audiobooks" : "Ebooks"}{book.path.includes("/") ? ` / ${book.path.slice(0, book.path.lastIndexOf("/"))}` : ""} · {book.format.toUpperCase()}</small>
               </div>
-              {book.format === "epub"
-                ? <button type="button" onClick={() => setSelected(book)}>Read</button>
-                : <a href={bookUrl(book)} target="_blank" rel="noopener noreferrer">Open PDF</a>}
+              <div className="library-book-actions">
+                {book.format === "epub"
+                  ? <button type="button" onClick={() => setSelected(book)}>Read</button>
+                  : book.format === "m4b"
+                    ? <button type="button" onClick={() => setSelected(book)}>Listen</button>
+                    : <a href={bookUrl(book)} target="_blank" rel="noopener noreferrer">Open PDF</a>}
+                <button type="button" onClick={() => setDetailsBook(book)}>Details</button>
+              </div>
             </li>
           ))}
         </ul>
