@@ -99,10 +99,23 @@ model BookData {
   wikipedia    Json?
   cover        Bytes?
   coverType    String?        @map("cover_type")
+  progress     String?
+  revision     Int            @default(0)
   bookmarks    BookBookmark[]
+  aliases      BookAlias[]
 
   @@id([library, path])
   @@map("book_data")
+}
+
+model BookAlias {
+  library String
+  path    String
+  alias   String
+  book    BookData @relation(fields: [library, path], references: [library, path], onUpdate: Cascade, onDelete: Cascade)
+
+  @@id([library, path, alias])
+  @@map("book_aliases")
 }
 
 model BookBookmark {

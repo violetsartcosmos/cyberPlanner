@@ -8,9 +8,9 @@ import { getPlannerPage } from "./planner/page";
 import { getSignedInEmail } from "./auth/service";
 import { getCalendarData, validCalendarRange } from "./google/calendar";
 import { audiobookDirectory, bookResponse, libraryDirectory, listBooks } from "./books/library";
-import { addBookmark, addStoragePaths, getChapters, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveWikipedia } from "./books/data";
+import { addBookmark, addStoragePaths, getChapters, getProgress, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveProgress, saveWikipedia } from "./books/data";
 import type { LibraryName } from "./books/library";
-import { isWikipediaDetails } from "../shared/planner/books";
+import { isWikipediaDetails, validBookPosition } from "../shared/planner/books";
 
 export const app = new Hono();
 
@@ -144,6 +144,48 @@ app.get("/api/books/bookmarks", async (context) => {
   } catch (error) {
     console.error("Could not load bookmarks.", error);
     return context.json({ error: "Could not load bookmarks." }, 500);
+  }
+});
+
+app.get("/api/books/progress", async (context) => {
+  context.header("Cache-Control", "no-store");
+  if (!(await getSignedInEmail(context.req.raw))) return context.json({ error: "Sign in first." }, 401);
+  const library = librarySelection(context.req.query("library"));
+  const path = context.req.query("path");
+  if (!library || !path || path.length > 2048) return context.json({ error: "Invalid book." }, 400);
+  try {
+    return context.json(await getProgress(library.root, library.name, path));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Book not found.") return context.json({ error: error.message }, 404);
+    if (error instanceof Error && error.message === "Progress is unavailable for PDFs.") return context.json({ error: error.message }, 400);
+    console.error("Could not load book progress.", error);
+    return context.json({ error: "Could not load book progress." }, 500);
+  }
+});
+
+app.put("/api/books/progress", async (context) => {
+  context.header("Cache-Control", "no-store");
+  if (!(await getSignedInEmail(context.req.raw))) return context.json({ error: "Sign in first." }, 401);
+  const body = await context.req.text();
+  if (body.length > 10000) return context.json({ error: "Invalid progress." }, 400);
+  let input: unknown;
+  try { input = JSON.parse(body); } catch { return context.json({ error: "Invalid progress." }, 400); }
+  if (typeof input !== "object" || input === null || Array.isArray(input) ||
+      !("path" in input) || typeof input.path !== "string" || !input.path || input.path.length > 2048 ||
+      !("revision" in input) || typeof input.revision !== "number" || !Number.isInteger(input.revision) || input.revision < 0 || input.revision >= 2147483647 ||
+      !("position" in input)) return context.json({ error: "Invalid progress." }, 400);
+  const library = librarySelection("library" in input ? input.library : undefined);
+  if (!library) return context.json({ error: "Invalid library." }, 400);
+  const format = input.path.toLowerCase().endsWith(".epub") ? "epub" : input.path.toLowerCase().endsWith(".m4b") ? "m4b" : "pdf";
+  if (!validBookPosition(format, input.position)) return context.json({ error: "Invalid book position." }, 400);
+  try {
+    const result = await saveProgress(library.root, library.name, input.path, input.position, input.revision);
+    return result.conflict ? context.json(result.progress, 409) : context.json(result.progress);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Book not found.") return context.json({ error: error.message }, 404);
+    if (error instanceof Error && error.message === "Invalid book position.") return context.json({ error: error.message }, 400);
+    console.error("Could not save book progress.", error);
+    return context.json({ error: "Could not save book progress." }, 500);
   }
 });
 

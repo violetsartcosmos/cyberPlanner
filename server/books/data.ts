@@ -2,13 +2,20 @@ import { link, lstat, realpath, unlink } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { getDatabase } from "../db/client";
 import { Prisma } from "../generated/prisma/client";
-import { isWikipediaDetails, type LibraryBook, type WikipediaDetails } from "../../shared/planner/books";
+import { isWikipediaDetails, validBookPosition, type LibraryBook, type WikipediaDetails } from "../../shared/planner/books";
 import { getBookDetails, listBooks, type LibraryName } from "./library";
 
 async function ensureBook(root: string, library: LibraryName, path: string): Promise<LibraryBook> {
   const book = (await listBooks(root, library)).find((item) => item.path === path);
   if (!book) throw new Error("Book not found.");
   return book;
+}
+
+async function lockBookPaths(tx: Prisma.TransactionClient, library: LibraryName, paths: string[]) {
+  for (const path of [...new Set(paths)].sort()) {
+    const key = JSON.stringify(["book-progress", library, path]);
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
 }
 
 export async function getSavedWikipedia(root: string, library: LibraryName, path: string): Promise<WikipediaDetails | null> {
@@ -105,6 +112,32 @@ export async function addStoragePaths(books: LibraryBook[]): Promise<LibraryBook
   });
 }
 
+export async function getProgress(root: string, library: LibraryName, path: string) {
+  const book = await ensureBook(root, library, path);
+  if (book.format === "pdf") throw new Error("Progress is unavailable for PDFs.");
+  const record = await getDatabase().bookData.findUnique({ where: { library_path: { library, path } }, select: { progress: true, revision: true } });
+  return { position: record?.progress ?? null, revision: record?.revision ?? 0 };
+}
+
+export async function saveProgress(root: string, library: LibraryName, path: string, position: string, revision: number) {
+  const db = getDatabase();
+  return db.$transaction(async (tx) => {
+    await lockBookPaths(tx, library, [path]);
+    const book = await ensureBook(root, library, path);
+    if (!validBookPosition(book.format, position)) throw new Error("Invalid book position.");
+    await tx.bookData.createMany({ data: [{ library, path, storagePath: path }], skipDuplicates: true });
+    const result = await tx.bookData.updateMany({
+      where: { library, path, revision },
+      data: { progress: position, revision: { increment: 1 } },
+    });
+    if (!result.count) {
+      const current = await tx.bookData.findUniqueOrThrow({ where: { library_path: { library, path } }, select: { progress: true, revision: true } });
+      return { conflict: true as const, progress: { position: current.progress, revision: current.revision } };
+    }
+    return { conflict: false as const, progress: { position, revision: revision + 1 } };
+  });
+}
+
 export async function renameBook(root: string, library: LibraryName, path: string, title: string): Promise<LibraryBook> {
   const book = await ensureBook(root, library, path);
   const trimmed = title.trim();
@@ -130,13 +163,16 @@ export async function renameBook(root: string, library: LibraryName, path: strin
   const target = resolve(parent, `${trimmed}${extension}`);
   const db = getDatabase();
   await getSavedWikipedia(root, library, path);
-  await link(original, target);
+  let targetCreated = false;
   let originalRemoved = false;
   try {
-    const storagePath = await db.$transaction(async (tx) => {
+    const saved = await db.$transaction(async (tx) => {
+      await lockBookPaths(tx, library, [path, nextPath]);
       if (await tx.bookData.findUnique({ where: { library_path: { library, path: nextPath } } })) {
         throw new Error("The new filename already has saved book data.");
       }
+      await link(original, target);
+      targetCreated = true;
       const current = await tx.bookData.upsert({
         where: { library_path: { library, path } },
         create: { library, path, storagePath: path },
@@ -145,12 +181,12 @@ export async function renameBook(root: string, library: LibraryName, path: strin
       await tx.bookData.update({ where: { library_path: { library, path } }, data: { path: nextPath } });
       await unlink(original);
       originalRemoved = true;
-      return current.storagePath;
+      return { storagePath: current.storagePath };
     });
-    return { ...book, path: nextPath, title: trimmed, storagePath };
+    return { ...book, path: nextPath, title: trimmed, ...saved };
   } catch (error) {
     if (originalRemoved) await link(target, original);
-    await unlink(target);
+    if (targetCreated) await unlink(target);
     throw error;
   }
 }

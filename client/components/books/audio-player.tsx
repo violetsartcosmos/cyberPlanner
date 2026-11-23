@@ -5,6 +5,9 @@ import type { LibraryBook } from "../../../shared/planner/books";
 import { bookCoverUrl, bookQuery, bookUrl } from "./book-url";
 import { useBookmarks } from "./use-bookmarks";
 import { useSavedWikipedia } from "./use-saved-wikipedia";
+import { useBookProgress } from "./use-book-progress";
+import { ProgressStatus } from "./progress-status";
+import { audioPositionToSave, restoredAudioSeconds } from "./audio-progress";
 
 type Chapter = { title: string; start: number };
 
@@ -17,21 +20,9 @@ function formatTime(seconds: number) {
 }
 
 export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () => void }) {
-  const storageKey = `cyberplanner-audiobook:${book.storagePath ?? book.path}`;
-  const [position] = useState<{ seconds: number; error: string }>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved === null) return { seconds: 0, error: "" };
-      const seconds = Number(saved);
-      if (!Number.isFinite(seconds) || seconds < 0) {
-        return { seconds: 0, error: "Saved listening position is invalid." };
-      }
-      return { seconds, error: "" };
-    } catch {
-      return { seconds: 0, error: "Listening position could not be loaded from this browser." };
-    }
-  });
-  const [error, setError] = useState(position.error);
+  const { progress, error: progressError, conflict, saving, pendingPosition, queue } = useBookProgress(book);
+  const [error, setError] = useState("");
+  const [restoreError, setRestoreError] = useState("");
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [chapterError, setChapterError] = useState("");
   const [current, setCurrent] = useState(0);
@@ -41,7 +32,8 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
   const [showChapters, setShowChapters] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const lastSaved = useRef(0);
+  const restored = useRef(false);
+  const restoringSeek = useRef(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { bookmarks, add, remove, error: bookmarkError, busy } = useBookmarks(book);
   const { wiki, error: wikiError } = useSavedWikipedia(book);
@@ -63,43 +55,52 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
   }, [book.path, book.library]);
 
   function savePosition(audio: HTMLAudioElement, force = false) {
-    if (!force && Date.now() - lastSaved.current < 5000) return;
-    if (!Number.isFinite(audio.currentTime)) return;
-    try {
-      localStorage.setItem(storageKey, String(audio.ended ? 0 : audio.currentTime));
-      lastSaved.current = Date.now();
-    } catch {
-      setError("Listening position could not be saved in this browser.");
+    const position = audioPositionToSave(audio, restored.current);
+    if (position === null) return;
+    queue.current?.enqueue(position);
+    if (force) void queue.current?.flush();
+  }
+
+  function applyPosition(audio: HTMLAudioElement, position: string | null) {
+    restored.current = false;
+    const seconds = restoredAudioSeconds(position, audio.duration);
+    if (seconds === null) {
+      setRestoreError("The saved position cannot be restored for this audiobook. Start from the beginning only if you want to replace it.");
+      return;
     }
+    setRestoreError("");
+    if (audio.currentTime !== seconds) {
+      restoringSeek.current = true;
+      audio.currentTime = seconds;
+    } else restored.current = true;
+    setCurrent(seconds);
   }
 
   function restorePosition(event: SyntheticEvent<HTMLAudioElement>) {
     const audio = event.currentTarget;
     setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
-    if (position.seconds > 0 && Number.isFinite(audio.duration) && position.seconds < audio.duration) {
-      audio.currentTime = position.seconds;
-    }
+    if (progress) applyPosition(audio, progress.position);
   }
 
   function saveFinalPosition(event: SyntheticEvent<HTMLAudioElement>) {
     savePosition(event.currentTarget, true);
   }
 
-  function closePlayer() {
-    if (audioRef.current) savePosition(audioRef.current, true);
-    onClose();
+  async function closePlayer() {
+    if (audioRef.current) savePosition(audioRef.current);
+    if (!progress || !queue.current || await queue.current.flush()) onClose();
   }
 
   function seek(seconds: number) {
     const audio = audioRef.current;
-    if (!audio || !Number.isFinite(audio.duration)) return;
+    if (!audio || !restored.current || !Number.isFinite(audio.duration)) return;
     audio.currentTime = Math.max(0, Math.min(seconds, audio.duration));
     setCurrent(audio.currentTime);
   }
 
   async function togglePlayback() {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !restored.current) return;
     if (!audio.paused) audio.pause();
     else {
       try { await audio.play(); }
@@ -122,7 +123,7 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
   return (
     <section className="panel library-audio-player" aria-label={`Listening to ${book.title}`}>
       <div className="library-reader-heading">
-        <button type="button" onClick={closePlayer}>Back to library</button>
+        <button type="button" onClick={() => { void closePlayer(); }}>Back to library</button>
         <span className="library-kicker">YOUR AUDIO LIBRARY</span>
       </div>
       <div className="library-audio-main">
@@ -151,7 +152,7 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
           {showBookmarks && <ul>{bookmarks.map((bookmark) => <li key={bookmark.id}><button type="button" onClick={() => seek(Number(bookmark.position))}>{bookmark.label}</button><button type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>)}</ul>}
         </div>
       </div>
-      <audio
+      {progress && <audio
         ref={audioRef}
         preload="metadata"
         src={bookUrl(book)}
@@ -159,13 +160,23 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
         onTimeUpdate={(event) => { setCurrent(event.currentTarget.currentTime); savePosition(event.currentTarget); }}
         onPlay={() => setPlaying(true)}
         onPause={(event) => { setPlaying(false); saveFinalPosition(event); }}
-        onSeeked={saveFinalPosition}
+        onSeeked={(event) => {
+          if (restoringSeek.current) { restoringSeek.current = false; restored.current = true; return; }
+          saveFinalPosition(event);
+        }}
         onEnded={(event) => { setPlaying(false); saveFinalPosition(event); }}
         onError={() => setError("Could not play this audiobook. It may be incomplete, protected, or unsupported by this browser.")}
       >
         Your browser does not support audio playback.
-      </audio>
+      </audio>}
       {error && <p role="alert">{error}</p>}
+      {restoreError && <p role="alert">{restoreError} <button type="button" onClick={() => {
+        setRestoreError("");
+        restoringSeek.current = false;
+        restored.current = true;
+        if (audioRef.current) { audioRef.current.currentTime = 0; setCurrent(0); queue.current?.enqueue("0"); }
+      }}>Start from beginning</button></p>}
+      <ProgressStatus error={progressError} conflict={conflict} saving={saving} pendingPosition={pendingPosition} queue={queue.current} onUseDatabase={(value) => { if (audioRef.current) { restored.current = false; audioRef.current.pause(); applyPosition(audioRef.current, value.position); } }} />
       {chapterError && <p role="alert">{chapterError}</p>}
       {bookmarkError && <p role="alert">{bookmarkError}</p>}
       {wikiError && <p role="alert">{wikiError}</p>}

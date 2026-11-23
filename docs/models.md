@@ -8,8 +8,6 @@ This guide maps the source code and data models. For environment configuration, 
 flowchart TB
     subgraph Browser["Browser"]
         UI["React routes and components"]
-        Local["Local reading / listening position"]
-        UI --- Local
     end
     subgraph Server["Node.js server"]
         HTTP["Hono: auth and API routes"]
@@ -66,16 +64,20 @@ The [Prisma schema](../prisma/schema.prisma) is the source of truth for fields, 
 | `PointLedger` | Earn and spend entries. A partial unique index prevents duplicate earn entries for a task key. |
 | `Achievement` | Achievement definition, progress, tracking method, unlock state, and awarded XP. Deleted achievements retain awarded XP. |
 | `Quest` | Custom side, main, or boss quest with its point value and completion time. |
-| `BookData` | Metadata keyed by library and path, including storage path, imported Wikipedia data, and optional cached cover. |
+| `BookData` | Metadata and revisioned progress keyed by library and path. |
+| `BookAlias` | Historical filename aliases retained in the database; no longer used for progress. |
 | `BookBookmark` | Saved position and label belonging to a `BookData` row; updates and deletes cascade with that book record. |
 
 ```mermaid
 erDiagram
     BookData ||--o{ BookBookmark : has
+    BookData ||--o{ BookAlias : has
     BookData {
         string library PK
         string path PK
         string storagePath
+        string progress
+        int revision
         json wikipedia
         bytes cover
     }
@@ -189,23 +191,26 @@ Represents a custom quest, distinct from built-in daily and routine tasks. On co
 
 ### `BookData` (`book_data`)
 
-Stores saved information for a library file, not the file itself. `(library, path)` is the composite primary key; a row is created when needed for saved details, bookmarks, or a rename.
+Stores saved information for a library file, not the file itself. `(library, path)` is the composite primary key; a row is created when needed for progress, saved details, bookmarks, or a rename.
 
 | Field | Type / default | What it holds and why |
 | --- | --- | --- |
 | `library` | String | `ebooks` or `audiblebooks`; selects the library root and distinguishes files with the same relative path. |
 | `path` | String | Current path relative to the library root; identifies the file and changes when it is renamed in the app. |
-| `storagePath` | String | Stable path used in browser-local reading or listening position keys. It stays unchanged across in-app renames so the previous position can be found. |
+| `storagePath` | String | Original path retained across in-app renames for compatibility. |
 | `wikipedia` | JSON? | Imported reference text and image attribution, or null if no reference is saved. Its shape is described below. |
 | `cover` | Bytes? | Cached imported cover image bytes, allowing the saved image to be displayed without refetching it. |
 | `coverType` | String? | Cached cover's MIME type, such as `image/png`, used when serving the bytes. |
+| `progress` | String? | Current EPUB CFI or audiobook seconds; null means no position has been saved. |
+| `revision` | Integer; `0` | Revision incremented atomically on every progress save. |
 | `bookmarks` | Relation, not a column | The associated `BookBookmark` records. The relation uses `(library, path)` and cascades on key updates and deletes. |
+| `aliases` | Relation, not a column | Historical filename aliases, cascading with the book key; no longer written by the app. |
 
 `wikipedia` contains the article `url`, introduction `description`, optional `sections` (each with `title`, heading `level`, and `text`), and `image`, which is null or an object containing image `url`, source `page`, `title`, `author`, and `license`. These preserve the reference and attribution. The API can also report a computed `cached` flag for the image; that flag is not stored in the JSON.
 
 ### `BookBookmark` (`book_bookmarks`)
 
-Stores user-created EPUB and audiobook bookmarks in PostgreSQL; the automatic current reading or listening position is stored separately in browser local storage.
+Stores user-created EPUB and audiobook bookmarks in PostgreSQL; the automatic current position is stored separately in `BookData`.
 
 | Field | Type / default | What it holds and why |
 | --- | --- | --- |
@@ -219,9 +224,9 @@ Stores user-created EPUB and audiobook bookmarks in PostgreSQL; the automatic cu
 
 ## Storage boundaries
 
-- PostgreSQL contains planner data, ledger entries, achievements, quests, book bookmarks, imported references, cached covers, and the encrypted Google refresh token.
+- PostgreSQL contains planner data, ledger entries, achievements, quests, book progress and bookmarks, imported references, cached covers, and the encrypted Google refresh token.
 - The server's `ebooks/` and `audiblebooks/` folders contain the actual book files; they are excluded from Git and Docker build contexts.
-- Reading and listening positions are stored in the current browser on the current device. Bookmarks are stored in PostgreSQL.
+- Previously saved browser-local positions are not automatically imported or removed.
 - Gmail message bodies and live Google Calendar events are not stored in the planner database.
 
 Back up these locations separately as needed. See [book backups](guide.md#back-up-your-books) and the [setup guide](setup.md).

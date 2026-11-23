@@ -6,6 +6,15 @@ export type LibraryBook = {
   storagePath?: string;
 };
 
+export type BookProgress = { position: string | null; revision: number };
+
+export function validBookPosition(format: LibraryBook["format"], position: unknown): position is string {
+  if (typeof position !== "string" || position.length > 2048) return false;
+  if (format === "epub") return /^epubcfi\(.+\)$/.test(position);
+  if (format === "m4b") return position.trim() !== "" && Number.isFinite(Number(position)) && Number(position) >= 0;
+  return false;
+}
+
 export type WikipediaDetails = {
   url: string;
   description: string;

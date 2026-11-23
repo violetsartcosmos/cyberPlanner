@@ -21,6 +21,10 @@ The commands below use PowerShell on Windows. Run them in the project folder. On
 
 ## Set up from scratch
 
+### Upgrading book progress
+
+Before upgrading an existing installation, back up PostgreSQL, the book folders, and any browser profiles containing old reading or listening positions. Deploy the committed database migration before starting the new server and client. This version does not automatically import old browser-local positions. If rolling back the application, retain the database and browser backups; old readers do not read database progress.
+
 ### 1. Install the project
 
 Open a terminal in the CyberPlanner project folder and run:

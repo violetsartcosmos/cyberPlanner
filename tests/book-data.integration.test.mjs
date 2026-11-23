@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { getDatabase } from "../server/db/client.ts";
-import { addBookmark, addStoragePaths, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveWikipedia } from "../server/books/data.ts";
+import { addBookmark, addStoragePaths, getProgress, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveProgress, saveWikipedia } from "../server/books/data.ts";
 import { saveBookDetails } from "../server/books/library.ts";
 
 test("book data survives migration, renaming and bookmark changes", async () => {
@@ -17,6 +17,8 @@ test("book data survives migration, renaming and bookmark changes", async () => 
   const original = `${prefix}.m4b`;
   const renamedTitle = `${prefix} Apollyon (Left Behind Series 05)`;
   const renamed = `${renamedTitle}.m4b`;
+  const secondTitle = `${prefix}-final`;
+  const second = `${secondTitle}.m4b`;
   const collision = `${prefix}-existing.m4b`;
   const root = await mkdtemp(join(tmpdir(), "cyberplanner-book-data-"));
   const db = getDatabase();
@@ -32,6 +34,15 @@ test("book data survives migration, renaming and bookmark changes", async () => 
     await saveWikipedia(root, "audiblebooks", original, details, cover, "image/jpeg");
     assert.equal((await getSavedWikipedia(root, "audiblebooks", original)).image.cached, true);
     const bookmark = await addBookmark(root, "audiblebooks", original, "42.5", "00:42");
+    const updates = await Promise.all([
+      saveProgress(root, "audiblebooks", original, "42.5", 0),
+      saveProgress(root, "audiblebooks", original, "50", 0),
+    ]);
+    assert.equal(updates.filter((result) => !result.conflict).length, 1);
+    assert.equal(updates.filter((result) => result.conflict).length, 1);
+    const progress = await getProgress(root, "audiblebooks", original);
+    assert.equal(progress.revision, 1);
+    await assert.rejects(() => saveProgress(root, "audiblebooks", original, "-1", 1), /Invalid/);
 
     await writeFile(join(root, collision), "existing");
     await assert.rejects(() => renameBook(root, "audiblebooks", original, `${prefix}-existing`));
@@ -47,13 +58,27 @@ test("book data survives migration, renaming and bookmark changes", async () => 
     assert.equal(await readFile(join(root, renamed), "utf8"), "test audio");
     await assert.rejects(() => readFile(join(root, original)), { code: "ENOENT" });
     assert.equal((await listBookmarks(root, "audiblebooks", renamed))[0].id, bookmark.id);
+    assert.deepEqual(await getProgress(root, "audiblebooks", renamed), progress);
     assert.deepEqual(Array.from((await savedCover(root, "audiblebooks", renamed)).cover), Array.from(cover));
     assert.equal((await getSavedWikipedia(root, "audiblebooks", renamed)).description, "Legacy text");
     assert.equal((await addStoragePaths([updated]))[0].storagePath, original);
     await removeBookmark(root, "audiblebooks", renamed, bookmark.id);
     assert.deepEqual(await listBookmarks(root, "audiblebooks", renamed), []);
+    const [renameResult, saveResult] = await Promise.allSettled([
+      renameBook(root, "audiblebooks", renamed, secondTitle),
+      saveProgress(root, "audiblebooks", renamed, "75", progress.revision),
+    ]);
+    assert.equal(renameResult.status, "fulfilled");
+    const finalProgress = await getProgress(root, "audiblebooks", second);
+    if (saveResult.status === "fulfilled") {
+      assert.equal(saveResult.value.conflict, false);
+      assert.equal(finalProgress.position, "75");
+    } else {
+      assert.match(saveResult.reason.message, /Book not found/);
+      assert.deepEqual(finalProgress, progress);
+    }
   } finally {
-    await db.bookData.deleteMany({ where: { library: "audiblebooks", path: { in: [original, renamed, collision] } } });
+    await db.bookData.deleteMany({ where: { library: "audiblebooks", path: { in: [original, renamed, second, collision] } } });
     await db.$disconnect();
     await rm(root, { recursive: true, force: true });
   }

@@ -81,6 +81,7 @@ The [architecture and models guide](docs/models.md) explains the layers, request
 | `npm run db:studio` | Browse the database with Prisma Studio. |
 | `npm run typecheck` | Check TypeScript. |
 | `npm run test:server`, `npm run test:profile`, `npm run test:books` | Run focused test suites. |
+| `npm run test:book-data` | Run book database and API integration tests against a disposable migrated `TEST_DATABASE_URL`. |
 | `npm run test:database` | Run integration tests against a separate, empty, disposable database in `TEST_DATABASE_URL`. |
 | `npm run backup:books`, `npm run backup:audible` | Back up ebook or audiobook files (requires 7-Zip). |
 

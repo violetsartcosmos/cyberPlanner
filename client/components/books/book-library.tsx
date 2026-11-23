@@ -10,6 +10,8 @@ import { matchesLibraryFilter, shuffleBooks, type LibraryFilter } from "./librar
 import { useEmbeddedDetails } from "./use-embedded-details";
 import { useSavedWikipedia } from "./use-saved-wikipedia";
 import { useBookmarks } from "./use-bookmarks";
+import { useBookProgress } from "./use-book-progress";
+import { ProgressStatus } from "./progress-status";
 
 function BookCover({ book, index, onClick }: { book: LibraryBook; index: number; onClick: () => void }) {
   const ref = useRef<HTMLButtonElement>(null);
@@ -43,47 +45,65 @@ function BookCover({ book, index, onClick }: { book: LibraryBook; index: number;
 }
 
 function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void }) {
-  const storageKey = `cyberplanner-book:${book.storagePath ?? book.path}`;
-  const [position, setPosition] = useState<{ location: string | number; error: string }>(() => {
-    try {
-      return { location: localStorage.getItem(storageKey) ?? 0, error: "" };
-    } catch {
-      return { location: 0, error: "Reading position could not be loaded from this browser." };
-    }
-  });
+  const { progress, error, conflict, saving, pendingPosition, queue } = useBookProgress(book);
+  const [location, setLocation] = useState<string | number | null>(null);
+  const displayed = useRef(false);
+  const interacted = useRef(false);
   const { bookmarks, add, remove, error: bookmarkError, busy } = useBookmarks(book);
 
-  function locationChanged(next: string) {
-    try {
-      localStorage.setItem(storageKey, next);
-      setPosition({ location: next, error: "" });
-    } catch {
-      setPosition({ location: next, error: "Reading position could not be saved in this browser." });
+  useEffect(() => {
+    if (progress && location === null) setLocation(progress.position ?? 0);
+  }, [progress, location]);
+
+  useEffect(() => {
+    function onKeyUp(event: KeyboardEvent) {
+      if (displayed.current && (event.key === "ArrowLeft" || event.key === "ArrowRight")) interacted.current = true;
     }
+    document.addEventListener("keyup", onKeyUp);
+    return () => document.removeEventListener("keyup", onKeyUp);
+  }, []);
+
+  function locationChanged(next: string) {
+    if (!interacted.current) {
+      if (progress?.position === null) setLocation(next);
+      return;
+    }
+    setLocation(next);
+    queue.current?.enqueue(next);
+  }
+
+  async function closeReader() {
+    if (!progress || !queue.current || await queue.current.flush()) onClose();
   }
 
   return (
     <section className="panel library-reader" aria-label={`Reading ${book.title}`}>
       <div className="library-reader-heading">
         <h2>{book.title}</h2>
-        <button type="button" onClick={onClose}>Back to library</button>
+        <button type="button" onClick={() => { void closeReader(); }}>Back to library</button>
       </div>
-      {position.error && <p role="alert">{position.error}</p>}
+      <ProgressStatus error={error} conflict={conflict} saving={saving} pendingPosition={pendingPosition} queue={queue.current} onUseDatabase={(value) => { interacted.current = false; setLocation(value.position ?? 0); }} />
       <div className="library-bookmarks">
-        <button type="button" disabled={busy || typeof position.location !== "string"} onClick={() => { void add(String(position.location), `Bookmark ${bookmarks.length + 1}`); }}>Add bookmark</button>
+        <button type="button" disabled={busy || typeof location !== "string"} onClick={() => { void add(String(location), `Bookmark ${bookmarks.length + 1}`); }}>Add bookmark</button>
         {bookmarkError && <p role="alert">{bookmarkError}</p>}
         {bookmarks.length > 0 && <details><summary>Bookmarks ({bookmarks.length})</summary><ul>{bookmarks.map((bookmark) => (
-          <li key={bookmark.id}><button type="button" onClick={() => setPosition({ location: bookmark.position, error: "" })}>{bookmark.label}</button><button type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>
+          <li key={bookmark.id}><button type="button" disabled={!progress || location === null} onClick={() => { interacted.current = true; setLocation(bookmark.position); queue.current?.enqueue(bookmark.position); }}>{bookmark.label}</button><button type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>
         ))}</ul></details>}
       </div>
-      <div className="library-reader-view">
+      <div className="library-reader-view" onPointerDownCapture={() => { if (displayed.current) interacted.current = true; }} onKeyDownCapture={() => { if (displayed.current) interacted.current = true; }}>
+        {location !== null &&
         <ReactReader
           url={bookUrl(book)}
-          location={position.location}
+          location={location}
           locationChanged={locationChanged}
+          getRendition={(rendition) => {
+            rendition.on("displayed", () => { displayed.current = true; });
+            rendition.on("keyup", () => { if (displayed.current) interacted.current = true; });
+            rendition.on("click", () => { if (displayed.current) interacted.current = true; });
+          }}
           epubInitOptions={{ openAs: "epub" }}
           errorView={<p role="alert">Could not open this EPUB. It may be damaged or DRM-protected.</p>}
-        />
+        />}
       </div>
     </section>
   );
@@ -104,6 +124,7 @@ export function BookLibrary() {
         const response = await fetch("/api/books", { signal: controller.signal });
         if (!response.ok) throw new Error(`Could not load the library (${response.status}).`);
         const books = await response.json() as LibraryBook[];
+        if (controller.signal.aborted) return;
         setLibrary({ books, featuredOrder: shuffleBooks(books) });
       } catch (error) {
         if (!controller.signal.aborted) {

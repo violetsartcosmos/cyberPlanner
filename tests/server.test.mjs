@@ -36,6 +36,8 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.equal((await app.request("http://localhost/api/books/file?path=test.epub")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/file?library=audiblebooks&path=test.m4b")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/details?path=test.epub")).status, 401);
+    assert.equal((await app.request("http://localhost/api/books/progress?path=test.epub")).status, 401);
+    assert.equal((await app.request("http://localhost/api/books/progress", { method: "PUT", headers: { Origin: "http://localhost" } })).status, 401);
 
     const storage = createCookieSessionStorage({
       cookie: {
@@ -46,6 +48,22 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     const session = await storage.getSession();
     session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
     const cookie = await storage.commitSession(session);
+    for (const input of [
+      { path: "test.epub", position: "", revision: 0 },
+      { path: "test.epub", position: "epubcfi(/6/2)", revision: -1 },
+      { path: "test.m4b", library: "audiblebooks", position: "Infinity", revision: 0 },
+      { path: "test.pdf", position: "0", revision: 0 },
+    ]) {
+      const response = await app.request("http://localhost/api/books/progress", {
+        method: "PUT", headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" }, body: JSON.stringify(input),
+      });
+      assert.equal(response.status, 400);
+    }
+    const crossOriginProgress = await app.request("http://localhost/api/books/progress", {
+      method: "PUT", headers: { Cookie: cookie, Origin: "http://attacker.example", "Content-Type": "text/plain" },
+      body: JSON.stringify({ path: "test.epub", position: "epubcfi(/6/2)", revision: 0 }),
+    });
+    assert.equal(crossOriginProgress.status, 403);
     assert.equal((await app.request("http://localhost/api/books/file?library=unknown&path=test.m4b", { headers: { Cookie: cookie } })).status, 400);
     const invalidDetails = await app.request("http://localhost/api/books/details", {
       method: "POST",
