@@ -352,10 +352,14 @@ body {
 }
 
 
-.section-page .profile-summary,
 .section-page .shop {
   border: 0;
   border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.section-page .profile-summary {
   background: transparent;
   box-shadow: none;
 }
