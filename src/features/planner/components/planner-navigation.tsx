@@ -20,6 +20,7 @@ import { levelProgress } from "../../../../shared/planner/profile";
 type NavigationItem = readonly [string, string, LucideIcon];
 const dashboardNavigation: NavigationItem = ["", "Dashboard", LayoutDashboard];
 const calendarNavigation: NavigationItem = ["calendar", "Calendar", CalendarDays];
+const physicalTherapyNavigation: NavigationItem = ["physical-therapy", "Physical Therapy", LayoutDashboard];
 const questBoardNavigation: NavigationItem = ["quest-board", "Create Quest", Swords];
 const questLogNavigation: NavigationItem = ["quest-log", "Quest Log", ScrollText];
 const journalNavigation: NavigationItem = ["journal", "Journal", NotebookPen];
@@ -30,6 +31,7 @@ const profileNavigation: NavigationItem = ["profile", "Profile", UserRound];
 export const navigationSections: readonly NavigationItem[] = [
   dashboardNavigation,
   calendarNavigation,
+  physicalTherapyNavigation,
   questBoardNavigation,
   questLogNavigation,
   journalNavigation,
@@ -153,10 +155,6 @@ export function PlannerNavigation({
     menuButtonRef.current?.focus();
   }
 
-  function handleBrandNavigation() {
-    if (expanded && narrowScreen) closeMenu();
-  }
-
   function toggleMenu() {
     setExpanded((current) => !current);
   }
@@ -190,7 +188,7 @@ export function PlannerNavigation({
             to={`/?date=${selected}`}
             aria-label="CyberPlanner home"
             title="CyberPlanner home"
-            onClick={handleBrandNavigation}
+            onClick={handleNavigation}
           >
             <span className="brand-logo-frame">
               <img
@@ -229,6 +227,7 @@ export function PlannerNavigation({
           <NavigationGroup title="YOUR SPACE">
             <NavigationLink item={dashboardNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
             <NavigationLink item={calendarNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+            <NavigationLink item={physicalTherapyNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
           </NavigationGroup>
           <NavigationGroup title="PLANNER">
             <NavigationLink item={questBoardNavigation} selected={selected} section={section} onNavigate={handleNavigation} />

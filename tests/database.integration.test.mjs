@@ -21,6 +21,10 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
     process.env.DATABASE_URL = url;
     process.env.SESSION_SECRET = "temporary-integration-test-session-secret";
     process.env.GOOGLE_ALLOWED_EMAIL = "integration@example.test";
+    process.env.GOOGLE_CLIENT_ID = "test-client";
+    process.env.GOOGLE_CLIENT_SECRET = "test-secret";
+    process.env.GOOGLE_REDIRECT_URI = "http://localhost:5173/auth/callback";
+    process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32).toString("base64");
     const migration = spawnSync(process.execPath, [
       "node_modules/prisma/build/index.js", "migrate", "deploy",
     ], { env: process.env, encoding: "utf8" });
@@ -220,6 +224,51 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.ok(afterDelete.acceptedTemplateIds.includes(templateId));
       assert.equal((await submit({ intent: "accept_template", templateId })).ok, false);
       assert.equal((await submit(update)).ok, false);
+
+      const therapy = await vite.ssrLoadModule("/server/planner/therapy.ts");
+      const therapyDate = "2026-09-10";
+      const nextTherapyDate = "2026-09-11";
+      const emptyPlan = await therapy.getTherapyPlan(therapyDate);
+      assert.deepEqual(emptyPlan.sessions.map((session) => session.exercises.length), [7, 7, 9]);
+      assert.equal(emptyPlan.earnedPoints, 0);
+      const basePoints = (await db.pointLedger.aggregate({ where: { entryType: "earn" }, _sum: { amount: true } }))._sum.amount;
+      await gamification.saveAchievement(null, {
+        title: "Therapy points milestone", description: "Earn points", category: "Health & Mind",
+        tier: "Common", xp: 25, target: basePoints + 10, tracking: "points", taskId: null, reward: "",
+      });
+      const therapyAction = {
+        intent: "toggle_physical_therapy", date: therapyDate, sessionId: "am",
+        exerciseId: "glute", completed: "true", points: "9999",
+      };
+      assert.equal((await submit({ ...therapyAction, exerciseId: "side" })).ok, false);
+      const results = await Promise.all([submit(therapyAction), submit(therapyAction)]);
+      assert.ok(results.every((result) => result.ok));
+      assert.ok(results.some((result) => result.earnedAchievements.includes("Therapy points milestone")));
+      let plan = await therapy.getTherapyPlan(therapyDate);
+      assert.equal(plan.sessions[0].exercises.find((exercise) => exercise.id === "glute").completed, true);
+      assert.equal(plan.earnedPoints, 10);
+      assert.equal((await points.getPointsSummary(therapyDate)).todayPoints, 10);
+      const therapyAchievement = await db.achievement.findFirstOrThrow({ where: { title: "Therapy points milestone" } });
+      assert.equal(therapyAchievement.awardedXp, 25);
+      assert.equal((await submit({ ...therapyAction, completed: "false" })).ok, true);
+      plan = await therapy.getTherapyPlan(therapyDate);
+      assert.equal(plan.sessions[0].exercises.find((exercise) => exercise.id === "glute").completed, false);
+      assert.equal(plan.earnedPoints, 10);
+      assert.equal((await submit(therapyAction)).ok, true);
+      assert.equal((await submit({ ...therapyAction, sessionId: "mid" })).ok, true);
+      assert.equal((await submit({ ...therapyAction, date: nextTherapyDate })).ok, true);
+      assert.equal((await therapy.getTherapyPlan(therapyDate)).earnedPoints, 20);
+      assert.equal((await therapy.getTherapyPlan(nextTherapyDate)).earnedPoints, 10);
+      assert.equal(await db.pointLedger.count({ where: { taskKey: `pt:${therapyDate}:am:glute` } }), 1);
+      assert.equal((await db.pointLedger.findFirstOrThrow({ where: { taskKey: `pt:${therapyDate}:am:glute` } })).amount, 10);
+      const { getPlannerPage } = await vite.ssrLoadModule("/server/planner/page.ts");
+      const loaded = await getPlannerPage(new Request(`http://localhost/api/planner?date=${therapyDate}&taskKeys=visible`, {
+        headers: { Cookie: cookie },
+      }));
+      assert.equal(loaded.selected, therapyDate);
+      assert.equal(loaded.therapy.earnedPoints, 20);
+      assert.equal(loaded.therapy.sessions[1].exercises.find((exercise) => exercise.id === "glute").completed, true);
+      assert.equal(loaded.todayPoints, 20);
 
       await assert.rejects(client.query(
         "INSERT INTO point_ledger (amount, entry_type, task_key) VALUES (0, 'earn', 'invalid')",

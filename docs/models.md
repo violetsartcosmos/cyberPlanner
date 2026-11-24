@@ -62,6 +62,8 @@ The [Prisma schema](../prisma/schema.prisma) is the source of truth for fields, 
 | `GoogleConnection` | Singleton connection with the account email and encrypted refresh token. |
 | `ExternalTask` | Synced Google task or Gmail follow-up, keyed by source and external ID. |
 | `PointLedger` | Earn and spend entries. A partial unique index prevents duplicate earn entries for a task key. |
+| `TherapyExercise`, `TherapySession`, `TherapySessionExercise` | Exercise guidance and ordered, point-valued session assignments. |
+| `TherapyCompletion` | Completed session exercises, keyed by date, session, and exercise. |
 | `Achievement` | Achievement definition, progress, tracking method, earned state, and awarded XP. Deleted achievements retain awarded XP. |
 | `Quest` | Custom side, main, or boss quest with its point value and completion time. |
 | `BookData` | Metadata and revisioned progress keyed by library and path. |
@@ -90,7 +92,9 @@ erDiagram
     }
 ```
 
-Other models are independent tables, not Prisma relations. Task award keys in `PointLedger` identify completed tasks without a foreign key. Available points are the sum of ledger entries; lifetime XP combines earned task points with achievement XP, so spending points does not reduce XP.
+Therapy session assignments reference their session and exercise, and completions reference an assignment. The other models are independent tables apart from the book relations shown above. Task award keys in `PointLedger` identify completed tasks without a foreign key. Available points are the sum of ledger entries; lifetime XP combines earned task points with achievement XP, so spending points does not reduce XP.
+
+Therapy awards use `pt:<date>:<session-id>:<exercise-id>` keys. The completion record is removed when unchecked, but its ledger award remains. Session assignments store the current point value; changes to it do not alter past ledger entries. The migration seeds the initial exercise and session definitions.
 
 ### Reading the field tables
 

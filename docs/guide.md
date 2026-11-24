@@ -14,6 +14,14 @@ Open **Journal** from the sidebar or calendar to write for the selected date. Us
 
 Google sync and weekly protocol are on the calendar page. Google Calendar requires the additional API and permissions described in the [setup guide](setup.md).
 
+## Physical therapy
+
+Open **Physical Therapy** and select a morning, midday, or evening session. The page uses the planner's selected date; choose another date on the calendar before opening it. Check an exercise to save it to PostgreSQL and earn its listed points and XP. Each exercise can earn points once per session and date, including when it appears in more than one session.
+
+Clearing a check does not remove its points; checking it again does not award them twice. The points shown on the therapy page are the ledger awards for the selected date, even if a check was later cleared. Point-based achievements include therapy awards, but therapy checks do not count as built-in routine or activity streaks.
+
+Old therapy checks saved only in browser storage are not imported or awarded points automatically. They remain in that browser's storage. Back up PostgreSQL to retain new therapy progress; exercise details and completion history are sensitive, so protect database backups and access accordingly.
+
 ## Quests, achievements, and rewards
 
 Daily and routine tasks start as side quests worth 10 points. In **Quest Log**, change a routine to a main quest (50 points) or boss (150 points); it remains on its original checklist. A type change affects future awards, not points already earned for that task on a given date. Synced Google and Gmail tasks remain worth 10 points.

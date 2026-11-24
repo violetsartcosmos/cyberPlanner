@@ -14,6 +14,8 @@ Book requests that take a `path` require a non-empty path of at most 2,048 chara
 
 `GET /api/planner` returns all earned task keys by default. Set `taskKeys=visible` to return only keys for the selected date's built-in tasks and its visible synced tasks.
 
+For a signed-in user, the response also includes `therapy.sessions` with exercise definitions, point values, and completion states for the selected date, plus `therapy.earnedPoints` from the points ledger. Submit the `toggle_physical_therapy` planner action with form fields `date` (`YYYY-MM-DD`), `sessionId`, `exerciseId`, and `completed` (`true` or `false`). The server validates the session assignment and determines the point value; an award occurs at most once for that date, session, and exercise. Unchecking does not reverse an award.
+
 ## Books
 
 | Method and path | Description |

@@ -1,0 +1,62 @@
+/* Scoped to .pt-page. Map these tokens to your app's existing variables if you have them. */
+.pt-page {
+  --pt-bg: transparent;            /* your page background already provides the purple glow */
+  --pt-card: #150e25;
+  --pt-border: rgba(168, 85, 247, 0.32);
+  --pt-line: rgba(168, 140, 220, 0.18);
+  --pt-ink: #f4efff;
+  --pt-muted: #a094bd;
+  --pt-cyan: #4de8f4;
+  --pt-pink: #ff7ac6;
+  --pt-font-mono: var(--font-mono, "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace);
+  --pt-font-display: var(--font-display, inherit);
+  color: var(--pt-ink);
+  background: var(--pt-bg);
+}
+
+.pt-page .pt-title { font-family: var(--pt-font-display); font-weight: 700; font-size: clamp(2rem, 5vw, 2.75rem); letter-spacing: -0.02em; }
+.pt-page .pt-h2 { font-family: var(--pt-font-display); font-weight: 700; font-size: 1.2rem; }
+.pt-page .pt-hero-title { font-family: var(--pt-font-display); font-weight: 700; font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.1; letter-spacing: -0.01em; max-width: 14ch; }
+
+.pt-page .pt-label { font-family: var(--pt-font-mono); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pt-muted); }
+.pt-page .pt-cyan { color: var(--pt-cyan); }
+.pt-page .pt-pink { color: var(--pt-pink); }
+.pt-page .pt-ink { color: var(--pt-ink); }
+.pt-page .pt-muted { color: var(--pt-muted); }
+
+/* Cards */
+.pt-page .pt-card { background: var(--pt-card); border: 1px solid var(--pt-border); border-radius: 22px; }
+.pt-page .pt-hero { background: linear-gradient(135deg, #3b1f66 0%, #1b1030 70%); }
+.pt-page .pt-note { background: rgba(255, 122, 198, 0.06); border-color: rgba(255, 122, 198, 0.3); }
+.pt-page .pt-rule { border-bottom: 1px solid var(--pt-line); }
+.pt-page li.pt-rule:last-child { border-bottom: 0; padding-bottom: 0 !important; }
+
+/* Progress */
+.pt-page .pt-bar { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.pt-page .pt-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--pt-pink), var(--pt-cyan)); border-radius: inherit; transition: width 0.3s ease; }
+.pt-page .pt-pct { font-family: var(--pt-font-display); font-weight: 700; font-size: 1.4rem; color: var(--pt-cyan); }
+
+/* Segmented control (matches Day / Week / Month) */
+.pt-page .pt-seg { display: flex; padding: 4px; border: 1px solid var(--pt-border); border-radius: 99px; background: rgba(10, 6, 20, 0.6); }
+.pt-page .pt-seg button { flex: 1; border: 0; background: transparent; color: var(--pt-ink); font-family: var(--pt-font-mono); font-size: 0.75rem; padding: 12px 8px; border-radius: 99px; cursor: pointer; }
+.pt-page .pt-seg button.active { background: var(--pt-cyan); color: #06222a; font-weight: 700; }
+
+/* Quest rows */
+.pt-page .pt-check { appearance: none; flex: none; width: 22px; height: 22px; margin-top: 2px; border: 1.5px solid var(--pt-muted); border-radius: 6px; background: transparent; cursor: pointer; display: grid; place-items: center; }
+.pt-page .pt-check:checked { background: var(--pt-cyan); border-color: var(--pt-cyan); }
+.pt-page .pt-check:checked::after { content: ""; width: 5px; height: 10px; border: solid #06222a; border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px, -1px); }
+.pt-page .pt-check:focus-visible, .pt-page .pt-seg button:focus-visible, .pt-page .pt-link:focus-visible, .pt-page .pt-linkplain:focus-visible { outline: 2px solid var(--pt-cyan); outline-offset: 3px; }
+.pt-page label { cursor: pointer; }
+.pt-page .pt-name { font-weight: 600; }
+.pt-page .pt-rx { font-size: 0.85rem; color: var(--pt-muted); }
+.pt-page .pt-struck .pt-name { text-decoration: line-through; color: var(--pt-muted); }
+.pt-page .pt-link { background: none; border: 0; padding: 0; font-family: var(--pt-font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pt-pink); cursor: pointer; display: block; }
+.pt-page .pt-linkplain { background: none; border: 0; padding: 0; color: var(--pt-ink); font-weight: 600; cursor: pointer; }
+.pt-page .pt-guide { font-size: 0.92rem; max-width: 62ch; padding: 12px 14px; border-radius: 12px; background: rgba(77, 232, 244, 0.06); border: 1px solid rgba(77, 232, 244, 0.18); }
+
+@media (max-width: 575.98px) {
+  .pt-page .pt-guide, .pt-page .pt-link { margin-left: 0 !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pt-page .pt-bar i { transition: none; }
+}

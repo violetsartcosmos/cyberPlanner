@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./assets/styles/app.scss";
+import "./assets/styles/physical-therapy.scss";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("The application root element is missing.");

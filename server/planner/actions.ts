@@ -11,6 +11,7 @@ import { findRoutine } from "./routines";
 import { setGoogleTaskCompleted } from "../google/service";
 import { getDatabase } from "../db/client";
 import type { ActionHandler } from "./dispatch";
+import { setTherapyCompletion } from "./therapy";
 
 async function isBuiltinTask(date: string, taskId: string) {
   return (await findRoutine(getDatabase(), date, taskId)) !== null;
@@ -31,6 +32,21 @@ function routineSlot(form: FormData) {
 }
 
 export const plannerFormActions = {
+  async toggle_physical_therapy(form) {
+    const date = form.get("date");
+    const sessionId = form.get("sessionId");
+    const exerciseId = form.get("exerciseId");
+    const completed = form.get("completed");
+    if (typeof date !== "string" || !isValidDateKey(date) ||
+        typeof sessionId !== "string" || !/^[a-z0-9_-]+$/.test(sessionId) ||
+        typeof exerciseId !== "string" || !/^[a-z0-9_-]+$/.test(exerciseId) ||
+        (completed !== "true" && completed !== "false")) {
+      return { ok: false, error: "That physical therapy exercise or state is invalid." };
+    }
+    const { earnedAchievements } = await setTherapyCompletion(date, sessionId, exerciseId, completed === "true");
+    return { ok: true, earnedAchievements };
+  },
+
   async toggle_builtin(form) {
     const date = form.get("date");
     const taskId = form.get("taskId");

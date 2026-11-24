@@ -10,6 +10,7 @@ import QuestBoardPage from "../pages/quest-board";
 import QuestLogPage from "../pages/quest-log";
 import RewardsPage from "../pages/rewards";
 import { useNotification } from "../components/notifications";
+import PhysicalTherapyPlan from "@/pages/PhysicalTherapyPlan";
 
 function RouteError({ root = false }: { root?: boolean }) {
   const error = useRouteError();
@@ -52,5 +53,6 @@ export const router = createBrowserRouter([{
     { path: "books", Component: BooksPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "rewards", Component: RewardsPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "profile", Component: ProfilePage, action: plannerAction, ErrorBoundary: PageError },
+    { path: "physical-therapy", Component: PhysicalTherapyPlan, action: plannerAction, ErrorBoundary: PageError },
   ],
 }]);

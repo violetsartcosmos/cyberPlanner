@@ -54,6 +54,24 @@ export type CalendarData = {
   unavailableCalendars: string[];
 };
 
+export type TherapyPlan = {
+  sessions: Array<{
+    id: string;
+    label: string;
+    title: string;
+    exercises: Array<{
+      id: string;
+      name: string;
+      prescription: string;
+      instructions: string;
+      purpose: string;
+      points: number;
+      completed: boolean;
+    }>;
+  }>;
+  earnedPoints: number;
+};
+
 export type PlannerPage =
   | {
       authenticated: false;
@@ -80,6 +98,7 @@ export type PlannerPage =
       acceptedTemplateIds: string[];
       routines: RoutineTask[];
       routineGroups: RoutineGroup[];
+      therapy: TherapyPlan;
       redemptions: Array<{
         rewardId: string;
         rewardName: string;

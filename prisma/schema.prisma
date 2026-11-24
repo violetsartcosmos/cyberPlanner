@@ -57,6 +57,51 @@ model PointLedger {
   @@map("point_ledger")
 }
 
+model TherapyExercise {
+  id          String                   @id
+  name        String
+  prescription String
+  instructions String
+  purpose     String
+  sessions    TherapySessionExercise[]
+
+  @@map("therapy_exercises")
+}
+
+model TherapySession {
+  id        String                   @id
+  label     String
+  title     String
+  position  Int                      @unique
+  exercises TherapySessionExercise[]
+
+  @@map("therapy_sessions")
+}
+
+model TherapySessionExercise {
+  sessionId   String              @map("session_id")
+  exerciseId  String              @map("exercise_id")
+  position    Int
+  points      Int
+  session     TherapySession      @relation(fields: [sessionId], references: [id])
+  exercise    TherapyExercise     @relation(fields: [exerciseId], references: [id])
+  completions TherapyCompletion[]
+
+  @@id([sessionId, exerciseId])
+  @@unique([sessionId, position])
+  @@map("therapy_session_exercises")
+}
+
+model TherapyCompletion {
+  day        DateTime               @db.Date
+  sessionId  String                 @map("session_id")
+  exerciseId String                 @map("exercise_id")
+  assignment TherapySessionExercise @relation(fields: [sessionId, exerciseId], references: [sessionId, exerciseId])
+
+  @@id([day, sessionId, exerciseId])
+  @@map("therapy_completions")
+}
+
 model Achievement {
   id          String    @id @default(uuid())
   title       String

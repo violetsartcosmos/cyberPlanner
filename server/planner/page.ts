@@ -4,6 +4,7 @@ import { getMissingConfiguration, getSignedInEmail } from "../auth/service";
 import { getPointsSummary } from "../points/service";
 import { getPlannerSnapshot, getPlannerTasks } from "./service";
 import { getGamification } from "../gamification/service";
+import { getTherapyPlan } from "./therapy";
 
 export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const url = new URL(request.url);
@@ -25,9 +26,9 @@ export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const pointsRequest = url.searchParams.get("taskKeys") === "visible"
     ? tasks.then((visible) => getPointsSummary(selected, visible))
     : getPointsSummary(selected);
-  const [{ plannerDays, ...gamification }, plannerTasks, points] = await Promise.all([
-    getGamification(today), tasks, pointsRequest,
+  const [{ plannerDays, ...gamification }, plannerTasks, points, therapy] = await Promise.all([
+    getGamification(today), tasks, pointsRequest, getTherapyPlan(selected),
   ]);
   const planner = await getPlannerSnapshot(selected, plannerDays, plannerTasks);
-  return { authenticated: true, email, today, selected, ...planner, ...points, ...gamification };
+  return { authenticated: true, email, today, selected, ...planner, ...points, ...gamification, therapy };
 }
