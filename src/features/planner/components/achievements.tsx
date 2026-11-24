@@ -137,9 +137,7 @@ function AchievementDialog({ onClose, fetcher, onSubmit, error }: {
 
 export function Achievements({ achievements, earned }: { achievements: Achievement[]; earned: number }) {
   const fetcher = useFetcher<PlannerActionResult>();
-  const [category, setCategory] = useState("all");
-  const [tier, setTier] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [filters, setFilters] = useState({ category: "all", tier: "all", status: "all" });
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState("");
   const [dialogError, setDialogError] = useState("");
@@ -172,16 +170,9 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
     setNotice("");
   }
 
-  function handleCategoryChange(event: ChangeEvent<HTMLSelectElement>) {
-    setCategory(event.target.value);
-  }
-
-  function handleTierChange(event: ChangeEvent<HTMLSelectElement>) {
-    setTier(event.target.value);
-  }
-
-  function handleStatusChange(event: ChangeEvent<HTMLSelectElement>) {
-    setStatus(event.target.value);
+  function handleFilterChange(event: ChangeEvent<HTMLSelectElement>) {
+    const { name, value } = event.currentTarget;
+    setFilters({ ...filters, [name]: value });
   }
 
   function closeEditing() {
@@ -197,9 +188,9 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
 
   function renderAchievement(achievement: Achievement) {
     const achievementStatus = achievement.earnedAt ? "earned" : "progress";
-    const matches = (category === "all" || achievement.category === category)
-      && (tier === "all" || achievement.tier === tier)
-      && (status === "all" || achievementStatus === status);
+    const matches = (filters.category === "all" || achievement.category === filters.category)
+      && (filters.tier === "all" || achievement.tier === filters.tier)
+      && (filters.status === "all" || achievementStatus === filters.status);
     if (!matches) return null;
 
     matchCount += 1;
@@ -239,9 +230,9 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
       </div>
       {notice && <div className={`alert ${noticeIsError ? "alert-danger" : "alert-info"} d-flex justify-content-between align-items-center gap-3`} role={noticeIsError ? "alert" : "status"}>{notice}<button className="btn-close" type="button" aria-label="Dismiss notification" onClick={dismissNotice} /></div>}
       <div className="achievement-filters">
-        <label>Category<select className="form-select" value={category} onChange={handleCategoryChange}><option value="all">All categories</option>{buildOptions(achievementCategories)}</select></label>
-        <label>Tier<select className="form-select" value={tier} onChange={handleTierChange}><option value="all">All tiers</option>{buildOptions(tiers)}</select></label>
-        <label>Status<select className="form-select" value={status} onChange={handleStatusChange}><option value="all">All achievements</option><option value="progress">In progress</option><option value="earned">Earned</option></select></label>
+        <label>Category<select className="form-select" name="category" value={filters.category} onChange={handleFilterChange}><option value="all">All categories</option>{buildOptions(achievementCategories)}</select></label>
+        <label>Tier<select className="form-select" name="tier" value={filters.tier} onChange={handleFilterChange}><option value="all">All tiers</option>{buildOptions(tiers)}</select></label>
+        <label>Status<select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}><option value="all">All achievements</option><option value="progress">In progress</option><option value="earned">Earned</option></select></label>
       </div>
       <div className="row row-cols-1 row-cols-lg-2 row-cols-xl-3 g-3">
         {achievementCards}
