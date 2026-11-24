@@ -12,6 +12,11 @@ export default defineConfig({
       "@": resolve("src"),
     },
   },
+  css: {
+    preprocessorOptions: {
+      scss: { quietDeps: true },
+    },
+  },
   plugins: [
     {
       name: "prevent-server-imports",

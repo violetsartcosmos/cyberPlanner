@@ -229,7 +229,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const therapyDate = "2026-09-10";
       const nextTherapyDate = "2026-09-11";
       const emptyPlan = await therapy.getTherapyPlan(therapyDate);
-      assert.deepEqual(emptyPlan.sessions.map((session) => session.exercises.length), [7, 7, 9]);
+      assert.deepEqual(emptyPlan.therapySessions.map((session) => session.exercises.length), [7, 7, 9]);
       assert.equal(emptyPlan.earnedPoints, 0);
       const basePoints = (await db.pointLedger.aggregate({ where: { entryType: "earn" }, _sum: { amount: true } }))._sum.amount;
       await gamification.saveAchievement(null, {
@@ -245,14 +245,14 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.ok(results.every((result) => result.ok));
       assert.ok(results.some((result) => result.earnedAchievements.includes("Therapy points milestone")));
       let plan = await therapy.getTherapyPlan(therapyDate);
-      assert.equal(plan.sessions[0].exercises.find((exercise) => exercise.id === "glute").completed, true);
+      assert.equal(plan.therapySessions[0].exercises.find((exercise) => exercise.id === "glute").completed, true);
       assert.equal(plan.earnedPoints, 10);
       assert.equal((await points.getPointsSummary(therapyDate)).todayPoints, 10);
       const therapyAchievement = await db.achievement.findFirstOrThrow({ where: { title: "Therapy points milestone" } });
       assert.equal(therapyAchievement.awardedXp, 25);
       assert.equal((await submit({ ...therapyAction, completed: "false" })).ok, true);
       plan = await therapy.getTherapyPlan(therapyDate);
-      assert.equal(plan.sessions[0].exercises.find((exercise) => exercise.id === "glute").completed, false);
+      assert.equal(plan.therapySessions[0].exercises.find((exercise) => exercise.id === "glute").completed, false);
       assert.equal(plan.earnedPoints, 10);
       assert.equal((await submit(therapyAction)).ok, true);
       assert.equal((await submit({ ...therapyAction, sessionId: "mid" })).ok, true);
@@ -267,7 +267,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       }));
       assert.equal(loaded.selected, therapyDate);
       assert.equal(loaded.therapy.earnedPoints, 20);
-      assert.equal(loaded.therapy.sessions[1].exercises.find((exercise) => exercise.id === "glute").completed, true);
+      assert.equal(loaded.therapy.therapySessions[1].exercises.find((exercise) => exercise.id === "glute").completed, true);
       assert.equal(loaded.todayPoints, 20);
 
       await assert.rejects(client.query(

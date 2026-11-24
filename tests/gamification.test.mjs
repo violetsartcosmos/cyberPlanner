@@ -38,6 +38,20 @@ test("the planner loader requests only visible task keys without losing the sele
   assert.equal(query.get("taskKeys"), "visible");
 });
 
+test("the planner loader accepts the renamed therapy sessions field", async (t) => {
+  const page = {
+    authenticated: true, journal: "", journalDates: [], achievements: [], quests: [],
+    routines: [], routineGroups: [], questTemplates: [], acceptedTemplateIds: [],
+    newlyEarned: [], totalXp: 0, therapy: { therapySessions: [], earnedPoints: 0 },
+  };
+  const fetch = t.mock.method(globalThis, "fetch", async () => Response.json(page));
+  assert.deepEqual(await plannerLoader({ request: new Request("http://localhost/physical-therapy") }), page);
+  fetch.mock.mockImplementation(async () => Response.json({
+    ...page, therapy: { sessions: [], earnedPoints: 0 },
+  }));
+  await assert.rejects(plannerLoader({ request: new Request("http://localhost/physical-therapy") }), /server is out of date/);
+});
+
 test("points milestones use lifetime earned points and award XP only once", async () => {
   const achievement = { id: "points", title: "Points", tracking: "points", target: 100, current: 0, xp: 25, earnedAt: null, awardedXp: 0 };
   const { client, state } = fixture([achievement], [], 90);

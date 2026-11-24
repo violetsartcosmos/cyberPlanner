@@ -9,21 +9,19 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 export default function PhysicalTherapyPlan() {
   const { page, selected, date } = usePlannerContext();
-  const { sessions, earnedPoints } = page.therapy;
+  const { therapySessions, earnedPoints } = page.therapy;
   const fetcher = useFetcher<PlannerActionResult>();
   useActionNotifications(fetcher);
   useNotification(fetcher.state === "idle" && fetcher.data?.earnedAchievements?.length
     ? `Achievement milestone earned: ${fetcher.data.earnedAchievements.join(", ")}!` : "", "notice");
   const [sessionIdx, setSessionIdx] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
-  const session = sessions[sessionIdx] ?? sessions[0];
-  const countFor = (s: TherapyPlan["sessions"][number]) => s.exercises.filter((exercise) => exercise.completed).length;
-  const total = sessions.reduce((n, s) => n + s.exercises.length, 0);
-  const complete = sessions.reduce((n, s) => n + countFor(s), 0);
+  const session = therapySessions[sessionIdx] ?? therapySessions[0];
+  const countFor = (therapySession: TherapyPlan["therapySessions"][number]) => therapySession.exercises.filter((exercise) => exercise.completed).length;
+  const total = therapySessions.reduce((n, s) => n + s.exercises.length, 0);
+  const complete = therapySessions.reduce((n, s) => n + countFor(s), 0);
   const pct = total ? Math.round((complete / total) * 100) : 0;
-  const longDate = date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const shortDate = date.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }).replace(".", "");
-  const meshDate = selected.replaceAll("-", ".");
 
   if (!session) return <p>No physical therapy sessions are configured.</p>;
 
@@ -40,20 +38,12 @@ export default function PhysicalTherapyPlan() {
 
   return (
     <div className="pt-page container-fluid px-3 px-lg-5 py-4">
-      <header className="d-flex justify-content-between align-items-start mb-4">
-        <div>
-          <div className="pt-label pt-cyan">Cyber planner</div>
-          <h1 className="pt-title mb-0">Pelvic floor plan</h1>
-        </div>
-        <div className="pt-label">{shortDate}</div>
-      </header>
-
       <div className="row g-4">
         <div className="col-12 col-xl-8">
           {/* Hero / mission progress */}
           <section className="pt-card pt-hero p-4 mb-4">
-            <div className="pt-label mb-3">Your daily mission // {meshDate}</div>
-            <h2 className="pt-hero-title">{longDate}</h2>
+            <div className="pt-label mb-3">Your daily Therapy Session</div>
+            <h2 className="pt-hero-title">{shortDate}</h2>
             <p className="pt-muted mb-4">Short sessions, done gently. A little progress is still progress.</p>
             <div className="d-flex justify-content-between align-items-end mb-2">
               <span className="pt-label pt-ink">Mission progress</span>
@@ -65,7 +55,7 @@ export default function PhysicalTherapyPlan() {
 
           {/* Session toggle */}
           <div className="pt-seg mb-4" role="tablist" aria-label="Session">
-            {sessions.map((s, i) => (
+            {therapySessions.map((s, i) => (
               <button
                 key={s.id}
                 type="button"
@@ -138,7 +128,7 @@ export default function PhysicalTherapyPlan() {
             <div className="pt-label mb-1">Your timeline</div>
             <h2 className="pt-h2 mb-3">Sessions for this date</h2>
             <ul className="list-unstyled mb-0">
-              {sessions.map((s, i) => (
+              {therapySessions.map((s, i) => (
                 <li key={s.id} className="pt-rule py-3 d-flex justify-content-between align-items-center">
                   <button type="button" className="pt-linkplain" onClick={() => { setSessionIdx(i); setOpen(null); }}>
                     {s.label}

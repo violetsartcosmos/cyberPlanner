@@ -13,7 +13,7 @@ export async function plannerLoader({ request }: LoaderFunctionArgs) {
     !Array.isArray(page.routines) || !Array.isArray(page.routineGroups) ||
     !Array.isArray(page.questTemplates) || !Array.isArray(page.acceptedTemplateIds) ||
     !Array.isArray(page.newlyEarned) || typeof page.totalXp !== "number" ||
-    !page.therapy || !Array.isArray(page.therapy.sessions) || typeof page.therapy.earnedPoints !== "number"
+    !page.therapy || !Array.isArray(page.therapy.therapySessions) || typeof page.therapy.earnedPoints !== "number"
   )) {
     throw new Error("The planner server is out of date. Apply database migrations and restart the server.");
   }

@@ -55,7 +55,7 @@ export type CalendarData = {
 };
 
 export type TherapyPlan = {
-  sessions: Array<{
+  therapySessions: Array<{
     id: string;
     label: string;
     title: string;

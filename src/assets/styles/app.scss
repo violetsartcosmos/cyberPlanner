@@ -1,14 +1,24 @@
+@use "bootstrap/scss/bootstrap" with (
+  $primary: #59e4f2,
+  $secondary: #f58bd2,
+  $body-bg: #0e0a1a,
+  $body-color: #f4edff,
+  $font-family-sans-serif: ("DM Mono", monospace),
+  $font-family-monospace: ("DM Mono", monospace),
+  $border-radius: 0.5rem
+);
+
 @import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap");
 
-$primary: #59e4f2;
-$secondary: #f58bd2;
-$body-bg: #0e0a1a;
-$body-color: #f4edff;
-$font-family-sans-serif: "DM Mono", monospace;
-$font-family-monospace: "DM Mono", monospace;
-$border-radius: 0.5rem;
-
-@import "bootstrap/scss/bootstrap";
+// Preserve Bootstrap's element extensions in this module.
+.h1 { @extend h1; }
+.h2 { @extend h2; }
+.h3 { @extend h3; }
+.h4 { @extend h4; }
+.h5 { @extend h5; }
+.h6 { @extend h6; }
+.small { @extend small; }
+.mark { @extend mark; }
 
 :root {
   color-scheme: dark;

@@ -5,7 +5,7 @@ import { dateKey } from "../../shared/planner/utils";
 
 export async function getTherapyPlan(date: string) {
   const db = getDatabase();
-  const [sessions, completions, earned] = await db.$transaction([
+  const [therapySessions, completions, earned] = await db.$transaction([
     db.therapySession.findMany({
       orderBy: { position: "asc" },
       include: { exercises: { orderBy: { position: "asc" }, include: { exercise: true } } },
@@ -18,7 +18,7 @@ export async function getTherapyPlan(date: string) {
   ], { isolationLevel: "RepeatableRead" });
   const checked = new Set(completions.map((item) => `${item.sessionId}:${item.exerciseId}`));
   return {
-    sessions: sessions.map((session) => ({
+    therapySessions: therapySessions.map((session) => ({
       id: session.id,
       label: session.label,
       title: session.title,
