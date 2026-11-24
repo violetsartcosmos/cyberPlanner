@@ -3,6 +3,7 @@ import type { PlannerActionResult, PlannerPage } from "../../../../shared/planne
 
 export async function plannerLoader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
+  url.searchParams.set("taskKeys", "visible");
   const response = await fetch(`/api/planner${url.search}`, { signal: request.signal });
   if (!response.ok) throw new Error(`Could not load the planner (${response.status}).`);
   const page = await response.json() as PlannerPage;

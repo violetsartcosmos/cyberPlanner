@@ -1,12 +1,12 @@
 import { link, lstat, realpath, unlink } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { getDatabase } from "../db/client";
-import { Prisma } from "../generated/prisma/client";
+import type { Prisma } from "../generated/prisma/client";
 import { isWikipediaDetails, validBookPosition, type LibraryBook, type WikipediaDetails } from "../../shared/planner/books";
-import { getBookDetails, listBooks, type LibraryName } from "./library";
+import { findBook, type LibraryName } from "./library";
 
 async function ensureBook(root: string, library: LibraryName, path: string): Promise<LibraryBook> {
-  const book = (await listBooks(root, library)).find((item) => item.path === path);
+  const book = await findBook(root, path, library);
   if (!book) throw new Error("Book not found.");
   return book;
 }
@@ -20,29 +20,16 @@ async function lockBookPaths(tx: Prisma.TransactionClient, library: LibraryName,
 
 export async function getSavedWikipedia(root: string, library: LibraryName, path: string): Promise<WikipediaDetails | null> {
   await ensureBook(root, library, path);
-  const db = getDatabase();
-  const record = await db.bookData.findUnique({ where: { library_path: { library, path } } });
-  if (record?.wikipedia !== null && record?.wikipedia !== undefined) {
-    if (!isWikipediaDetails(record.wikipedia)) throw new Error("Saved book details are invalid.");
-    return {
-      ...record.wikipedia,
-      image: record.wikipedia.image ? { ...record.wikipedia.image, cached: !!record.cover } : null,
-    };
-  }
-  const legacy = await getBookDetails(root, path, library);
-  if (!legacy) return null;
-  await db.bookData.upsert({
+  const record = await getDatabase().bookData.findUnique({
     where: { library_path: { library, path } },
-    create: { library, path, storagePath: path, wikipedia: wikipediaJson(legacy) },
-    update: {},
+    select: { wikipedia: true, cover: true },
   });
-  await db.bookData.updateMany({
-    where: { library, path, wikipedia: { equals: Prisma.DbNull } },
-    data: { wikipedia: wikipediaJson(legacy) },
-  });
-  const saved = await db.bookData.findUniqueOrThrow({ where: { library_path: { library, path } } });
-  if (!isWikipediaDetails(saved.wikipedia)) throw new Error("Saved book details are invalid.");
-  return { ...saved.wikipedia, image: saved.wikipedia.image ? { ...saved.wikipedia.image, cached: !!saved.cover } : null };
+  if (!record || record.wikipedia === null) return null;
+  if (!isWikipediaDetails(record.wikipedia)) throw new Error("Saved book details are invalid.");
+  return {
+    ...record.wikipedia,
+    image: record.wikipedia.image ? { ...record.wikipedia.image, cached: !!record.cover } : null,
+  };
 }
 
 function wikipediaJson(details: WikipediaDetails): Prisma.InputJsonObject {
@@ -162,7 +149,6 @@ export async function renameBook(root: string, library: LibraryName, path: strin
   }
   const target = resolve(parent, `${trimmed}${extension}`);
   const db = getDatabase();
-  await getSavedWikipedia(root, library, path);
   let targetCreated = false;
   let originalRemoved = false;
   try {

@@ -38,7 +38,7 @@ DRM-protected, incomplete, or damaged files may not open, and browser codec supp
 
 **Details** shows embedded EPUB information and covers or PDF metadata and first-page previews. Embedded M4B descriptions and covers are not currently read. To add a reference, paste a specific Wikipedia article URL and choose **Import**. Optionally select a Wikipedia or Wikimedia image URL; otherwise, the article's Commons image is used when available. The selected cover also appears on the shelf.
 
-Only the selected article and image are requested from Wikipedia and Wikimedia, not your library list or book files. Imported text, attribution, and newly imported covers are saved in PostgreSQL for offline display while the server and database are running. Existing sidecar text is moved into the database when accessed; reimport older references to cache covers and add sections. Check the image's source and license before reusing it.
+Only the selected article and image are requested from Wikipedia and Wikimedia, not your library list or book files. Imported text, attribution, and covers are saved in PostgreSQL for offline display while the server and database are running. Older sidecar metadata is not imported; reimport references as needed. Check the image's source and license before reusing it.
 
 ### Back up your books
 

@@ -6,7 +6,7 @@ import {
   createGmailTask,
   getGoogleConnection,
   type ExternalTask,
-  upsertGoogleTask,
+  upsertGoogleTasks,
 } from "../planner/service";
 
 export { decryptRefreshToken };
@@ -70,6 +70,7 @@ export async function syncGoogleTasks(today: string) {
           showDeleted: true,
           showHidden: true,
         });
+        const records: ExternalTask[] = [];
         for (const task of page.data.items ?? []) {
           if (!task.id) continue;
           const dueDate = task.due?.slice(0, 10) ?? null;
@@ -85,8 +86,11 @@ export async function syncGoogleTasks(today: string) {
             emailUrl: null,
             isDeleted: task.status === "deleted",
           };
-          await upsertGoogleTask(record, today);
+          records.push(record);
           synced += 1;
+        }
+        for (let index = 0; index < records.length; index += 20) {
+          await upsertGoogleTasks(records.slice(index, index + 20), today);
         }
         taskPageToken = page.data.nextPageToken ?? undefined;
       } while (taskPageToken);

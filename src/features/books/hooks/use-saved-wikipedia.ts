@@ -3,6 +3,7 @@ import { isWikipediaDetails, type LibraryBook, type WikipediaDetails } from "../
 import { bookQuery } from "../utils/book-url";
 
 export function useSavedWikipedia(book: LibraryBook, enabled = true) {
+  const { path, library } = book;
   const [wiki, setWiki] = useState<WikipediaDetails | null>(null);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
@@ -14,7 +15,7 @@ export function useSavedWikipedia(book: LibraryBook, enabled = true) {
     setError("");
     async function load() {
       try {
-        const response = await fetch(`/api/books/details?${bookQuery(book)}`, { signal: controller.signal });
+        const response = await fetch(`/api/books/details?${bookQuery({ path, library })}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`Could not load saved Wikipedia details (${response.status}).`);
         const data: unknown = await response.json();
         if (data !== null && !isWikipediaDetails(data)) throw new Error("Saved Wikipedia details are invalid.");
@@ -26,7 +27,7 @@ export function useSavedWikipedia(book: LibraryBook, enabled = true) {
     }
     void load();
     return () => controller.abort();
-  }, [book.path, book.library, enabled]);
+  }, [path, library, enabled]);
 
   return { wiki, setWiki, error, setError, ready };
 }

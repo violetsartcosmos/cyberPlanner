@@ -22,10 +22,6 @@ export function CalendarSection({
     navigate(`/journal?date=${selected}`);
   }
 
-  function selectCalendarDate(next: string) {
-    onSelect(next);
-  }
-
   return (
     <>
       <MissionCalendar
@@ -34,7 +30,7 @@ export function CalendarSection({
         today={today}
         checks={checks}
         journalDates={journalDates}
-        onSelect={selectCalendarDate}
+        onSelect={onSelect}
         onToday={onToday}
         onAddJournal={openJournal}
         googleEnabled={googleEnabled}

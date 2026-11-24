@@ -155,7 +155,7 @@ export function PlannerNavigation({
   }
 
   function toggleMenu() {
-    setExpanded(!expanded);
+    setExpanded((current) => !current);
   }
 
   function handleNavigation() {

@@ -4,7 +4,7 @@ export function bookUrl(book: LibraryBook) {
   return `/api/books/file?${bookQuery(book)}`;
 }
 
-export function bookQuery(book: LibraryBook) {
+export function bookQuery(book: Pick<LibraryBook, "path" | "library">) {
   return new URLSearchParams({ path: book.path, ...(book.library ? { library: book.library } : {}) });
 }
 

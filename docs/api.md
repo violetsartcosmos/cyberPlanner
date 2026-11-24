@@ -12,6 +12,8 @@ Book requests that take a `path` require a non-empty path of at most 2,048 chara
 | `GET /api/planner` | Loads planner data for the current request. |
 | `POST /api/planner` | Validates and dispatches a planner action. |
 
+`GET /api/planner` returns all earned task keys by default. Set `taskKeys=visible` to return only keys for the selected date's built-in tasks and its visible synced tasks.
+
 ## Books
 
 | Method and path | Description |

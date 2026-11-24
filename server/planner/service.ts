@@ -3,6 +3,7 @@ import { awardTaskPoints } from "../points/service";
 import type { ExternalTask } from "../../shared/planner/types";
 import { dateKey } from "../../shared/planner/utils";
 import { refreshAchievements } from "../gamification/service";
+import type { Prisma } from "../generated/prisma/client";
 
 export type { ExternalTask } from "../../shared/planner/types";
 export type ExternalTaskSource = ExternalTask["source"];
@@ -41,33 +42,32 @@ function taskChecks(value: unknown): string[] {
   return value;
 }
 
-export async function getPlannerSnapshot(date: string) {
-  const db = getDatabase();
-  const [days, externalTasks] = await Promise.all([
-    db.plannerDay.findMany({ select: { day: true, checks: true, journal: true } }),
-    db.externalTask.findMany({
+type PlannerDaySnapshot = { day: Date; checks: Prisma.JsonValue; journal: string };
+
+export async function getPlannerTasks(date: string) {
+  const rows = await getDatabase().externalTask.findMany({
       where: {
         isDeleted: false,
         OR: [{ dueDate: databaseDate(date) }, { dueDate: null }],
       },
       orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { title: "asc" }],
-    }),
+  });
+  return rows.map(externalTask);
+}
+
+export async function getPlannerSnapshot(date: string, plannerDays?: PlannerDaySnapshot[], plannerTasks?: ExternalTask[]) {
+  const [days, tasks] = await Promise.all([
+    plannerDays ?? getDatabase().plannerDay.findMany({ select: { day: true, checks: true, journal: true } }),
+    plannerTasks ?? getPlannerTasks(date),
   ]);
   return {
     checks: Object.fromEntries(
       days.map((day) => [dateString(day.day), taskChecks(day.checks)]),
     ),
     journalDates: days.filter((day) => day.journal.trim()).map((day) => dateString(day.day)),
-    tasks: externalTasks.map(externalTask),
+    journal: days.find((day) => dateString(day.day) === date)?.journal ?? "",
+    tasks,
   };
-}
-
-export async function getPlannerJournal(date: string) {
-  const day = await getDatabase().plannerDay.findUnique({
-    where: { day: databaseDate(date) },
-    select: { journal: true },
-  });
-  return day?.journal ?? "";
 }
 
 export async function savePlannerJournal(date: string, journal: string) {
@@ -133,28 +133,31 @@ export async function setExternalTaskCompletion(
   });
 }
 
-export async function upsertGoogleTask(task: ExternalTask, date: string) {
+export async function upsertGoogleTasks(tasks: ExternalTask[], date: string) {
+  if (!tasks.length) return;
   await getDatabase().$transaction(async (client) => {
-    const fields = {
-      taskListId: task.taskListId,
-      title: task.title,
-      dueDate: task.dueDate ? databaseDate(task.dueDate) : null,
-      completed: task.completed,
-      completedAt: task.completedAt ? new Date(task.completedAt) : null,
-      isDeleted: task.isDeleted ?? false,
-    };
-    await client.externalTask.upsert({
-      where: { source_externalId: { source: "google", externalId: task.externalId } },
-      create: { source: "google", externalId: task.externalId, ...fields },
-      update: { ...fields, updatedAt: new Date() },
-    });
-    if (task.completed && !task.isDeleted) {
-      await awardTaskPoints(
-        client,
-        `external:google:${task.externalId}`,
-        task.completedAt?.slice(0, 10) ?? date,
-      );
+    for (const task of tasks) {
+      const fields = {
+        taskListId: task.taskListId,
+        title: task.title,
+        dueDate: task.dueDate ? databaseDate(task.dueDate) : null,
+        completed: task.completed,
+        completedAt: task.completedAt ? new Date(task.completedAt) : null,
+        isDeleted: task.isDeleted ?? false,
+      };
+      await client.externalTask.upsert({
+        where: { source_externalId: { source: "google", externalId: task.externalId } },
+        create: { source: "google", externalId: task.externalId, ...fields },
+        update: { ...fields, updatedAt: new Date() },
+      });
     }
+    const awards = tasks.filter((task) => task.completed && !task.isDeleted).map((task) => ({
+      amount: 10,
+      entryType: "earn",
+      taskKey: `external:google:${task.externalId}`,
+      taskDate: databaseDate(task.completedAt?.slice(0, 10) ?? date),
+    }));
+    if (awards.length) await client.pointLedger.createMany({ data: awards, skipDuplicates: true });
   });
 }
 

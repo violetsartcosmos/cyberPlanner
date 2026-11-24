@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import { ExternalLink } from "lucide-react";
 import { isWikipediaDetails, isWikipediaUrl, MAX_WIKIPEDIA_TEXT_LENGTH, type LibraryBook, type WikipediaDetails } from "../../../../shared/planner/books";
@@ -138,8 +138,8 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
 }) {
   const { embedded, error: embeddedError } = useEmbeddedDetails(book);
   const { wiki, setWiki, error: wikiError, setError: setWikiError, ready: wikiReady } = useSavedWikipedia(book);
-  const [wikiUrl, setWikiUrl] = useState("");
-  const [wikiImageUrl, setWikiImageUrl] = useState("");
+  const [wikiUrlDraft, setWikiUrl] = useState<string | null>(null);
+  const [wikiImageUrlDraft, setWikiImageUrl] = useState<string | null>(null);
   const [wikiNotice, setWikiNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [failedWikiImage, setFailedWikiImage] = useState("");
@@ -147,10 +147,8 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
   const [renameError, setRenameError] = useState("");
   const [renaming, setRenaming] = useState(false);
 
-  useEffect(function syncWikiInputs() {
-    setWikiUrl(wiki?.url ?? "");
-    setWikiImageUrl(wiki?.image?.page ?? "");
-  }, [wiki]);
+  const wikiUrl = wikiUrlDraft ?? wiki?.url ?? "";
+  const wikiImageUrl = wikiImageUrlDraft ?? wiki?.image?.page ?? "";
 
   async function importWikipedia(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -167,7 +165,8 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
       });
       if (!response.ok) throw new Error(`Could not save Wikipedia details (${response.status}).`);
       setWiki({ ...details, image: details.image ? { ...details.image, cached: true } : null });
-      setWikiUrl(details.url);
+      setWikiUrl(null);
+      setWikiImageUrl(null);
       setWikiNotice(notice);
       setFailedWikiImage("");
     } catch (error) {

@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { refreshAchievements } from "../server/gamification/service.ts";
 import { Achievements } from "../src/features/planner/components/achievements.tsx";
+import { plannerLoader } from "../src/features/planner/services/planner-route.ts";
 
 function fixture(achievements, days = [], points = 0) {
   const state = { points };
@@ -18,6 +19,18 @@ function fixture(achievements, days = [], points = 0) {
   };
   return { client, state };
 }
+
+test("the planner loader requests only visible task keys without losing the selected date", async (t) => {
+  let url;
+  t.mock.method(globalThis, "fetch", async (input) => {
+    url = input;
+    return Response.json({ authenticated: false, missingConfiguration: [], authError: "" });
+  });
+  await plannerLoader({ request: new Request("http://localhost/profile?date=2026-11-21") });
+  const query = new URL(url, "http://localhost").searchParams;
+  assert.equal(query.get("date"), "2026-11-21");
+  assert.equal(query.get("taskKeys"), "visible");
+});
 
 test("points milestones use lifetime earned points and award XP only once", async () => {
   const achievement = { id: "points", title: "Points", tracking: "points", target: 100, current: 0, xp: 25, earnedAt: null, awardedXp: 0 };
@@ -76,6 +89,23 @@ test("activity streak counts built-in checks, not invalid or future tasks", asyn
   assert.equal(achievement.target, 4);
 });
 
+test("multiple streaks use shared day history without counting duplicate checks twice", async () => {
+  const base = { tracking: "streak", milestoneInterval: 3, target: 3, current: 0, xp: 10, earnedAt: null, awardedXp: 0 };
+  const achievements = [
+    { ...base, id: "water", title: "Water", taskId: "morning-2" },
+    { ...base, id: "walk", title: "Walk", taskId: "morning-3" },
+    { ...base, id: "water-again", title: "Water again", taskId: "morning-2" },
+  ];
+  const days = [
+    { day: new Date("2026-11-20T00:00:00Z"), checks: ["morning-2", "morning-2"] },
+    { day: new Date("2026-11-21T00:00:00Z"), checks: ["morning-2", "morning-3"] },
+  ];
+  const { client } = fixture(achievements, days);
+  client.plannerDay.findMany = () => { throw new Error("Day history should be reused"); };
+  await refreshAchievements(client, "2026-11-21", days);
+  assert.deepEqual(achievements.map((item) => item.current), [2, 1, 2]);
+});
+
 test("a long recorded streak awards every missed milestone exactly once", async () => {
   const achievement = { id: "week", title: "Week", tracking: "activity_streak", taskId: null, milestoneInterval: 7, target: 7, current: 0, xp: 50, earnedAt: null, awardedXp: 0 };
   const days = Array.from({ length: 14 }, (_, index) => ({
@@ -105,4 +135,10 @@ test("achievement cards show earned and in-progress status without manual contro
   assert.match(html, /<option value="progress">In progress<\/option>/);
   assert.doesNotMatch(html, /\b(?:locked|unlocked|badges)\b/i);
   assert.doesNotMatch(html, /name="intent" value="(?:advance|delete)_achievement"/);
+});
+
+test("the achievements page displays its empty-filter message when there are no cards", () => {
+  const router = createMemoryRouter([{ path: "/", element: React.createElement(Achievements, { achievements: [], earned: 0 }) }]);
+  const html = renderToStaticMarkup(React.createElement(RouterProvider, { router }));
+  assert.match(html, /No achievements match these filters/);
 });

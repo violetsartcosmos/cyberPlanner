@@ -17,6 +17,7 @@
     "test:books": "node --import tsx --test tests/books.test.mjs tests/book-progress.test.mjs tests/backup-books.test.mjs",
     "test:book-data": "node --import tsx --test tests/book-data.integration.test.mjs tests/book-progress-api.integration.test.mjs",
     "test:server": "node --test tests/server.test.mjs tests/action-validation.test.mjs",
+    "lint:hooks": "eslint src --max-warnings 0",
     "typecheck": "tsc"
   },
   "dependencies": {
@@ -47,7 +48,10 @@
     "@types/node": "^22",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@typescript-eslint/parser": "^8.48.0",
     "concurrently": "^9.0.0",
+    "eslint": "^10.0.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "sass": "^1.93.0",
     "tsx": "^4.0.0",
     "typescript": "^5.9.3",

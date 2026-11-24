@@ -54,8 +54,8 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       await planner.setBuiltinTaskCompletion(date, "daily-2", true);
       const snapshot = await planner.getPlannerSnapshot(date);
       assert.deepEqual(new Set(snapshot.checks[date]), new Set(["daily-0", "daily-1", "daily-2"]));
-      assert.equal(await planner.getPlannerJournal(date), journal);
       assert.ok(snapshot.journalDates.includes(date));
+      assert.equal(snapshot.journal, journal);
       assert.equal((await points.getPointsSummary(date)).todayPoints, 30);
 
       const redemptions = await Promise.all(
@@ -71,13 +71,20 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         title: "Google task", dueDate: date, completed: true,
         completedAt: "2026-11-21T14:00:00Z", emailFrom: null, emailUrl: null,
       };
-      await planner.upsertGoogleTask(googleTask, date);
-      await planner.upsertGoogleTask(googleTask, date);
+      await planner.upsertGoogleTasks([googleTask], date);
+      await planner.upsertGoogleTasks([googleTask], date);
+      await planner.upsertGoogleTasks([googleTask, {
+        ...googleTask, externalId: "google-task-two", title: "Another task",
+      }], date);
       assert.equal((await planner.getExternalTask("google", "google-task")).dueDate, date);
-      assert.equal((await points.getPointsSummary(date)).balance, 20);
+      assert.equal((await planner.getExternalTask("google", "google-task-two")).completed, true);
+      const earned = (await points.getPointsSummary(date, [googleTask])).earnedTaskKeys;
+      assert.ok(earned.includes("external:google:google-task"));
+      assert.ok(!earned.includes("external:google:google-task-two"));
+      assert.equal((await points.getPointsSummary(date)).balance, 30);
       await planner.setExternalTaskCompletion(googleTask, false, date);
       await planner.setExternalTaskCompletion(googleTask, true, date);
-      assert.equal((await points.getPointsSummary(date)).balance, 20);
+      assert.equal((await points.getPointsSummary(date)).balance, 30);
 
       const gmailTask = {
         source: "gmail", externalId: "message", taskListId: null,
@@ -126,9 +133,9 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         ok: false, error: "That reward is not available.",
       });
       assert.equal((await submit({ intent: "save_journal", date: extraDate, journal })).ok, true);
-      assert.equal(await planner.getPlannerJournal(extraDate), journal);
+      assert.equal((await planner.getPlannerSnapshot(extraDate)).journal, journal);
       assert.equal((await submit({ intent: "save_journal", date: extraDate, journal: "" })).ok, true);
-      assert.equal(await planner.getPlannerJournal(extraDate), "");
+      assert.equal((await planner.getPlannerSnapshot(extraDate)).journal, "");
       assert.ok(!(await planner.getPlannerSnapshot(extraDate)).journalDates.includes(extraDate));
 
       const gamification = await vite.ssrLoadModule("/server/gamification/service.ts");
@@ -139,7 +146,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.ok(initial.achievements.some((item) => item.id === "daily-early-bird"));
       await gamification.saveAchievement(null, {
         title: "Test milestone", description: "Earn points", category: "Daily & Routine",
-        tier: "Rare", xp: 75, target: 50, tracking: "points", taskId: null, reward: "Break",
+        tier: "Rare", xp: 75, target: 60, tracking: "points", taskId: null, reward: "Break",
       });
       const milestone = await db.achievement.findFirstOrThrow({ where: { title: "Test milestone" } });
       assert.equal(milestone.awardedXp, 0);

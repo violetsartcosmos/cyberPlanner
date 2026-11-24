@@ -10,7 +10,7 @@ export class ProgressQueue {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private running: Promise<boolean> | null = null;
 
-  constructor(private book: LibraryBook, private notify: (state: State) => void) {}
+  constructor(private book: Pick<LibraryBook, "path" | "library">, private notify: (state: State) => void) {}
 
   private update(patch: Partial<State>) {
     this.state = { ...this.state, ...patch };
@@ -83,11 +83,12 @@ export class ProgressQueue {
 }
 
 export function useBookProgress(book: LibraryBook) {
+  const { path, library } = book;
   const [state, setState] = useState<State>({ progress: null, error: "", conflict: null, saving: false, pendingPosition: null });
   const queue = useRef<ProgressQueue | null>(null);
   useEffect(() => {
     let active = true;
-    const current = new ProgressQueue(book, (next) => { if (active) setState(next); });
+    const current = new ProgressQueue({ path, library }, (next) => { if (active) setState(next); });
     queue.current = current;
     void current.load();
     const flush = () => { void current.flush(); };
@@ -97,6 +98,6 @@ export function useBookProgress(book: LibraryBook) {
       window.removeEventListener("pagehide", flush);
       flush();
     };
-  }, [book.path, book.library]);
+  }, [path, library]);
   return { ...state, queue };
 }

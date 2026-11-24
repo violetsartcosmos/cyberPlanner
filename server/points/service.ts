@@ -1,5 +1,6 @@
 import type { Prisma } from "../generated/prisma/client";
 import { databaseDate, getDatabase, serializableTransaction } from "../db/client";
+import type { ExternalTask } from "../../shared/planner/types";
 
 export async function awardTaskPoints(
   client: Prisma.TransactionClient,
@@ -13,7 +14,7 @@ export async function awardTaskPoints(
   });
 }
 
-export async function getPointsSummary(date: string) {
+export async function getPointsSummary(date: string, tasks?: readonly ExternalTask[]) {
   const db = getDatabase();
   const [total, today, earned, redemptions] = await db.$transaction([
     db.pointLedger.aggregate({ _sum: { amount: true } }),
@@ -22,7 +23,13 @@ export async function getPointsSummary(date: string) {
       _sum: { amount: true },
     }),
     db.pointLedger.findMany({
-      where: { entryType: "earn" },
+      where: {
+        entryType: "earn",
+        ...(tasks && { OR: [
+          { taskKey: { startsWith: `builtin:${date}:` } },
+          { taskKey: { in: tasks.map((task) => `external:${task.source}:${task.externalId}`) } },
+        ] }),
+      },
       select: { taskKey: true },
     }),
     db.pointLedger.findMany({

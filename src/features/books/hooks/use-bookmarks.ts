@@ -3,6 +3,7 @@ import type { BookBookmark, LibraryBook } from "../../../../shared/planner/books
 import { bookQuery } from "../utils/book-url";
 
 export function useBookmarks(book: LibraryBook) {
+  const { path, library } = book;
   const [bookmarks, setBookmarks] = useState<BookBookmark[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
@@ -11,7 +12,7 @@ export function useBookmarks(book: LibraryBook) {
     const controller = new AbortController();
     async function load() {
       try {
-        const response = await fetch(`/api/books/bookmarks?${bookQuery(book)}`, { signal: controller.signal });
+        const response = await fetch(`/api/books/bookmarks?${bookQuery({ path, library })}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`Could not load bookmarks (${response.status}).`);
         setBookmarks(await response.json() as BookBookmark[]);
       } catch (error) {
@@ -22,7 +23,7 @@ export function useBookmarks(book: LibraryBook) {
     }
     void load();
     return () => controller.abort();
-  }, [book.path, book.library]);
+  }, [path, library]);
 
   async function add(position: string, label: string) {
     setBusy(true);

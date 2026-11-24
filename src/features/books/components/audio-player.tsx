@@ -20,6 +20,7 @@ function formatTime(seconds: number) {
 }
 
 export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () => void }) {
+  const { path, library } = book;
   const { progress, error: progressError, conflict, saving, pendingPosition, queue } = useBookProgress(book);
   const [error, setError] = useState("");
   const [restoreError, setRestoreError] = useState("");
@@ -43,7 +44,7 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
     const controller = new AbortController();
     async function load() {
       try {
-        const response = await fetch(`/api/books/chapters?${bookQuery(book)}`, { signal: controller.signal });
+        const response = await fetch(`/api/books/chapters?${bookQuery({ path, library })}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`Could not load chapters (${response.status}).`);
         setChapters(await response.json() as Chapter[]);
       } catch (error) {
@@ -52,7 +53,7 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
     }
     void load();
     return () => controller.abort();
-  }, [book.path, book.library]);
+  }, [path, library]);
 
   function savePosition(audio: HTMLAudioElement, force = false) {
     const position = audioPositionToSave(audio, restored.current);
@@ -143,12 +144,12 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
         </div>
         <div className="library-audio-actions">
           <button className="btn btn-outline-secondary btn-sm" type="button" onClick={changeSpeed}><strong>{speed}x</strong><span>Speed</span></button>
-          <button className="btn btn-outline-secondary btn-sm" type="button" aria-expanded={showChapters} onClick={() => setShowChapters(!showChapters)}><ListMusic /><span>Chapters</span></button>
+          <button className="btn btn-outline-secondary btn-sm" type="button" aria-expanded={showChapters} onClick={() => setShowChapters((current) => !current)}><ListMusic /><span>Chapters</span></button>
           <button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy || !duration} onClick={() => { void add(String(current), formatTime(current)); setShowBookmarks(true); }}><BookmarkPlus /><span>Add bookmark</span></button>
         </div>
         {showChapters && <div className="library-audio-list"><h3>Chapters</h3>{chapters.length ? <ul>{chapters.map((chapter, index) => <li key={`${chapter.start}-${index}`}><button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => seek(chapter.start)}>{chapter.title} · {formatTime(chapter.start)}</button></li>)}</ul> : <p>No chapters available.</p>}</div>}
         <div className="library-bookmarks">
-          <button className="btn btn-outline-secondary btn-sm" type="button" aria-expanded={showBookmarks} onClick={() => setShowBookmarks(!showBookmarks)}>Bookmarks ({bookmarks.length})</button>
+          <button className="btn btn-outline-secondary btn-sm" type="button" aria-expanded={showBookmarks} onClick={() => setShowBookmarks((current) => !current)}>Bookmarks ({bookmarks.length})</button>
           {showBookmarks && <ul>{bookmarks.map((bookmark) => <li key={bookmark.id}><button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => seek(Number(bookmark.position))}>{bookmark.label}</button><button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>)}</ul>}
         </div>
       </div>

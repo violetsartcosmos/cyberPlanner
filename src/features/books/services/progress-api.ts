@@ -7,7 +7,7 @@ function isProgress(value: unknown): value is BookProgress {
     "revision" in value && typeof value.revision === "number" && Number.isInteger(value.revision) && value.revision >= 0;
 }
 
-export async function loadProgress(book: LibraryBook): Promise<BookProgress> {
+export async function loadProgress(book: Pick<LibraryBook, "path" | "library">): Promise<BookProgress> {
   const response = await fetch(`/api/books/progress?${bookQuery(book)}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Could not load progress (${response.status}).`);
   const value: unknown = await response.json();
@@ -15,7 +15,7 @@ export async function loadProgress(book: LibraryBook): Promise<BookProgress> {
   return value;
 }
 
-export async function writeProgress(book: LibraryBook, position: string, revision: number): Promise<{ progress: BookProgress; conflict: boolean }> {
+export async function writeProgress(book: Pick<LibraryBook, "path" | "library">, position: string, revision: number): Promise<{ progress: BookProgress; conflict: boolean }> {
   const response = await fetch("/api/books/progress", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

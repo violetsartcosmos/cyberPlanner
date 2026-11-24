@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -9,7 +9,7 @@ import { BookAction } from "../src/features/books/components/book-action.tsx";
 import { matchesLibraryFilter, renameErrorMessage, shuffleBooks } from "../src/features/books/utils/library-utils.ts";
 import { commonsFileTitle, parseWikipediaExtract, wikipediaImageReference } from "../src/features/books/utils/wikipedia-utils.ts";
 import { isWikipediaDetails, MAX_WIKIPEDIA_TEXT_LENGTH } from "../shared/planner/books.ts";
-import { bookResponse, getBookDetails, listBooks, saveBookDetails } from "../server/books/library.ts";
+import { bookResponse, findBook, listBooks } from "../server/books/library.ts";
 
 test("Wikipedia extracts preserve introductory paragraphs and nested sections", () => {
   assert.deepEqual(parseWikipediaExtract("First paragraph.\n\nSecond paragraph.\n\n== History ==\n\nPast.\n\n=== Origins ===\n\nDetails.\n\n== Legacy ==\n\nLater."), {
@@ -42,10 +42,10 @@ test("Wikipedia media viewer links resolve to their local image file", () => {
   assert.throws(() => wikipediaImageReference("https://en.wikipedia.org.evil.test/wiki/File:Example.jpg"), /Wikipedia or Wikimedia/);
 });
 
-test("Wikipedia details validate section data and retain legacy imports", () => {
-  const legacy = { url: "https://en.wikipedia.org/wiki/Example", description: "Introduction", image: null };
-  assert.equal(isWikipediaDetails(legacy), true);
-  const withSections = { ...legacy, sections: [{ title: "History", level: 2, text: "Past" }] };
+test("Wikipedia details validate section data", () => {
+  const details = { url: "https://en.wikipedia.org/wiki/Example", description: "Introduction", image: null };
+  assert.equal(isWikipediaDetails(details), true);
+  const withSections = { ...details, sections: [{ title: "History", level: 2, text: "Past" }] };
   assert.equal(isWikipediaDetails(withSections), true);
   assert.equal(isWikipediaDetails({ ...withSections, sections: [{ title: "History", level: 7, text: "Past" }] }), false);
   assert.equal(isWikipediaDetails({ ...withSections, sections: [{ title: "History", level: 2, text: "x".repeat(MAX_WIKIPEDIA_TEXT_LENGTH) }] }), false);
@@ -116,12 +116,19 @@ test("library lists nested EPUBs and PDFs and serves only valid book paths", asy
     await writeFile(join(root, "Guide.pdf"), "0123456789");
     await writeFile(join(root, "cover.png"), "image");
     await writeFile(join(temp, "outside.pdf"), "private");
+    await symlink(temp, join(root, "linked"), process.platform === "win32" ? "junction" : "dir");
 
     assert.deepEqual(await listBooks(root), [
       { path: "shelf/Example.EPUB", title: "Example", format: "epub" },
       { path: "Guide.pdf", title: "Guide", format: "pdf" },
     ]);
     assert.deepEqual(await listBooks(join(temp, "missing")), []);
+    assert.deepEqual(await findBook(root, "shelf/Example.EPUB"), {
+      path: "shelf/Example.EPUB", title: "Example", format: "epub",
+    });
+    for (const invalid of ["../outside.pdf", "shelf/../Guide.pdf", "shelf\\Example.EPUB", "Guide.pdf/missing.epub", "missing.epub", "cover.png", "linked/outside.pdf"]) {
+      assert.equal(await findBook(root, invalid), null);
+    }
 
     const epub = await bookResponse(root, "shelf/Example.EPUB", null);
     assert.equal(epub.status, 200);
@@ -139,35 +146,12 @@ test("library lists nested EPUBs and PDFs and serves only valid book paths", asy
     assert.equal((await bookResponse(root, "cover.png", null)).status, 404);
     assert.equal((await bookResponse(root, "missing.epub", null)).status, 404);
 
-    const details = {
-      url: "https://en.wikipedia.org/wiki/Example",
-      description: "An example description.",
-      image: {
-        url: "https://upload.wikimedia.org/example.jpg",
-        page: "https://commons.wikimedia.org/wiki/File:Example.jpg",
-        title: "Example", author: "Example author", license: "CC BY 4.0",
-      },
-    };
-    assert.equal(await getBookDetails(root, "Guide.pdf"), null);
-    await saveBookDetails(root, "Guide.pdf", details);
-    assert.deepEqual(await getBookDetails(root, "Guide.pdf"), details);
-    const sectioned = { ...details, sections: [{ title: "History", level: 2, text: "A section of the article." }] };
-    await saveBookDetails(root, "Guide.pdf", sectioned);
-    assert.deepEqual(await getBookDetails(root, "Guide.pdf"), sectioned);
-    await saveBookDetails(root, "Guide.pdf", details);
-    const thumbnail = { ...details, image: { ...details.image, url: "https://thumb.wikimedia.org/example.jpg" } };
-    await saveBookDetails(root, "shelf/Example.EPUB", thumbnail);
-    assert.deepEqual(await getBookDetails(root, "shelf/Example.EPUB"), thumbnail);
-    await assert.rejects(() => saveBookDetails(root, "../outside.pdf", details), /Book not found/);
-    await assert.rejects(() => saveBookDetails(root, "Guide.pdf", { ...details, url: "https://example.com/wiki/Example" }), /Invalid/);
-    await assert.rejects(() => saveBookDetails(root, "Guide.pdf", { ...details, image: { ...details.image, url: "https://example.com/image.jpg" } }), /Invalid/);
-    assert.deepEqual(await getBookDetails(root, "Guide.pdf"), details);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
 });
 
-test("audiobooks are listed separately, streamed by range, and keep their own details", async () => {
+test("audiobooks are listed separately and streamed by range", async () => {
   const temp = await mkdtemp(join(tmpdir(), "cyberplanner-audiobooks-"));
   const root = join(temp, "audiblebooks");
   try {
@@ -190,10 +174,8 @@ test("audiobooks are listed separately, streamed by range, and keep their own de
     assert.equal((await bookResponse(root, "../other.m4b", null, "audiblebooks")).status, 404);
     assert.equal((await bookResponse(root, "shelf/Example.M4B", null)).status, 404);
 
-    const details = { url: "https://en.wikipedia.org/wiki/Example", description: "An audiobook.", image: null };
-    await saveBookDetails(root, "shelf/Example.M4B", details, "audiblebooks");
-    assert.deepEqual(await getBookDetails(root, "shelf/Example.M4B", "audiblebooks"), details);
-    await assert.rejects(() => getBookDetails(root, "shelf/Example.M4B"), /Book not found/);
+    assert.equal(await findBook(root, "shelf/Example.M4B"), null);
+    assert.equal((await findBook(root, "shelf/Example.M4B", "audiblebooks")).format, "m4b");
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

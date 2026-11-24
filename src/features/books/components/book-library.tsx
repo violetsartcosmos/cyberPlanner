@@ -16,17 +16,22 @@ import { ProgressStatus } from "./progress-status";
 function BookCover({ book, index, onClick }: { book: LibraryBook; index: number; onClick: () => void }) {
   const ref = useRef<HTMLButtonElement>(null);
   const [visible, setVisible] = useState(false);
-  const { embedded, error } = useEmbeddedDetails(book, visible);
-  const { wiki, error: wikiError } = useSavedWikipedia(book, visible);
+  const { wiki, error: wikiError, ready } = useSavedWikipedia(book, visible);
   const [failedWikiImage, setFailedWikiImage] = useState("");
   const wikiCover = wiki?.image && wiki.image.url !== failedWikiImage ? wiki.image : null;
+  const { embedded, error } = useEmbeddedDetails(book, visible && (ready || !!wikiError) && !wikiCover);
   const cover = wikiCover ? (wikiCover.cached ? bookCoverUrl(book) : wikiCover.url) : embedded?.cover;
   const coverError = wikiError || (wiki?.image && !wikiCover ? "Wikipedia cover could not be loaded." : error);
 
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
-    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { rootMargin: "100px" });
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "100px" });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);

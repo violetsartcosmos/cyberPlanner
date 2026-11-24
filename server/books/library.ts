@@ -1,9 +1,8 @@
 import { createReadStream } from "node:fs";
-import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, readdir, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { lstat, readdir, realpath, stat } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
-import { isWikipediaDetails, type LibraryBook, type WikipediaDetails } from "../../shared/planner/books";
+import type { LibraryBook } from "../../shared/planner/books";
 
 export const libraryDirectory = resolve("ebooks");
 export const audiobookDirectory = resolve("audiblebooks");
@@ -46,38 +45,29 @@ export async function listBooks(root: string, library: LibraryName = "ebooks"): 
   return books.sort((a, b) => a.title.localeCompare(b.title) || a.path.localeCompare(b.path));
 }
 
-function detailsFile(root: string, path: string) {
-  return resolve(root, ".cyberplanner-metadata", `${createHash("sha256").update(path).digest("hex")}.json`);
-}
-
-export async function getBookDetails(root: string, path: string, library: LibraryName = "ebooks"): Promise<WikipediaDetails | null> {
-  if (!(await listBooks(root, library)).some((book) => book.path === path)) throw new Error("Book not found.");
+export async function findBook(root: string, path: string, library: LibraryName = "ebooks"): Promise<LibraryBook | null> {
+  const format = formatOf(path, library);
+  const parts = path.split("/");
+  if (!format || parts.some((part) => !part || part === "." || part === ".." || part.includes("\\") || part.includes("\0") || (process.platform === "win32" && part.includes(":")))) return null;
+  const rootPath = resolve(root);
+  const withinRoot = relative(rootPath, resolve(rootPath, ...parts));
+  if (!withinRoot || withinRoot === ".." || withinRoot.startsWith(`..${sep}`) || isAbsolute(withinRoot)) return null;
   try {
-    const details: unknown = JSON.parse(await readFile(detailsFile(root, path), "utf8"));
-    if (!isWikipediaDetails(details)) throw new Error("Saved book details are invalid.");
-    return details;
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-
-export async function saveBookDetails(root: string, path: string, details: WikipediaDetails, library: LibraryName = "ebooks") {
-  if (!isWikipediaDetails(details)) throw new Error("Invalid book details.");
-  if (!(await listBooks(root, library)).some((book) => book.path === path)) throw new Error("Book not found.");
-  const file = detailsFile(root, path);
-  const directory = resolve(root, ".cyberplanner-metadata");
-  await mkdir(directory, { recursive: true });
-  const temporary = `${file}.${randomBytes(8).toString("hex")}.tmp`;
-  try {
-    await writeFile(temporary, JSON.stringify(details), { encoding: "utf8", flag: "wx" });
-    await rename(temporary, file);
-  } finally {
-    try {
-      await unlink(temporary);
-    } catch (error) {
-      if (!isMissing(error)) throw error;
+    let current = rootPath;
+    for (let index = 0; index < parts.length; index += 1) {
+      current = resolve(current, parts[index]);
+      const entry = await lstat(current);
+      if (index === parts.length - 1 ? !entry.isFile() : !entry.isDirectory()) return null;
     }
+    if (relative(await realpath(rootPath), await realpath(current)).split(sep).join("/") !== path) return null;
+    const name = parts[parts.length - 1];
+    return {
+      path, title: name.slice(0, -extname(name).length), format,
+      ...(library === "audiblebooks" ? { library } : {}),
+    };
+  } catch (error) {
+    if (isMissing(error) || (error instanceof Error && "code" in error && error.code === "ENOTDIR")) return null;
+    throw error;
   }
 }
 

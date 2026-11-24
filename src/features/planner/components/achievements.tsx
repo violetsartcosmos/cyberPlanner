@@ -172,7 +172,7 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
 
   function handleFilterChange(event: ChangeEvent<HTMLSelectElement>) {
     const { name, value } = event.currentTarget;
-    setFilters({ ...filters, [name]: value });
+    setFilters((current) => ({ ...current, [name]: value }));
   }
 
   function closeEditing() {
@@ -184,16 +184,14 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
     pending.current = "save";
   }
 
-  let matchCount = 0;
-
-  function renderAchievement(achievement: Achievement) {
+  const matchingAchievements = achievements.filter((achievement) => {
     const achievementStatus = achievement.earnedAt ? "earned" : "progress";
-    const matches = (filters.category === "all" || achievement.category === filters.category)
+    return (filters.category === "all" || achievement.category === filters.category)
       && (filters.tier === "all" || achievement.tier === filters.tier)
       && (filters.status === "all" || achievementStatus === filters.status);
-    if (!matches) return null;
+  });
 
-    matchCount += 1;
+  function renderAchievement(achievement: Achievement) {
     const Icon = icons[achievement.icon] ?? Award;
     return (
       <div className="col" key={achievement.id}>
@@ -216,8 +214,6 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
     );
   }
 
-  const achievementCards = achievements.map(renderAchievement);
-
   return (
     <section className="profile-achievements" id="achievements" aria-labelledby="achievements-heading">
       <div className="profile-section-heading">
@@ -235,9 +231,9 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
         <label>Status<select className="form-select" name="status" value={filters.status} onChange={handleFilterChange}><option value="all">All achievements</option><option value="progress">In progress</option><option value="earned">Earned</option></select></label>
       </div>
       <div className="row row-cols-1 row-cols-lg-2 row-cols-xl-3 g-3">
-        {achievementCards}
+        {matchingAchievements.map(renderAchievement)}
       </div>
-      {matchCount === 0 && <p className="profile-note">No achievements match these filters.</p>}
+      {matchingAchievements.length === 0 && <p className="profile-note">No achievements match these filters.</p>}
       {editing && <AchievementDialog fetcher={fetcher} error={dialogError} onClose={closeEditing} onSubmit={markSavePending} />}
     </section>
   );
