@@ -2374,10 +2374,9 @@ button.calendar-event:hover {
 
 .profile-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(140px, 27%);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 24px;
-  padding: 38px;
 }
 
 .profile-art img {

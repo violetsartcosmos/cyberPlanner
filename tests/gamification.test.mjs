@@ -97,7 +97,7 @@ test("achievement cards show earned and in-progress status without manual contro
     { ...base, id: "earned", title: "Earned goal", earnedAt: "2026-11-20T00:00:00Z", awardedXp: 25 },
     { ...base, id: "progress", title: "Upcoming goal", earnedAt: null },
   ];
-  const router = createMemoryRouter([{ path: "/", element: React.createElement(Achievements, { achievements }) }]);
+  const router = createMemoryRouter([{ path: "/", element: React.createElement(Achievements, { achievements, earned: 1 }) }]);
   const html = renderToStaticMarkup(React.createElement(RouterProvider, { router }));
   assert.match(html, /1 \/ 2 earned/);
   assert.match(html, /> EARNED · COMMON/);

@@ -21,7 +21,7 @@ export function Profile({ checks, selected, today, balance, totalXp, achievement
   return (
     <div className="profile-page">
       <div className="profile-summary">
-        <section className="profile-hero" aria-labelledby="profile-name">
+        <section className="profile-hero p-5" aria-labelledby="profile-name">
           <div className="profile-intro">
             <p className="text-label">PLAYER PROFILE <span>// YOUR LIFE, YOUR QUEST</span></p>
             <h1 id="profile-name">Violet <Sparkles aria-hidden="true" size={23} /></h1>
@@ -29,10 +29,6 @@ export function Profile({ checks, selected, today, balance, totalXp, achievement
             <ul className="profile-about">
               <li><Sparkles aria-hidden="true" size={14} /> Building routines, one day at a time</li>
             </ul>
-          </div>
-          <div className="profile-points">
-            <span>AVAILABLE POINTS</span>
-            <strong><Sparkles aria-hidden="true" size={18} /> {balance}</strong>
           </div>
           <div className="profile-art" aria-hidden="true">
             <img src={witchyPonder} alt="" />
@@ -48,7 +44,7 @@ export function Profile({ checks, selected, today, balance, totalXp, achievement
         <div className="col"><div className="card p-3 h-100"><span>CURRENT STREAK</span><strong><Flame aria-hidden="true" size={20} /> {stats.activityStreak}</strong><small>Days with a built-in task</small></div></div>
         <div className="col"><div className="card p-3 h-100"><span>ACHIEVEMENTS</span><strong>{earned} <small>/ {achievements.length}</small></strong><small>Achievements earned</small></div></div>
       </section>
-      <Achievements achievements={achievements} />
+      <Achievements achievements={achievements} earned={earned} />
     </div>
   );
 }

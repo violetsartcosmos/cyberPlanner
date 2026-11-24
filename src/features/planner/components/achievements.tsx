@@ -135,7 +135,7 @@ function AchievementDialog({ onClose, fetcher, onSubmit, error }: {
   );
 }
 
-export function Achievements({ achievements }: { achievements: Achievement[] }) {
+export function Achievements({ achievements, earned }: { achievements: Achievement[]; earned: number }) {
   const fetcher = useFetcher<PlannerActionResult>();
   const [category, setCategory] = useState("all");
   const [tier, setTier] = useState("all");
@@ -193,42 +193,39 @@ export function Achievements({ achievements }: { achievements: Achievement[] }) 
     pending.current = "save";
   }
 
-  const filtered: Achievement[] = [];
-  let earned = 0;
-  for (const achievement of achievements) {
-    if (achievement.earnedAt) earned += 1;
-    if (
-      (category === "all" || achievement.category === category) &&
-      (tier === "all" || achievement.tier === tier) &&
-      (status === "all" || (status === "earned") === Boolean(achievement.earnedAt))
-    ) {
-      filtered.push(achievement);
-    }
-  }
+  let matchCount = 0;
 
-  const achievementCards: ReactNode[] = [];
-  for (const achievement of filtered) {
+  function renderAchievement(achievement: Achievement) {
+    const achievementStatus = achievement.earnedAt ? "earned" : "progress";
+    const matches = (category === "all" || achievement.category === category)
+      && (tier === "all" || achievement.tier === tier)
+      && (status === "all" || achievementStatus === status);
+    if (!matches) return null;
+
+    matchCount += 1;
     const Icon = icons[achievement.icon] ?? Award;
-    achievementCards.push(
+    return (
       <div className="col" key={achievement.id}>
-      <article className={`achievement-card h-100 tier-${achievement.tier.toLowerCase()} ${achievement.earnedAt ? "is-earned" : ""}`}>
-        <div className="achievement-icon"><Icon aria-hidden="true" size={30} /></div>
-        <div className="achievement-copy">
-          <span className="achievement-status">{achievement.earnedAt ? <><Check aria-hidden="true" size={13} /> EARNED</> : "IN PROGRESS"} · {achievement.tier.toUpperCase()} · {achievement.earnedAt ? achievement.awardedXp : achievement.xp} XP</span>
-          <h3>{achievement.title}</h3>
-          <p>{achievement.description}</p>
-          <p className="achievement-category">{achievement.category}</p>
-          <p className="form-hint">{achievement.tracking === "points" ? "Lifetime task points" : `Next streak milestone · ${achievement.xp} XP`}</p>
-          {achievement.reward && <p className="achievement-reward">{achievement.earnedAt ? "Your reward" : "Reward when earned"}: {achievement.reward}</p>}
-          <div className="achievement-progress">
-            <div className="progress flex-grow-1" role="progressbar" aria-label={`${achievement.title} progress`} aria-valuemin={0} aria-valuemax={achievement.target} aria-valuenow={achievement.current}><div className="progress-bar" style={{ width: `${achievement.current / achievement.target * 100}%` }} /></div>
-            <span>{achievement.current} / {achievement.target}</span>
+        <article className={`achievement-card h-100 tier-${achievement.tier.toLowerCase()} ${achievement.earnedAt ? "is-earned" : ""}`}>
+          <div className="achievement-icon"><Icon aria-hidden="true" size={30} /></div>
+          <div className="achievement-copy">
+            <span className="achievement-status">{achievement.earnedAt ? <><Check aria-hidden="true" size={13} /> EARNED</> : "IN PROGRESS"} · {achievement.tier.toUpperCase()} · {achievement.earnedAt ? achievement.awardedXp : achievement.xp} XP</span>
+            <h3>{achievement.title}</h3>
+            <p>{achievement.description}</p>
+            <p className="achievement-category">{achievement.category}</p>
+            <p className="form-hint">{achievement.tracking === "points" ? "Lifetime task points" : `Next streak milestone · ${achievement.xp} XP`}</p>
+            {achievement.reward && <p className="achievement-reward">{achievement.earnedAt ? "Your reward" : "Reward when earned"}: {achievement.reward}</p>}
+            <div className="achievement-progress">
+              <div className="progress flex-grow-1" role="progressbar" aria-label={`${achievement.title} progress`} aria-valuemin={0} aria-valuemax={achievement.target} aria-valuenow={achievement.current}><div className="progress-bar" style={{ width: `${achievement.current / achievement.target * 100}%` }} /></div>
+              <span>{achievement.current} / {achievement.target}</span>
+            </div>
           </div>
-        </div>
-      </article>
-      </div>,
+        </article>
+      </div>
     );
   }
+
+  const achievementCards = achievements.map(renderAchievement);
 
   return (
     <section className="profile-achievements" id="achievements" aria-labelledby="achievements-heading">
@@ -249,8 +246,7 @@ export function Achievements({ achievements }: { achievements: Achievement[] }) 
       <div className="row row-cols-1 row-cols-lg-2 row-cols-xl-3 g-3">
         {achievementCards}
       </div>
-      {filtered.length === 0 && <p className="profile-note">No achievements match these filters.</p>}
-      <p className="profile-note">Achievements are earned automatically. Streak milestones keep increasing, and each milestone awards XP. Earned achievements and XP are permanent.</p>
+      {matchCount === 0 && <p className="profile-note">No achievements match these filters.</p>}
       {editing && <AchievementDialog fetcher={fetcher} error={dialogError} onClose={closeEditing} onSubmit={markSavePending} />}
     </section>
   );
