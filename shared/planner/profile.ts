@@ -1,3 +1,4 @@
+import type { RoutineTask } from "./routines";
 import { addDays, dateKey, dayProgress, parseDate } from "./utils";
 
 export function streaks(dates: string[], today: string) {
@@ -14,14 +15,14 @@ export function streaks(dates: string[], today: string) {
   return { current: previous === today || previous === yesterday ? run : 0, best };
 }
 
-export function getProfileStats(checks: Record<string, string[]>, today: string) {
+export function getProfileStats(checks: Record<string, string[]>, today: string, routines: RoutineTask[]) {
   const days = Object.entries(checks).filter(([date]) => date <= today);
   const completedTasks = days.reduce(
-    (total, [date, checked]) => total + dayProgress(parseDate(date), checked).completed,
+    (total, [date, checked]) => total + dayProgress(parseDate(date), checked, routines).completed,
     0,
   );
   const activeDates = days
-    .filter(([date, checked]) => dayProgress(parseDate(date), checked).completed > 0)
+    .filter(([date, checked]) => dayProgress(parseDate(date), checked, routines).completed > 0)
     .map(([date]) => date);
   const activityStreak = streaks(activeDates, today);
   return {

@@ -1,4 +1,4 @@
-import { dailyQuests, morningRoutine, nightRoutine } from "./definitions";
+import { routineCheckId, routinesFor, type RoutineTask } from "./routines";
 
 export const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -54,20 +54,18 @@ export function monthDates(date: Date) {
   return Array.from({ length: 42 }, (_, index) => addDays(start, index));
 }
 
-export function dayProgress(date: Date, checked: string[]) {
-  const quest = dailyQuests[weekdayIndex(date)];
-  const groups: Record<string, readonly string[]> = {
-    daily: quest.tasks,
-    morning: morningRoutine,
-    night: nightRoutine,
-  };
-  const total =
-    quest.tasks.length + morningRoutine.length + nightRoutine.length;
-  const completed = checked.filter((id) => {
-    const [prefix, index] = id.split("-");
-    const items = groups[prefix];
-    return items && index !== undefined && /^\d+$/.test(index) && Number(index) < items.length;
-  }).length;
-  return { completed, total, percent: Math.round((completed / total) * 100) };
+export function routineIdsFor(routines: RoutineTask[], weekday: number) {
+  return [
+    ...routinesFor(routines, "morning", -1),
+    ...routinesFor(routines, "night", -1),
+    ...routinesFor(routines, "daily", weekday),
+  ].map((routine) => routineCheckId(routine.list, routine.slot));
+}
+
+export function dayProgress(date: Date, checked: string[], routines: RoutineTask[]) {
+  const ids = new Set(routineIdsFor(routines, weekdayIndex(date)));
+  const total = ids.size;
+  const completed = new Set(checked.filter((id) => ids.has(id))).size;
+  return { completed, total, percent: total ? Math.round((completed / total) * 100) : 0 };
 }
 

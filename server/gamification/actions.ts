@@ -1,8 +1,10 @@
-import { morningRoutine, nightRoutine } from "../../shared/planner/definitions";
 import { achievementCategories, questKinds, tiers } from "../../shared/planner/gamification";
+import { routineCheckId } from "../../shared/planner/routines";
+import { getDatabase } from "../db/client";
 import type { ActionHandler } from "../planner/dispatch";
+import { loadRoutines } from "../planner/routines";
 import {
-  completeQuest, createQuest, deleteQuest, saveAchievement,
+  acceptTemplate, completeQuest, createQuest, deleteQuest, saveAchievement, updateQuest,
 } from "./service";
 
 function text(form: FormData, name: string, max: number, required = true) {
@@ -39,10 +41,9 @@ export const gamificationActions = {
     const tracking = choice(form, "tracking", ["points", "streak"]);
     if (tracking !== "points" && tracking !== "streak") throw new Error("Choose a valid tracking method.");
     const taskId = tracking === "streak" ? text(form, "taskId", 100) : null;
-    const routineIds = [
-      ...morningRoutine.map((_, index) => `morning-${index}`),
-      ...nightRoutine.map((_, index) => `night-${index}`),
-    ];
+    const routineIds = (await loadRoutines(getDatabase())).routines
+      .filter((routine) => routine.list !== "daily")
+      .map((routine) => routineCheckId(routine.list, routine.slot));
     if (taskId !== null && !routineIds.includes(taskId)) throw new Error("Choose a valid routine task.");
     const reward = text(form, "reward", 200, false);
     const earnedAchievements = await saveAchievement(id || null, {
@@ -59,6 +60,20 @@ export const gamificationActions = {
       points: positiveNumber(form, "points", 100_000),
     });
     return { ok: true, message: "Quest created." };
+  },
+  async update_quest(form) {
+    await updateQuest(text(form, "id", 100), {
+      title: text(form, "title", 100),
+      description: text(form, "description", 500, false),
+      kind: choice(form, "kind", questKinds),
+      tier: choice(form, "tier", tiers),
+      points: positiveNumber(form, "points", 100_000),
+    });
+    return { ok: true, message: "Quest updated." };
+  },
+  async accept_template(form) {
+    await acceptTemplate(text(form, "templateId", 100));
+    return { ok: true, message: "Quest accepted. It now appears on Create Quest." };
   },
   async complete_quest(form) {
     await completeQuest(text(form, "id", 100));

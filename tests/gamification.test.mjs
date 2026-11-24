@@ -5,11 +5,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { refreshAchievements } from "../server/gamification/service.ts";
 import { Achievements } from "../src/features/planner/components/achievements.tsx";
+import { QuestLog } from "../src/features/planner/components/quest-log.tsx";
 import { plannerLoader } from "../src/features/planner/services/planner-route.ts";
 import { NotificationProvider } from "../src/components/notifications.tsx";
 
 function fixture(achievements, days = [], points = 0) {
   const state = { points };
+  const morningTitles = ["Stretch & PT", "Affirmations", "Water", "Meds", "Lights", "Music", "Brush teeth", "Wash face", "Shower", "Hair", "Lotion", "Get dressed", "Breakfast", "Make bed", "Prep bag", "Workout"];
+  const routineRows = morningTitles.map((title, slot) => ({ list: "morning", weekday: -1, slot, title, kind: "side", points: 10 }));
   const client = {
     achievement: {
       findMany: async () => achievements,
@@ -17,6 +20,8 @@ function fixture(achievements, days = [], points = 0) {
     },
     plannerDay: { findMany: async () => days },
     pointLedger: { aggregate: async () => ({ _sum: { amount: state.points } }) },
+    routineTask: { findMany: async () => [...routineRows, { list: "night", weekday: -1, slot: 0, title: "Lights out", kind: "side", points: 10 }] },
+    routineGroup: { findMany: async () => [] },
   };
   return { client, state };
 }
@@ -142,4 +147,19 @@ test("the achievements page displays its empty-filter message when there are no 
   const router = createMemoryRouter([{ path: "/", element: React.createElement(Achievements, { achievements: [], earned: 0 }) }]);
   const html = renderToStaticMarkup(React.createElement(NotificationProvider, null, React.createElement(RouterProvider, { router })));
   assert.match(html, /No achievements match these filters/);
+});
+
+test("quest log shows unaccepted templates in their seeded tracks", () => {
+  const templates = [
+    { id: "one", track: "cyber", kind: "boss", title: "Cyber boss", points: 150 },
+    { id: "two", track: "life", kind: "main", title: "Life quest", points: 50 },
+    { id: "three", track: "life", kind: "boss", title: "Already accepted", points: 150 },
+  ];
+  const router = createMemoryRouter([{ path: "/", element: React.createElement(QuestLog, {
+    routines: [], routineGroups: [], templates, acceptedTemplateIds: ["three"], selected: "2026-11-23",
+  }) }]);
+  const html = renderToStaticMarkup(React.createElement(NotificationProvider, null, React.createElement(RouterProvider, { router })));
+  assert.match(html, /Cyber boss/);
+  assert.match(html, /Life quest/);
+  assert.doesNotMatch(html, /Already accepted/);
 });

@@ -1,10 +1,35 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { morningRoutine } from "../shared/planner/definitions.ts";
 import { getProfileStats, levelProgress, streaks } from "../shared/planner/profile.ts";
 
-const workout = `morning-${morningRoutine.indexOf("Workout")}`;
-const water = `morning-${morningRoutine.indexOf("Water")}`;
+const morningTitles = [
+  "Stretch & PT",
+  "Affirmations",
+  "Water",
+  "Meds",
+  "Lights",
+  "Music",
+  "Brush teeth",
+  "Wash face",
+  "Shower",
+  "Hair",
+  "Lotion",
+  "Get dressed (shirt, pants or dress, socks, shoes)",
+  "Breakfast",
+  "Make bed",
+  "Prep bag (laptop, task list, lunch)",
+  "Workout",
+];
+const routines = morningTitles.map((title, slot) => ({
+  list: "morning",
+  weekday: -1,
+  slot,
+  title,
+  kind: "side",
+  points: 10,
+}));
+const workout = `morning-${morningTitles.indexOf("Workout")}`;
+const water = `morning-${morningTitles.indexOf("Water")}`;
 
 test("profile stats reflect saved tasks and consecutive active days", () => {
   const checks = {
@@ -15,16 +40,16 @@ test("profile stats reflect saved tasks and consecutive active days", () => {
     "2026-11-20": [workout, water],
     "2026-11-23": [workout],
   };
-  const result = getProfileStats(checks, "2026-11-21");
+  const result = getProfileStats(checks, "2026-11-21", routines);
   assert.equal(result.completedTasks, 9);
   assert.equal(result.activeDays, 5);
   assert.equal(result.activityStreak, 5);
-  const later = getProfileStats(checks, "2026-11-22");
+  const later = getProfileStats(checks, "2026-11-22", routines);
   assert.equal(later.activityStreak, 0);
 });
 
 test("empty and future-only activity does not count", () => {
-  const result = getProfileStats({ "2026-11-22": [workout] }, "2026-11-21");
+  const result = getProfileStats({ "2026-11-22": [workout] }, "2026-11-21", routines);
   assert.equal(result.completedTasks, 0);
   assert.equal(result.activeDays, 0);
   assert.equal(result.activityStreak, 0);

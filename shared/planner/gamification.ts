@@ -31,4 +31,16 @@ export type Quest = {
   tier: string;
   points: number;
   completedAt: string | null;
+  templateId: string | null;
+};
+
+export type QuestTemplate = {
+  id: string;
+  track: string;
+  kind: string;
+  title: string;
+  description: string;
+  tier: string;
+  points: number;
+  position: number;
 };

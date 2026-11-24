@@ -6,6 +6,7 @@ export default function ProfileRoute() {
   return (
     <Profile
       checks={page.checks}
+      routines={page.routines}
       selected={selected}
       today={today}
       balance={page.balance}

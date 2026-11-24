@@ -20,6 +20,12 @@ export function dateString(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function isSerializationConflict(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") return true;
+  return error instanceof Error && typeof error.cause === "object" && error.cause !== null
+    && "originalCode" in error.cause && error.cause.originalCode === "40001";
+}
+
 export async function serializableTransaction<T>(
   run: (client: Prisma.TransactionClient) => Promise<T>,
 ) {
@@ -30,11 +36,7 @@ export async function serializableTransaction<T>(
         timeout: 5_000,
       });
     } catch (error) {
-      if (
-        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-        error.code !== "P2034" ||
-        attempt >= 5
-      ) {
+      if (!isSerializationConflict(error) || attempt >= 5) {
         throw error;
       }
       await new Promise((resolve) => setTimeout(resolve, 10 * 2 ** attempt));

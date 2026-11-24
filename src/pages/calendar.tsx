@@ -3,7 +3,7 @@ import { CalendarSection } from "@/features/calendar/components/calendar-section
 import { GoogleIntegrationPanel } from "@/features/calendar/components/integration-panel";
 import { WeeklyProtocolPanel } from "@/features/calendar/components/weekly-protocol";
 import { TaskSection } from "@/features/planner/components/navigation-sections";
-import { dailyQuests } from "../../shared/planner/definitions";
+import { routineGroupFor } from "../../shared/planner/routines";
 import { dayProgress } from "../../shared/planner/utils";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import witchyCalendar from "@/assets/images/witchycalendar.png";
@@ -22,8 +22,8 @@ export default function CalendarPage() {
     onSelectDate,
     onSelectToday,
   } = usePlannerContext();
-  const quest = dailyQuests[weekday];
-  const { total, completed, percent } = dayProgress(date, checked);
+  const quest = routineGroupFor(page.routineGroups, weekday) ?? { title: "", message: "" };
+  const { total, completed, percent } = dayProgress(date, checked, page.routines);
 
   const calendarSummary = (
     <section className="calendar-summary" aria-label="Selected date summary">
@@ -58,6 +58,8 @@ export default function CalendarPage() {
         <TaskSection
           kind="daily"
           selected={selected}
+          routines={page.routines}
+          routineGroups={page.routineGroups}
           weekday={weekday}
           checked={checked}
           earnedTaskKeys={page.earnedTaskKeys}
@@ -68,6 +70,8 @@ export default function CalendarPage() {
           <TaskSection
             kind="routines"
             selected={selected}
+            routines={page.routines}
+            routineGroups={page.routineGroups}
             checked={checked}
             earnedTaskKeys={page.earnedTaskKeys}
             disabled={tasksDisabled}
@@ -78,6 +82,8 @@ export default function CalendarPage() {
           <TaskSection
             kind="synced"
             selected={selected}
+            routines={page.routines}
+            routineGroups={page.routineGroups}
             tasks={page.tasks}
             checked={externalChecked}
             earnedTaskKeys={page.earnedTaskKeys}
@@ -93,11 +99,12 @@ export default function CalendarPage() {
           today={today}
           checks={page.checks}
           journalDates={page.journalDates}
+          routines={page.routines}
           googleEnabled
           onSelect={onSelectDate}
           onToday={onSelectToday}
         />
-        <WeeklyProtocolPanel selected={selected} weekday={weekday} />
+        <WeeklyProtocolPanel selected={selected} weekday={weekday} routineGroups={page.routineGroups} />
         <GoogleIntegrationPanel email={page.email} selected={selected} />
       </div>
     </div>

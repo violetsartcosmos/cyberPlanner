@@ -86,10 +86,46 @@ model Quest {
   kind        String
   tier        String
   points      Int
+  templateId  String?   @unique @map("template_id")
+  deleted     Boolean   @default(false)
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("quests")
+}
+
+model RoutineTask {
+  id     String @id @default(uuid())
+  list   String
+  weekday Int
+  slot   Int
+  title  String
+  kind   String
+  points Int
+
+  @@unique([list, weekday, slot])
+  @@map("routine_tasks")
+}
+
+model RoutineGroup {
+  weekday Int    @id
+  title   String
+  message String
+
+  @@map("routine_groups")
+}
+
+model QuestTemplate {
+  id          String @id
+  track       String
+  kind        String
+  title       String
+  description String @default("")
+  tier        String
+  points      Int
+  position    Int
+
+  @@map("quest_templates")
 }
 
 model BookData {

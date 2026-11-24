@@ -67,6 +67,20 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
               <input type="hidden" name="intent" value="complete_quest" /><input type="hidden" name="id" value={quest.id} />
               <button className="btn btn-primary btn-sm" disabled={fetcher.state !== "idle"}>Complete</button>
             </fetcher.Form>}
+            <details className="quest-edit">
+              <summary className="btn btn-outline-secondary btn-sm">Edit</summary>
+              <fetcher.Form method="post" className="gamification-form">
+                <input type="hidden" name="intent" value="update_quest" /><input type="hidden" name="id" value={quest.id} />
+                <label>Quest title<input className="form-control" name="title" required maxLength={100} defaultValue={quest.title} /></label>
+                <label>Description (optional)<textarea className="form-control" name="description" maxLength={500} defaultValue={quest.description} /></label>
+                <div className="row g-2">
+                  <label className="col-12 col-md-4">Quest type<select className="form-select" name="kind" defaultValue={quest.kind}>{groupOptions}</select></label>
+                  <label className="col-12 col-md-4">Rarity<select className="form-select" name="tier" defaultValue={quest.tier}>{tierOptions}</select></label>
+                  <label className="col-12 col-md-4">Points / XP<input className="form-control" name="points" type="number" min="1" max="100000" required defaultValue={quest.points} /></label>
+                </div>
+                <button className="btn btn-primary btn-sm" disabled={fetcher.state !== "idle"}>Save quest</button>
+              </fetcher.Form>
+            </details>
             <fetcher.Form method="post" onSubmit={confirmQuestDelete(quest.title)}>
               <input type="hidden" name="intent" value="delete_quest" /><input type="hidden" name="id" value={quest.id} />
               <button className="btn btn-outline-secondary btn-sm" disabled={fetcher.state !== "idle"}>Delete</button>
@@ -81,8 +95,8 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
           <div><p className="text-label accent">{group.detail}</p><h2>{group.title}</h2></div>
         </div>
         {group.kind === "side" && <div className="quest-builtin">
-          <span>Your daily quests, routines, and synced tasks are Side Quests worth 10 points each.</span>
-          <Link to={`/quests?date=${selected}#routines`}>View routines →</Link>
+          <span>Synced tasks are Side Quests worth 10 points each. Routine types and points can be changed in the Quest Log.</span>
+          <Link to={`/quest-log?date=${selected}`}>View routines →</Link>
         </div>}
         {questsInGroup}
         {group.kind !== "side" && !hasQuestInGroup && <p className="profile-note">No quests here yet. Create one when you are ready.</p>}

@@ -179,6 +179,48 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.ok(streak.earnedAt);
       assert.equal(streak.awardedXp, 40);
 
+      const routine = { list: "morning", weekday: -1, slot: 2 };
+      assert.equal((await db.routineTask.findUniqueOrThrow({ where: { list_weekday_slot: routine } })).title, "Water");
+      assert.equal((await db.routineTask.findUniqueOrThrow({
+        where: { list_weekday_slot: { list: "morning", weekday: -1, slot: 15 } },
+      })).title, "Workout");
+      assert.equal(initial.questTemplates.length, 16);
+      assert.equal(initial.routineGroups.length, 7);
+      const firstDate = "2026-10-01";
+      const nextDate = "2026-10-02";
+      await planner.setBuiltinTaskCompletion(firstDate, "morning-2", true);
+      assert.equal((await points.getPointsSummary(firstDate)).todayPoints, 10);
+      assert.equal((await submit({ intent: "update_routine_kind", ...routine, kind: "main" })).ok, true);
+      await planner.setBuiltinTaskCompletion(firstDate, "morning-2", false);
+      await planner.setBuiltinTaskCompletion(firstDate, "morning-2", true);
+      assert.equal((await points.getPointsSummary(firstDate)).todayPoints, 10);
+      await planner.setBuiltinTaskCompletion(nextDate, "morning-2", true);
+      assert.equal((await points.getPointsSummary(nextDate)).todayPoints, 50);
+      assert.equal((await submit({ intent: "toggle_builtin", date: "2026-11-23", taskId: "daily-4", completed: "true" })).ok, false);
+      assert.equal((await submit({ intent: "toggle_builtin", date: "2026-11-28", taskId: "daily-4", completed: "true" })).ok, true);
+      assert.equal((await submit({ intent: "update_routine_kind", ...routine, kind: "invalid" })).ok, false);
+
+      const templateId = "cyber-certification";
+      assert.equal((await submit({ intent: "accept_template", templateId })).ok, true);
+      assert.equal((await submit({ intent: "accept_template", templateId })).ok, false);
+      const accepted = await db.quest.findUniqueOrThrow({ where: { templateId } });
+      assert.equal(accepted.kind, "boss");
+      const update = { intent: "update_quest", id: accepted.id, title: "Edited boss", description: "Updated",
+        kind: "main", tier: "Legendary", points: "70" };
+      assert.equal((await submit(update)).ok, true);
+      await gamification.completeQuest(accepted.id);
+      const award = await db.pointLedger.findFirstOrThrow({ where: { taskKey: `quest:${accepted.id}` } });
+      assert.equal(award.amount, 70);
+      assert.equal((await submit({ ...update, kind: "side", points: "20" })).ok, true);
+      assert.equal((await db.pointLedger.findFirstOrThrow({ where: { taskKey: `quest:${accepted.id}` } })).amount, 70);
+      assert.equal((await gamification.getGamification(today)).quests.find((quest) => quest.id === accepted.id).kind, "side");
+      await gamification.deleteQuest(accepted.id);
+      const afterDelete = await gamification.getGamification(today);
+      assert.ok(!afterDelete.quests.some((quest) => quest.id === accepted.id));
+      assert.ok(afterDelete.acceptedTemplateIds.includes(templateId));
+      assert.equal((await submit({ intent: "accept_template", templateId })).ok, false);
+      assert.equal((await submit(update)).ok, false);
+
       await assert.rejects(client.query(
         "INSERT INTO point_ledger (amount, entry_type, task_key) VALUES (0, 'earn', 'invalid')",
       ));

@@ -1,17 +1,21 @@
 import { ChevronRight, Sparkles } from "lucide-react";
 import { Link } from "react-router";
-import { dailyQuests } from "../../../../shared/planner/definitions";
 import { weekdays } from "../../../../shared/planner/utils";
+import type { RoutineGroup } from "../../../../shared/planner/routines";
 import type { ReactNode } from "react";
 
-export function WeeklyProtocolPanel({ selected, weekday }: { selected: string; weekday: number }) {
+export function WeeklyProtocolPanel({ selected, weekday, routineGroups }: {
+  selected: string;
+  weekday: number;
+  routineGroups: RoutineGroup[];
+}) {
   const weekItems: ReactNode[] = [];
-  for (let index = 0; index < dailyQuests.length; index += 1) {
-    const day = dailyQuests[index];
+  for (let index = 0; index < weekdays.length; index += 1) {
+    const group = routineGroups.find((item) => item.weekday === index);
     weekItems.push(
-      <div key={day.title} className={index === weekday ? "active-weekday" : ""}>
+      <div key={index} className={index === weekday ? "active-weekday" : ""}>
         <span>{weekdays[index].toUpperCase()}</span>
-        <strong>{day.title}</strong>
+        <strong>{group?.title ?? ""}</strong>
         <b>{index === weekday && <ChevronRight aria-hidden="true" size={12} />}</b>
       </div>,
     );

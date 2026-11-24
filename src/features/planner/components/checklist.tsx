@@ -8,6 +8,7 @@ type ChecklistProps = {
   icon: ReactNode;
   sectionHref: string;
   items: readonly string[];
+  points?: readonly number[];
   prefix: string;
   checked: string[];
   onToggle: (id: string) => void;
@@ -21,6 +22,7 @@ type ChecklistProps = {
 function ChecklistItem({
   item,
   id,
+  points,
   checked,
   earned,
   disabled,
@@ -29,6 +31,7 @@ function ChecklistItem({
 }: {
   item: string;
   id: string;
+  points: number;
   checked: boolean;
   earned: boolean;
   disabled: boolean;
@@ -51,7 +54,7 @@ function ChecklistItem({
         />
         <span>{item}</span>
         <span className="task-xp">
-          {earned ? "EARNED" : "+10 PTS"}
+          {earned ? "EARNED" : `+${points} PTS`}
         </span>
       </label>
       {taskLink && (
@@ -91,6 +94,7 @@ export function Checklist({
   icon,
   sectionHref,
   items,
+  points,
   prefix,
   checked,
   onToggle,
@@ -110,6 +114,7 @@ export function Checklist({
         key={id}
         item={items[index]}
         id={id}
+        points={points?.[index] ?? 10}
         checked={checked.includes(id)}
         earned={earnedIds.includes(id)}
         disabled={disabled}

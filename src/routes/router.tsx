@@ -7,6 +7,7 @@ import DashboardPage from "../pages/dashboard";
 import JournalPage from "../pages/journal";
 import ProfilePage from "../pages/profile";
 import QuestBoardPage from "../pages/quest-board";
+import QuestLogPage from "../pages/quest-log";
 import RewardsPage from "../pages/rewards";
 import { useNotification } from "../components/notifications";
 
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([{
     { path: "calendar", Component: CalendarPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "quests", Component: CalendarPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "quest-board", Component: QuestBoardPage, action: plannerAction, ErrorBoundary: PageError },
+    { path: "quest-log", Component: QuestLogPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "journal", Component: JournalPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "books", Component: BooksPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "rewards", Component: RewardsPage, action: plannerAction, ErrorBoundary: PageError },

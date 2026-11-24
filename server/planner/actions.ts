@@ -1,27 +1,33 @@
-import { dailyQuests, morningRoutine, nightRoutine } from "../../shared/planner/definitions";
-import { isValidDateKey, parseDate, weekdayIndex } from "../../shared/planner/utils";
+import { isValidDateKey } from "../../shared/planner/utils";
+import { routineKinds, routinePoints, type RoutineKind, type RoutineList } from "../../shared/planner/routines";
 import {
   getExternalTask,
   savePlannerJournal,
   setBuiltinTaskCompletion,
   setExternalTaskCompletion,
+  updateRoutineKind,
 } from "./service";
+import { findRoutine } from "./routines";
 import { setGoogleTaskCompleted } from "../google/service";
+import { getDatabase } from "../db/client";
 import type { ActionHandler } from "./dispatch";
 
-function isBuiltinTask(date: string, taskId: string) {
-  const [prefix, indexText, extra] = taskId.split("-");
-  if (extra !== undefined || indexText === undefined || !/^\d+$/.test(indexText)) return false;
-  const index = Number(indexText);
-  const items =
-    prefix === "daily"
-      ? dailyQuests[weekdayIndex(parseDate(date))].tasks
-      : prefix === "morning"
-        ? morningRoutine
-        : prefix === "night"
-          ? nightRoutine
-          : null;
-  return items !== null && items !== undefined && index < items.length;
+async function isBuiltinTask(date: string, taskId: string) {
+  return (await findRoutine(getDatabase(), date, taskId)) !== null;
+}
+
+function routineSlot(form: FormData) {
+  const list = form.get("list");
+  const weekdayText = form.get("weekday");
+  const slotText = form.get("slot");
+  const weekday = Number(weekdayText);
+  const slot = Number(slotText);
+  const validList = list === "morning" || list === "night" || list === "daily";
+  const validWeekday = validList && (list === "daily"
+    ? Number.isInteger(weekday) && weekday >= 0 && weekday <= 6
+    : weekday === -1);
+  if (!validList || !validWeekday || !/^\d+$/.test(String(slotText)) || !Number.isInteger(slot)) return null;
+  return { list: list as RoutineList, weekday, slot };
 }
 
 export const plannerFormActions = {
@@ -29,7 +35,7 @@ export const plannerFormActions = {
     const date = form.get("date");
     const taskId = form.get("taskId");
     if (typeof date !== "string" || !isValidDateKey(date) ||
-        typeof taskId !== "string" || !isBuiltinTask(date, taskId)) {
+        typeof taskId !== "string" || !(await isBuiltinTask(date, taskId))) {
       return { ok: false, error: "That planner task is invalid." };
     }
     const completed = form.get("completed");
@@ -38,6 +44,18 @@ export const plannerFormActions = {
     }
     const { earnedAchievements } = await setBuiltinTaskCompletion(date, taskId, completed === "true");
     return { ok: true, earnedAchievements };
+  },
+
+  async update_routine_kind(form) {
+    const slot = routineSlot(form);
+    const kind = form.get("kind");
+    if (!slot) return { ok: false, error: "That routine is invalid." };
+    if (typeof kind !== "string" || !routineKinds.some((item) => item === kind)) {
+      return { ok: false, error: "That routine type is invalid." };
+    }
+    const updated = await updateRoutineKind(slot, kind as RoutineKind);
+    if (!updated) return { ok: false, error: "That routine no longer exists." };
+    return { ok: true, message: `Moved to ${kind} (${routinePoints[kind as RoutineKind]} pts).` };
   },
 
   async toggle_external(form) {

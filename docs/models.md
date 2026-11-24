@@ -186,8 +186,14 @@ Represents a custom quest, distinct from built-in daily and routine tasks. On co
 | `kind` | String | Quest type: `side`, `main`, or `boss`. |
 | `tier` | String | Rarity displayed in the UI: `Common`, `Rare`, `Epic`, or `Legendary`. |
 | `points` | Integer | Positive points awarded on completion; earned task points also contribute to XP. |
+| `templateId` | String?; unique | Source template, retained after deletion to prevent accepting it twice. |
+| `deleted` | Boolean; `false` | Hides a deleted quest while preserving its acceptance history. |
 | `completedAt` | Timestamp? | Completion time; null means the quest is still open. Prevents completing it again. |
 | `createdAt` | Timestamp; current time | Creation time, used to order quests. |
+
+### Routine and template models
+
+`RoutineTask` stores each checklist item's list, weekday, slot, title, type and points. Morning and night use weekday `-1`; daily tasks use Monday `0` through Sunday `6`. The unique list/weekday/slot key preserves the existing check IDs. `RoutineGroup` stores each weekday's title and message. `QuestTemplate` stores the suggested quests and their track, type, rarity, and points.
 
 ### `BookData` (`book_data`)
 

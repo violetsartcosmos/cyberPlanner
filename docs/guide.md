@@ -16,7 +16,9 @@ Google sync and weekly protocol are on the calendar page. Google Calendar requir
 
 ## Quests, achievements, and rewards
 
-Built-in daily quests, routines, and synced tasks are side quests worth 10 points each. On the quest board, create side quests, main quests, and end-game bosses with a rarity and point value. Completing a custom quest awards its points and equal XP once; deleting it does not remove earned points or XP.
+Daily and routine tasks start as side quests worth 10 points. In **Quest Log**, change a routine to a main quest (50 points) or boss (150 points); it remains on its original checklist. A type change affects future awards, not points already earned for that task on a given date. Synced Google and Gmail tasks remain worth 10 points.
+
+Browse possible quests in **Quest Log** and accept one to add it to **Create Quest**. A suggestion can be accepted only once, even if its quest is later deleted. In **Create Quest**, create and edit quests with a rarity and point value. Completing a quest awards its current points and equal XP once. Later edits or deletion do not alter the earned award.
 
 Your profile shows level, lifetime XP, activity, and achievements. Every 100 XP gains a level. Lifetime XP includes earned task points and achievement XP; spending points does not lower it. Achievement XP is separate from the spendable balance.
 

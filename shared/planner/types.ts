@@ -1,4 +1,5 @@
-import type { Achievement, Quest } from "./gamification";
+import type { Achievement, Quest, QuestTemplate } from "./gamification";
+import type { RoutineGroup, RoutineTask } from "./routines";
 
 export type PlannerActionResult = {
   ok: boolean;
@@ -75,6 +76,10 @@ export type PlannerPage =
       newlyEarned: string[];
       achievements: Achievement[];
       quests: Quest[];
+      questTemplates: QuestTemplate[];
+      acceptedTemplateIds: string[];
+      routines: RoutineTask[];
+      routineGroups: RoutineGroup[];
       redemptions: Array<{
         rewardId: string;
         rewardName: string;

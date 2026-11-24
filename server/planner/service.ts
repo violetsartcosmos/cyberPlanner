@@ -2,7 +2,9 @@ import { databaseDate, dateString, getDatabase, serializableTransaction } from "
 import { awardTaskPoints } from "../points/service";
 import type { ExternalTask } from "../../shared/planner/types";
 import { dateKey } from "../../shared/planner/utils";
+import { routinePoints, type RoutineKind, type RoutineList } from "../../shared/planner/routines";
 import { refreshAchievements } from "../gamification/service";
+import { findRoutine } from "./routines";
 import type { Prisma } from "../generated/prisma/client";
 
 export type { ExternalTask } from "../../shared/planner/types";
@@ -86,6 +88,8 @@ export async function setBuiltinTaskCompletion(
 ) {
   const day = databaseDate(date);
   return serializableTransaction(async (client) => {
+    const routine = await findRoutine(client, date, taskId);
+    if (!routine) throw new Error("That planner task is invalid.");
     const existing = await client.plannerDay.findUnique({ where: { day } });
     const next = new Set(taskChecks(existing?.checks ?? []));
     if (completed) next.add(taskId);
@@ -97,11 +101,22 @@ export async function setBuiltinTaskCompletion(
       update: { checks },
     });
     if (completed) {
-      await awardTaskPoints(client, `builtin:${date}:${taskId}`, date);
+      await awardTaskPoints(client, `builtin:${date}:${taskId}`, date, routine.points);
     }
     const earnedAchievements = await refreshAchievements(client, dateKey(new Date()));
     return { checks, earnedAchievements };
   });
+}
+
+export async function updateRoutineKind(
+  slot: { list: RoutineList; weekday: number; slot: number },
+  kind: RoutineKind,
+) {
+  const result = await getDatabase().routineTask.updateMany({
+    where: slot,
+    data: { kind, points: routinePoints[kind] },
+  });
+  return result.count === 1;
 }
 
 export async function getExternalTask(

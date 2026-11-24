@@ -7,8 +7,8 @@ import {
   Sword, Terminal, Trees, Trophy, Utensils,
 } from "lucide-react";
 import { useFetcher } from "react-router";
-import { morningRoutine, nightRoutine } from "../../../../shared/planner/definitions";
 import { achievementCategories, tiers, type Achievement } from "../../../../shared/planner/gamification";
+import { routinesFor, type RoutineTask } from "../../../../shared/planner/routines";
 import type { PlannerActionResult } from "../../../../shared/planner/types";
 import { useNotification } from "@/components/notifications";
 
@@ -31,16 +31,12 @@ function buildOptions(values: readonly string[]) {
   return options;
 }
 
-function buildIndexedOptions(values: readonly string[], prefix: string) {
-  const options: ReactNode[] = [];
-  for (let index = 0; index < values.length; index += 1) {
-    options.push(
-      <option value={`${prefix}-${index}`} key={index}>
-        {values[index]}
-      </option>,
-    );
-  }
-  return options;
+function buildRoutineOptions(routines: RoutineTask[], list: "morning" | "night") {
+  return routinesFor(routines, list, -1).map((routine) => (
+    <option value={`${list}-${routine.slot}`} key={routine.slot}>
+      {routine.title}
+    </option>
+  ));
 }
 
 export function AchievementPreview({ achievements }: { achievements: Achievement[] }) {
@@ -78,10 +74,11 @@ export function AchievementPreview({ achievements }: { achievements: Achievement
   );
 }
 
-function AchievementDialog({ onClose, fetcher, onSubmit }: {
+function AchievementDialog({ onClose, fetcher, onSubmit, routines }: {
   onClose: () => void;
   fetcher: ReturnType<typeof useFetcher<PlannerActionResult>>;
   onSubmit: () => void;
+  routines: RoutineTask[];
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [tracking, setTracking] = useState("points");
@@ -122,8 +119,8 @@ function AchievementDialog({ onClose, fetcher, onSubmit }: {
         </label>
         {tracking === "streak" && <label>Routine task
           <select className="form-select" name="taskId" defaultValue="morning-0">
-            <optgroup label="Morning">{buildIndexedOptions(morningRoutine, "morning")}</optgroup>
-            <optgroup label="Night">{buildIndexedOptions(nightRoutine, "night")}</optgroup>
+            <optgroup label="Morning">{buildRoutineOptions(routines, "morning")}</optgroup>
+            <optgroup label="Night">{buildRoutineOptions(routines, "night")}</optgroup>
           </select>
         </label>}
         <label>Personal reward (optional)<input className="form-control" name="reward" maxLength={200} placeholder="A treat, downtime, or something special" /></label>
@@ -134,7 +131,11 @@ function AchievementDialog({ onClose, fetcher, onSubmit }: {
   );
 }
 
-export function Achievements({ achievements, earned }: { achievements: Achievement[]; earned: number }) {
+export function Achievements({ achievements, earned, routines }: {
+  achievements: Achievement[];
+  earned: number;
+  routines: RoutineTask[];
+}) {
   const fetcher = useFetcher<PlannerActionResult>();
   const [filters, setFilters] = useState({ category: "all", tier: "all", status: "all" });
   const [editing, setEditing] = useState(false);
@@ -231,7 +232,7 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
         {matchingAchievements.map(renderAchievement)}
       </div>
       {matchingAchievements.length === 0 && <p className="profile-note">No achievements match these filters.</p>}
-      {editing && <AchievementDialog fetcher={fetcher} onClose={closeEditing} onSubmit={markSavePending} />}
+      {editing && <AchievementDialog fetcher={fetcher} onClose={closeEditing} onSubmit={markSavePending} routines={routines} />}
     </section>
   );
 }

@@ -10,6 +10,8 @@ export async function plannerLoader({ request }: LoaderFunctionArgs) {
   if (page.authenticated && (
     typeof page.journal !== "string" || !Array.isArray(page.journalDates) ||
     !Array.isArray(page.achievements) || !Array.isArray(page.quests) ||
+    !Array.isArray(page.routines) || !Array.isArray(page.routineGroups) ||
+    !Array.isArray(page.questTemplates) || !Array.isArray(page.acceptedTemplateIds) ||
     !Array.isArray(page.newlyEarned) || typeof page.totalXp !== "number"
   )) {
     throw new Error("The planner server is out of date. Apply database migrations and restart the server.");

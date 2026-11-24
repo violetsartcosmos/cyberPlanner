@@ -8,6 +8,7 @@ import {
   Gift,
   LayoutDashboard,
   NotebookPen,
+  ScrollText,
   Swords,
   UserRound,
   type LucideIcon,
@@ -20,6 +21,7 @@ type NavigationItem = readonly [string, string, LucideIcon];
 const dashboardNavigation: NavigationItem = ["", "Dashboard", LayoutDashboard];
 const calendarNavigation: NavigationItem = ["calendar", "Calendar", CalendarDays];
 const questBoardNavigation: NavigationItem = ["quest-board", "Create Quest", Swords];
+const questLogNavigation: NavigationItem = ["quest-log", "Quest Log", ScrollText];
 const journalNavigation: NavigationItem = ["journal", "Journal", NotebookPen];
 const booksNavigation: NavigationItem = ["books", "Library", BookOpen];
 const rewardsNavigation: NavigationItem = ["rewards", "Shop", Gift];
@@ -29,6 +31,7 @@ export const navigationSections: readonly NavigationItem[] = [
   dashboardNavigation,
   calendarNavigation,
   questBoardNavigation,
+  questLogNavigation,
   journalNavigation,
   booksNavigation,
   rewardsNavigation,
@@ -229,6 +232,7 @@ export function PlannerNavigation({
           </NavigationGroup>
           <NavigationGroup title="PLANNER">
             <NavigationLink item={questBoardNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
+            <NavigationLink item={questLogNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
             <NavigationLink item={journalNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
             <NavigationLink item={booksNavigation} selected={selected} section={section} onNavigate={handleNavigation} />
           </NavigationGroup>

@@ -2,7 +2,7 @@ import { Sparkles } from "lucide-react";
 import { CalendarSection } from "@/features/calendar/components/calendar-section";
 import { LevelHeader } from "@/features/planner/components/level-header";
 import { TaskSection } from "@/features/planner/components/navigation-sections";
-import { dailyQuests } from "../../shared/planner/definitions";
+import { routineGroupFor } from "../../shared/planner/routines";
 import { dayProgress } from "../../shared/planner/utils";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import witchyBroom from "@/assets/images/witchybroom.png";
@@ -20,8 +20,8 @@ export default function DashboardPage() {
     onToggleTask,
     onSelectDate,
   } = usePlannerContext();
-  const quest = dailyQuests[weekday];
-  const { total, completed } = dayProgress(date, checked);
+  const quest = routineGroupFor(page.routineGroups, weekday) ?? { title: "", message: "" };
+  const { total, completed } = dayProgress(date, checked, page.routines);
   let earned = 0;
   for (const achievement of page.achievements) {
     if (achievement.earnedAt) earned += 1;
@@ -53,6 +53,7 @@ export default function DashboardPage() {
             today={today}
             checks={page.checks}
             journalDates={page.journalDates}
+            routines={page.routines}
             googleEnabled={false}
             onSelect={onSelectDate}
             onToday={() => onSelectDate(today)}
@@ -61,6 +62,8 @@ export default function DashboardPage() {
           <TaskSection
             kind="daily"
             selected={selected}
+            routines={page.routines}
+            routineGroups={page.routineGroups}
             weekday={weekday}
             checked={checked}
             earnedTaskKeys={page.earnedTaskKeys}
@@ -100,6 +103,8 @@ export default function DashboardPage() {
           <TaskSection
             kind="synced"
             selected={selected}
+            routines={page.routines}
+            routineGroups={page.routineGroups}
             tasks={page.tasks}
             checked={externalChecked}
             earnedTaskKeys={page.earnedTaskKeys}
@@ -112,6 +117,8 @@ export default function DashboardPage() {
           <TaskSection
             kind="routines"
             selected={selected}
+            routines={page.routines}
+            routineGroups={page.routineGroups}
             checked={checked}
             earnedTaskKeys={page.earnedTaskKeys}
             disabled={tasksDisabled}

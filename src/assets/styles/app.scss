@@ -2954,6 +2954,23 @@ button.calendar-event:hover {
   max-width: 1000px;
 }
 
+.quest-log {
+  max-width: 1000px;
+}
+
+.quest-log-heading {
+  margin-top: 30px;
+}
+
+.quest-edit summary {
+  list-style: none;
+}
+
+.quest-edit[open] {
+  width: 100%;
+  margin-top: 12px;
+}
+
 .quest-creator {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(200px, 2fr);

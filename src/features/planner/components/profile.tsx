@@ -1,12 +1,14 @@
 import { Award, Flame, Heart, Sparkles } from "lucide-react";
 import { getProfileStats } from "../../../../shared/planner/profile";
 import type { Achievement } from "../../../../shared/planner/gamification";
+import type { RoutineTask } from "../../../../shared/planner/routines";
 import { AchievementPreview, Achievements } from "./achievements";
 import { LevelHeader } from "./level-header";
 import witchyPonder from "@/assets/images/witchyponder.png";
 
 type ProfileProps = {
   checks: Record<string, string[]>;
+  routines: RoutineTask[];
   selected: string;
   today: string;
   balance: number;
@@ -14,8 +16,8 @@ type ProfileProps = {
   achievements: Achievement[];
 };
 
-export function Profile({ checks, selected, today, balance, totalXp, achievements }: ProfileProps) {
-  const stats = getProfileStats(checks, today);
+export function Profile({ checks, routines, selected, today, balance, totalXp, achievements }: ProfileProps) {
+  const stats = getProfileStats(checks, today, routines);
   const earned = achievements.filter((achievement) => achievement.earnedAt).length;
 
   return (
@@ -44,7 +46,7 @@ export function Profile({ checks, selected, today, balance, totalXp, achievement
         <div className="col"><div className="card p-3 h-100"><span>CURRENT STREAK</span><strong><Flame aria-hidden="true" size={20} /> {stats.activityStreak}</strong><small>Days with a built-in task</small></div></div>
         <div className="col"><div className="card p-3 h-100"><span>ACHIEVEMENTS</span><strong>{earned} <small>/ {achievements.length}</small></strong><small>Achievements earned</small></div></div>
       </section>
-      <Achievements achievements={achievements} earned={earned} />
+      <Achievements achievements={achievements} earned={earned} routines={routines} />
     </div>
   );
 }

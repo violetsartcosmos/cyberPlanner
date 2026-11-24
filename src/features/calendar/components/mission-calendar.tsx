@@ -16,6 +16,7 @@ import {
   weekDates,
 } from "../../../../shared/planner/utils";
 import type { CalendarEvent } from "../../../../shared/planner/types";
+import type { RoutineTask } from "../../../../shared/planner/routines";
 import { EventEditor, eventHour, eventOccursOnDate, eventTime, useGoogleCalendar } from "./google-calendar";
 import { useNotification } from "@/components/notifications";
 
@@ -24,6 +25,7 @@ type MissionCalendarProps = {
   selected: string;
   today: string;
   checks: Record<string, string[]>;
+  routines: RoutineTask[];
   journalDates: string[];
   onSelect: (date: string) => void;
   onToday: () => void;
@@ -36,6 +38,7 @@ export function MissionCalendar({
   selected,
   today,
   checks,
+  routines,
   journalDates,
   onSelect,
   onToday,
@@ -104,7 +107,7 @@ export function MissionCalendar({
   const calendarDays: ReactNode[] = [];
   for (const day of days) {
     const key = dateKey(day);
-    const progress = dayProgress(day, checks[key] ?? []);
+    const progress = dayProgress(day, checks[key] ?? [], routines);
     const eventCount = googleCalendar.data?.events.filter((event) => eventOccursOnDate(event, day)).length ?? 0;
     const label = day.toLocaleDateString("en-US", {
       weekday: "long",

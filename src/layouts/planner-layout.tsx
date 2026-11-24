@@ -11,8 +11,8 @@ import { usePlannerController } from "@/features/planner/hooks/use-planner-contr
 import { plannerLoader } from "@/features/planner/services/planner-route";
 import type { AuthenticatedPlannerPage } from "@/features/planner/types/planner-outlet-context";
 import witchyAction from "@/assets/images/witchyaction.png";
-import { dailyQuests } from "../../shared/planner/definitions";
 import { dayProgress } from "../../shared/planner/utils";
+import { routineGroupFor } from "../../shared/planner/routines";
 import { useNotification } from "@/components/notifications";
 
 function getNavigationLabel(section: string) {
@@ -54,7 +54,7 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
   const section = location.pathname === "/" ? "" : location.pathname.slice(1);
   const isDashboard = section === "";
   const isRewards = section === "rewards";
-  const { total, completed, percent } = dayProgress(date, checked);
+  const { total, completed, percent } = dayProgress(date, checked, page.routines);
   const pageHeadingSection = section === "quests" ? "calendar" : section;
   useNotification(toggleFetcher.state === "idle" ? toggleFetcher.data?.error : "");
   useNotification(toggleFetcher.state === "idle" && toggleFetcher.data?.earnedAchievements?.length
@@ -115,7 +115,7 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
                     ? "Today"
                     : date.toLocaleDateString("en-US", { weekday: "long" })}
                 </h1>
-                <p>{dailyQuests[weekday].message}</p>
+                <p>{routineGroupFor(page.routineGroups, weekday)?.message ?? ""}</p>
               </div>
               <div className="mobile-momentum">
                 <strong>{percent}%</strong>
