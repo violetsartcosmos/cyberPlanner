@@ -10,6 +10,7 @@ import { useFetcher } from "react-router";
 import { morningRoutine, nightRoutine } from "../../../../shared/planner/definitions";
 import { achievementCategories, tiers, type Achievement } from "../../../../shared/planner/gamification";
 import type { PlannerActionResult } from "../../../../shared/planner/types";
+import { useNotification } from "@/components/notifications";
 
 const icons: Record<string, typeof Award> = {
   award: Award, bug: Bug, "calendar-check": CalendarCheck, clock: Clock,
@@ -77,11 +78,10 @@ export function AchievementPreview({ achievements }: { achievements: Achievement
   );
 }
 
-function AchievementDialog({ onClose, fetcher, onSubmit, error }: {
+function AchievementDialog({ onClose, fetcher, onSubmit }: {
   onClose: () => void;
   fetcher: ReturnType<typeof useFetcher<PlannerActionResult>>;
   onSubmit: () => void;
-  error: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [tracking, setTracking] = useState("points");
@@ -128,7 +128,6 @@ function AchievementDialog({ onClose, fetcher, onSubmit, error }: {
         </label>}
         <label>Personal reward (optional)<input className="form-control" name="reward" maxLength={200} placeholder="A treat, downtime, or something special" /></label>
         <p className="form-hint">Points goals use lifetime earned task points. Routine streaks award XP at each new milestone. Existing achievements cannot be edited.</p>
-        {error && <p className="inline-error" role="alert">{error}</p>}
         <button className="btn btn-primary btn-sm" type="submit" disabled={fetcher.state !== "idle"}>Save achievement</button>
       </fetcher.Form>
     </dialog>
@@ -142,6 +141,8 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
   const [notice, setNotice] = useState("");
   const [dialogError, setDialogError] = useState("");
   const [noticeIsError, setNoticeIsError] = useState(false);
+  useNotification(dialogError);
+  useNotification(notice, noticeIsError ? "error" : "notice");
   const pending = useRef<"save" | "other" | null>(null);
 
   useEffect(function syncAchievementFetcher() {
@@ -166,10 +167,6 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
     setEditing(true);
   }
 
-  function dismissNotice() {
-    setNotice("");
-  }
-
   function handleFilterChange(event: ChangeEvent<HTMLSelectElement>) {
     const { name, value } = event.currentTarget;
     setFilters((current) => ({ ...current, [name]: value }));
@@ -181,6 +178,7 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
 
   function markSavePending() {
     setDialogError("");
+    setNotice("");
     pending.current = "save";
   }
 
@@ -224,7 +222,6 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
         </div>
         <button className="btn btn-primary btn-sm" onClick={openNewAchievement}>+ New achievement</button>
       </div>
-      {notice && <div className={`alert ${noticeIsError ? "alert-danger" : "alert-info"} d-flex justify-content-between align-items-center gap-3`} role={noticeIsError ? "alert" : "status"}>{notice}<button className="btn-close" type="button" aria-label="Dismiss notification" onClick={dismissNotice} /></div>}
       <div className="achievement-filters">
         <label>Category<select className="form-select" name="category" value={filters.category} onChange={handleFilterChange}><option value="all">All categories</option>{buildOptions(achievementCategories)}</select></label>
         <label>Tier<select className="form-select" name="tier" value={filters.tier} onChange={handleFilterChange}><option value="all">All tiers</option>{buildOptions(tiers)}</select></label>
@@ -234,7 +231,7 @@ export function Achievements({ achievements, earned }: { achievements: Achieveme
         {matchingAchievements.map(renderAchievement)}
       </div>
       {matchingAchievements.length === 0 && <p className="profile-note">No achievements match these filters.</p>}
-      {editing && <AchievementDialog fetcher={fetcher} error={dialogError} onClose={closeEditing} onSubmit={markSavePending} />}
+      {editing && <AchievementDialog fetcher={fetcher} onClose={closeEditing} onSubmit={markSavePending} />}
     </section>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { CalendarData, CalendarEvent, GoogleCalendar, PlannerActionResult } from "../../../../shared/planner/types";
 import { addDays, dateKey, monthDates, parseDate } from "../../../../shared/planner/utils";
+import { useNotification } from "@/components/notifications";
 
 type CalendarState = {
   key: string;
@@ -101,7 +102,7 @@ type EventEditorProps = {
 export function EventEditor({ selected, calendars, event, onCancel, onSaved }: EventEditorProps) {
   const [allDay, setAllDay] = useState(event?.allDay ?? false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const notify = useNotification();
   const writable = calendars.filter((calendar) => calendar.writable);
   const start = event ? (event.allDay ? event.start : localDateTime(event.start)) : `${selected}T09:00`;
   const end = event ? (event.allDay ? dateKey(addDays(parseDate(event.end), -1)) : localDateTime(event.end)) : `${selected}T10:00`;
@@ -127,7 +128,7 @@ export function EventEditor({ selected, calendars, event, onCancel, onSaved }: E
     const startValue = form.get("start");
     const endValue = form.get("end");
     if (typeof startValue !== "string" || typeof endValue !== "string" || !startValue || !endValue) {
-      setError("Enter a start and end.");
+      notify("Enter a start and end.");
       return;
     }
     if (allDay) {
@@ -138,7 +139,7 @@ export function EventEditor({ selected, calendars, event, onCancel, onSaved }: E
       if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime()) ||
           localDateTime(from.toISOString()) !== normalizedLocalTime(startValue) ||
           localDateTime(to.toISOString()) !== normalizedLocalTime(endValue)) {
-        setError("Enter valid local times.");
+        notify("Enter valid local times.");
         return;
       }
       const unchangedStart = event && !event.allDay && normalizedLocalTime(startValue) === localDateTime(event.start);
@@ -153,7 +154,6 @@ export function EventEditor({ selected, calendars, event, onCancel, onSaved }: E
     form.set("startTimeZone", !allDay && event && !event.allDay ? event.startTimeZone ?? "" : "");
     form.set("endTimeZone", !allDay && event && !event.allDay ? event.endTimeZone ?? "" : "");
     setBusy(true);
-    setError("");
     try {
       const response = await fetch("/api/planner", { method: "POST", body: form });
       if (!response.ok) throw new Error(`Could not save event (${response.status}).`);
@@ -161,7 +161,7 @@ export function EventEditor({ selected, calendars, event, onCancel, onSaved }: E
       if (!result.ok) throw new Error(result.error || "Could not save event.");
       onSaved(result.message || "Event saved.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save event.");
+      notify(caught instanceof Error ? caught.message : "Could not save event.");
       setBusy(false);
     }
   }
@@ -190,7 +190,6 @@ export function EventEditor({ selected, calendars, event, onCancel, onSaved }: E
       <label>{allDay ? "Last day" : "End"}
         <input className="form-control" name="end" type={allDay ? "date" : "datetime-local"} step={allDay ? undefined : "0.001"} value={allDay ? dayEnd : timedEnd} onChange={(change) => allDay ? setDayEnd(change.target.value) : setTimedEnd(change.target.value)} required />
       </label>
-      {error && <p className="inline-error" role="alert">{error}</p>}
       <div className="calendar-event-actions">
         <button className="btn btn-outline-primary btn-sm rounded-pill" type="submit" disabled={busy}>{busy ? "SAVING..." : "SAVE EVENT"}</button>
         <button className="btn btn-outline-primary btn-sm rounded-pill" type="button" disabled={busy} onClick={onCancel}>CANCEL</button>

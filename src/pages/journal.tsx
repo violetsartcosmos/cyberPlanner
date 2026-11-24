@@ -8,6 +8,7 @@ import "@blocknote/mantine/style.css";
 import { parseDate } from "../../shared/planner/utils";
 import type { PlannerActionResult } from "../../shared/planner/types";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
+import { useNotification } from "@/components/notifications";
 
 function initialBlocks(value: string): PartialBlock[] | undefined {
   if (!value) return undefined;
@@ -33,6 +34,7 @@ function JournalEntry({ selected, journal }: { selected: string; journal: string
   const [saved, setSaved] = useState(journal);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  useNotification(error ? `${error} Your changes have not been saved.` : "");
   const revalidator = useRevalidator();
   const dirty = draft !== saved || saving;
   const blocker = useBlocker(dirty);
@@ -90,8 +92,7 @@ function JournalEntry({ selected, journal }: { selected: string; journal: string
         <BlockNoteView editor={editor} theme="dark" onChange={handleChange} />
       </div>
       {error && (
-        <div className="inline-error" role="alert">
-          <p>{error} Your changes have not been saved.</p>
+        <div>
           <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setError("")}>Retry saving</button>
         </div>
       )}

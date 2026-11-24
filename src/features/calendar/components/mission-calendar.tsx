@@ -17,6 +17,7 @@ import {
 } from "../../../../shared/planner/utils";
 import type { CalendarEvent } from "../../../../shared/planner/types";
 import { EventEditor, eventHour, eventOccursOnDate, eventTime, useGoogleCalendar } from "./google-calendar";
+import { useNotification } from "@/components/notifications";
 
 type MissionCalendarProps = {
   date: Date;
@@ -46,6 +47,8 @@ export function MissionCalendar({
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [eventMessage, setEventMessage] = useState("");
   const googleCalendar = useGoogleCalendar(googleEnabled, date);
+  useNotification(googleCalendar.error);
+  useNotification(eventMessage, "notice");
 
   useEffect(function resetEventEditor() {
     setEditing(false);
@@ -267,7 +270,7 @@ export function MissionCalendar({
             </div>
           </div>
           {googleCalendar.loading && <p className="inline-status" role="status">Loading Google Calendar...</p>}
-          {googleCalendar.error && <p className="inline-error" role="alert">{googleCalendar.error} <a href="/auth/google">Reconnect Google</a></p>}
+          {googleCalendar.error && <a href="/auth/google">Reconnect Google</a>}
           {googleCalendar.data && googleCalendar.data.unavailableCalendars.length > 0 && (
             <p className="inline-status">Event details unavailable for free/busy-only calendars: {googleCalendar.data.unavailableCalendars.join(", ")}.</p>
           )}
@@ -280,7 +283,6 @@ export function MissionCalendar({
               {selectedEvents.map(showEvent)}
             </div>
           )}
-          {eventMessage && <p className="inline-status" role="status">{eventMessage}</p>}
           {editing && googleCalendar.data && (
             <EventEditor
               key={editingEvent ? `${editingEvent.calendarId}:${editingEvent.id}` : `new:${selected}`}

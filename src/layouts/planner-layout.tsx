@@ -13,6 +13,7 @@ import type { AuthenticatedPlannerPage } from "@/features/planner/types/planner-
 import witchyAction from "@/assets/images/witchyaction.png";
 import { dailyQuests } from "../../shared/planner/definitions";
 import { dayProgress } from "../../shared/planner/utils";
+import { useNotification } from "@/components/notifications";
 
 function getNavigationLabel(section: string) {
   for (const [path, label] of navigationSections) {
@@ -55,6 +56,11 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
   const isRewards = section === "rewards";
   const { total, completed, percent } = dayProgress(date, checked);
   const pageHeadingSection = section === "quests" ? "calendar" : section;
+  useNotification(toggleFetcher.state === "idle" ? toggleFetcher.data?.error : "");
+  useNotification(toggleFetcher.state === "idle" && toggleFetcher.data?.earnedAchievements?.length
+    ? `Achievement milestone earned: ${toggleFetcher.data.earnedAchievements.join(", ")}!` : "", "notice");
+  useNotification(page.newlyEarned.length
+    ? `Achievement milestone earned: ${page.newlyEarned.join(", ")}!` : "", "notice");
 
   return (
     <div className={`app-shell authenticated-shell ${menuOpen ? "menu-expanded" : ""}`}>
@@ -144,21 +150,6 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
             {isDashboard && <DailyAffirmation today={today} />}
           </div>
         </header>
-        {toggleFetcher.data?.error && (
-          <div className="alert alert-danger" role="alert">
-            {toggleFetcher.data.error}
-          </div>
-        )}
-        {toggleFetcher.data?.earnedAchievements && toggleFetcher.data.earnedAchievements.length > 0 && (
-          <div className="alert alert-info" role="status">
-            Achievement milestone earned: {toggleFetcher.data.earnedAchievements.join(", ")}!
-          </div>
-        )}
-        {page.newlyEarned.length > 0 && (
-          <div className="alert alert-info" role="status">
-            Achievement milestone earned: {page.newlyEarned.join(", ")}!
-          </div>
-        )}
         <Outlet context={outletContext} />
         <footer>
           <span>

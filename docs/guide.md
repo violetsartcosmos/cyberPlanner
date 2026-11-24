@@ -2,6 +2,8 @@
 
 Use the sidebar to move between the dashboard, calendar, quest board, journal, library, shop, and profile. The double arrows expand or minimize the sidebar. Your level appears in the sidebar and your points balance in the page header.
 
+Errors and notices appear briefly in a shared notification. A newer message replaces the current one. Recovery controls, such as retrying a save or resolving a progress conflict, remain available on the relevant page.
+
 ## Daily planning
 
 The dashboard combines a calendar, daily quests, and routines. Routines default to morning before noon and night from noon using your device's local time; switch tabs whenever you like. The affirmation changes with the local date.

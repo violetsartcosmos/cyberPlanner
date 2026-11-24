@@ -12,6 +12,12 @@ import { useSavedWikipedia } from "../hooks/use-saved-wikipedia";
 import { useBookmarks } from "../hooks/use-bookmarks";
 import { useBookProgress } from "../hooks/use-book-progress";
 import { ProgressStatus } from "./progress-status";
+import { useNotification } from "@/components/notifications";
+
+function ReaderError() {
+  useNotification("Could not open this EPUB. It may be damaged or DRM-protected.");
+  return <p>Reader unavailable.</p>;
+}
 
 function BookCover({ book, index, onClick }: { book: LibraryBook; index: number; onClick: () => void }) {
   const ref = useRef<HTMLButtonElement>(null);
@@ -22,6 +28,7 @@ function BookCover({ book, index, onClick }: { book: LibraryBook; index: number;
   const { embedded, error } = useEmbeddedDetails(book, visible && (ready || !!wikiError) && !wikiCover);
   const cover = wikiCover ? (wikiCover.cached ? bookCoverUrl(book) : wikiCover.url) : embedded?.cover;
   const coverError = wikiError || (wiki?.image && !wikiCover ? "Wikipedia cover could not be loaded." : error);
+  useNotification(coverError ? `Cover unavailable: ${coverError}` : "");
 
   useEffect(() => {
     const element = ref.current;
@@ -55,6 +62,7 @@ function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void 
   const displayed = useRef(false);
   const interacted = useRef(false);
   const { bookmarks, add, remove, error: bookmarkError, busy } = useBookmarks(book);
+  useNotification(bookmarkError);
 
   useEffect(() => {
     if (progress && location === null) setLocation(progress.position ?? 0);
@@ -90,7 +98,6 @@ function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void 
       <ProgressStatus error={error} conflict={conflict} saving={saving} pendingPosition={pendingPosition} queue={queue.current} onUseDatabase={(value) => { interacted.current = false; setLocation(value.position ?? 0); }} />
       <div className="library-bookmarks">
         <button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy || typeof location !== "string"} onClick={() => { void add(String(location), `Bookmark ${bookmarks.length + 1}`); }}>Add bookmark</button>
-        {bookmarkError && <p role="alert">{bookmarkError}</p>}
         {bookmarks.length > 0 && <details><summary>Bookmarks ({bookmarks.length})</summary><ul>{bookmarks.map((bookmark) => (
           <li key={bookmark.id}><button className="btn btn-outline-secondary btn-sm" type="button" disabled={!progress || location === null} onClick={() => { interacted.current = true; setLocation(bookmark.position); queue.current?.enqueue(bookmark.position); }}>{bookmark.label}</button><button className="btn btn-outline-secondary btn-sm" type="button" disabled={busy} onClick={() => { void remove(bookmark.id); }} aria-label={`Remove ${bookmark.label}`}>Remove</button></li>
         ))}</ul></details>}
@@ -107,7 +114,7 @@ function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void 
             rendition.on("click", () => { if (displayed.current) interacted.current = true; });
           }}
           epubInitOptions={{ openAs: "epub" }}
-          errorView={<p role="alert">Could not open this EPUB. It may be damaged or DRM-protected.</p>}
+          errorView={<ReaderError />}
         />}
       </div>
     </section>
@@ -121,6 +128,7 @@ export function BookLibrary() {
   const [filter, setFilter] = useState<LibraryFilter>("all");
   const [selected, setSelected] = useState<LibraryBook | null>(null);
   const [detailsBook, setDetailsBook] = useState<LibraryBook | null>(null);
+  useNotification(error);
 
   useEffect(function loadLibrary() {
     const controller = new AbortController();
@@ -183,7 +191,6 @@ export function BookLibrary() {
         <button className="btn btn-outline-secondary btn-sm" type="button" aria-pressed={filter === "ebooks"} onClick={() => setFilter("ebooks")}>Ebooks</button>
         <button className="btn btn-outline-secondary btn-sm" type="button" aria-pressed={filter === "audio"} onClick={() => setFilter("audio")}>Audiobooks</button>
       </div>
-      {error && <p role="alert">{error}</p>}
       {!books && !error && <p>Loading library...</p>}
       {books && books.length === 0 && <p>No books found. Add EPUBs or PDFs to ebooks, or M4B files to audiblebooks, and refresh this page.</p>}
       {books && books.length > 0 && filtered?.length === 0 && <p>No books match your search and filter.</p>}

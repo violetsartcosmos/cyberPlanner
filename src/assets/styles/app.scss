@@ -2927,6 +2927,22 @@ button.calendar-event:hover {
   background: #000b;
 }
 
+.notifications {
+  position: fixed;
+  z-index: 1100;
+  top: 16px;
+  right: 16px;
+  width: min(420px, calc(100% - 32px));
+}
+
+.notifications .alert {
+  box-shadow: 0 4px 20px #0006;
+}
+
+.notifications .alert p {
+  margin: 8px 0 0;
+}
+
 .dialog-heading {
   display: flex;
   align-items: flex-start;

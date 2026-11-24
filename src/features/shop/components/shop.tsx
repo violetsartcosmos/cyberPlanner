@@ -18,6 +18,7 @@ import {
 import type { PlannerActionResult } from "../../../../shared/planner/types";
 import { rewards } from "../../../../shared/planner/definitions";
 import shopkeeper from "@/assets/images/shopkeeperv2.jpg";
+import { useActionNotifications } from "@/components/notifications";
 
 const rewardIcons = {
   snacks: Cookie,
@@ -64,6 +65,7 @@ type RewardShopProps = {
 
 export function RewardShop({ balance, selected, redemptions }: RewardShopProps) {
   const fetcher = useFetcher<PlannerActionResult>();
+  useActionNotifications(fetcher);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const reward = rewards[selectedIndex];
   const SelectedIcon = rewardIcons[reward.id];
@@ -153,8 +155,6 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
         </div>
       </div>
       <div className="shop-footer">
-        {fetcher.data?.message && <p className="shop-feedback" role="status">{fetcher.data.message}</p>}
-        {fetcher.data?.error && <p className="inline-error" role="alert">{fetcher.data.error}</p>}
         {redemptions.length > 0 && (
           <div className="redemption-history">
             <strong>RECENT REWARDS</strong>

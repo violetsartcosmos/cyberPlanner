@@ -2,6 +2,7 @@ import { Link, useFetcher } from "react-router";
 import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import type { PlannerActionResult } from "../../../../shared/planner/types";
+import { useActionNotifications } from "@/components/notifications";
 
 type GoogleIntegrationPanelProps = {
   email: string;
@@ -15,6 +16,9 @@ export function GoogleIntegrationPanel({
   const syncFetcher = useFetcher<PlannerActionResult>();
   const searchFetcher = useFetcher<PlannerActionResult>();
   const importFetcher = useFetcher<PlannerActionResult>();
+  useActionNotifications(syncFetcher);
+  useActionNotifications(searchFetcher);
+  useActionNotifications(importFetcher);
   const emailResults: ReactNode[] = [];
   for (const message of searchFetcher.data?.emails ?? []) {
     emailResults.push(
@@ -59,14 +63,6 @@ export function GoogleIntegrationPanel({
             : "SYNCING..."}
         </button>
       </syncFetcher.Form>
-      {syncFetcher.data?.message && (
-        <p className="inline-status">{syncFetcher.data.message}</p>
-      )}
-      {syncFetcher.data?.error && (
-        <p className="inline-error" role="alert">
-          {syncFetcher.data.error}
-        </p>
-      )}
       <div className="email-capture">
         <h3>Create a task from an email</h3>
         <p>
@@ -96,19 +92,6 @@ export function GoogleIntegrationPanel({
             SEARCH EMAIL
           </button>
         </searchFetcher.Form>
-        {searchFetcher.data?.error && (
-          <p className="inline-error" role="alert">
-            {searchFetcher.data.error}
-          </p>
-        )}
-        {importFetcher.data?.message && (
-          <p className="inline-status">{importFetcher.data.message}</p>
-        )}
-        {importFetcher.data?.error && (
-          <p className="inline-error" role="alert">
-            {importFetcher.data.error}
-          </p>
-        )}
         {emailResults}
       </div>
     </section>

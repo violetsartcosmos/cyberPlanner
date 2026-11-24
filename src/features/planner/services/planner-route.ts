@@ -18,11 +18,16 @@ export async function plannerLoader({ request }: LoaderFunctionArgs) {
 }
 
 export async function plannerAction({ request }: ActionFunctionArgs) {
-  const response = await fetch("/api/planner", {
-    method: "POST",
-    body: await request.formData(),
-    signal: request.signal,
-  });
-  if (!response.ok) throw new Error(`Could not submit the planner action (${response.status}).`);
-  return response.json() as Promise<PlannerActionResult>;
+  try {
+    const response = await fetch("/api/planner", {
+      method: "POST",
+      body: await request.formData(),
+      signal: request.signal,
+    });
+    if (!response.ok) return { ok: false, error: `Could not submit the planner action (${response.status}).` } satisfies PlannerActionResult;
+    return await response.json() as PlannerActionResult;
+  } catch (error) {
+    if (request.signal.aborted) throw error;
+    return { ok: false, error: error instanceof Error ? error.message : "Could not submit the planner action." } satisfies PlannerActionResult;
+  }
 }

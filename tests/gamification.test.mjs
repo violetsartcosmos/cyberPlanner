@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { refreshAchievements } from "../server/gamification/service.ts";
 import { Achievements } from "../src/features/planner/components/achievements.tsx";
 import { plannerLoader } from "../src/features/planner/services/planner-route.ts";
+import { NotificationProvider } from "../src/components/notifications.tsx";
 
 function fixture(achievements, days = [], points = 0) {
   const state = { points };
@@ -128,7 +129,7 @@ test("achievement cards show earned and in-progress status without manual contro
     { ...base, id: "progress", title: "Upcoming goal", earnedAt: null },
   ];
   const router = createMemoryRouter([{ path: "/", element: React.createElement(Achievements, { achievements, earned: 1 }) }]);
-  const html = renderToStaticMarkup(React.createElement(RouterProvider, { router }));
+  const html = renderToStaticMarkup(React.createElement(NotificationProvider, null, React.createElement(RouterProvider, { router })));
   assert.match(html, /1 \/ 2 earned/);
   assert.match(html, /> EARNED · COMMON/);
   assert.match(html, /IN PROGRESS/);
@@ -139,6 +140,6 @@ test("achievement cards show earned and in-progress status without manual contro
 
 test("the achievements page displays its empty-filter message when there are no cards", () => {
   const router = createMemoryRouter([{ path: "/", element: React.createElement(Achievements, { achievements: [], earned: 0 }) }]);
-  const html = renderToStaticMarkup(React.createElement(RouterProvider, { router }));
+  const html = renderToStaticMarkup(React.createElement(NotificationProvider, null, React.createElement(RouterProvider, { router })));
   assert.match(html, /No achievements match these filters/);
 });

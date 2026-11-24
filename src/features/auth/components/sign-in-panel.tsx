@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import cyberplannerLogo from "@/assets/images/cyberplanner-logo.png";
+import { useNotification } from "@/components/notifications";
 
 type SignInPanelProps = {
   missingConfiguration: readonly string[];
@@ -10,6 +11,7 @@ export function SignInPanel({
   missingConfiguration,
   authError,
 }: SignInPanelProps) {
+  useNotification(authError ? `Google sign-in failed: ${authError}` : "");
   const configurationItems: ReactNode[] = [];
   for (const name of missingConfiguration) {
     configurationItems.push(<li key={name}>{name}</li>);
@@ -31,11 +33,6 @@ export function SignInPanel({
         <h1>
           YOUR LIFE, <em>YOUR QUEST.</em>
         </h1>
-        {authError && (
-          <p className="inline-error" role="alert">
-            Google sign-in failed: {authError}
-          </p>
-        )}
         {missingConfiguration.length ? (
           <>
             <p>

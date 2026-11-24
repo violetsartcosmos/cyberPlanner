@@ -8,6 +8,7 @@ import { useSavedWikipedia } from "../hooks/use-saved-wikipedia";
 import { useBookProgress } from "../hooks/use-book-progress";
 import { ProgressStatus } from "./progress-status";
 import { audioPositionToSave, restoredAudioSeconds } from "../utils/audio-progress";
+import { useNotification } from "@/components/notifications";
 
 type Chapter = { title: string; start: number };
 
@@ -22,10 +23,9 @@ function formatTime(seconds: number) {
 export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () => void }) {
   const { path, library } = book;
   const { progress, error: progressError, conflict, saving, pendingPosition, queue } = useBookProgress(book);
-  const [error, setError] = useState("");
   const [restoreError, setRestoreError] = useState("");
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [chapterError, setChapterError] = useState("");
+  const notify = useNotification();
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -39,6 +39,10 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
   const { bookmarks, add, remove, error: bookmarkError, busy } = useBookmarks(book);
   const { wiki, error: wikiError } = useSavedWikipedia(book);
   const cover = wiki?.image && !imageError ? (wiki.image.cached ? bookCoverUrl(book) : wiki.image.url) : null;
+  useNotification(bookmarkError);
+  useNotification(wikiError);
+  useNotification(imageError ? "Could not load the cover." : "");
+  useNotification(restoreError);
 
   useEffect(function loadChapters() {
     const controller = new AbortController();
@@ -48,12 +52,12 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
         if (!response.ok) throw new Error(`Could not load chapters (${response.status}).`);
         setChapters(await response.json() as Chapter[]);
       } catch (error) {
-        if (!controller.signal.aborted) setChapterError(error instanceof Error ? error.message : "Could not load chapters.");
+        if (!controller.signal.aborted) notify(error instanceof Error ? error.message : "Could not load chapters.");
       }
     }
     void load();
     return () => controller.abort();
-  }, [path, library]);
+  }, [path, library, notify]);
 
   function savePosition(audio: HTMLAudioElement, force = false) {
     const position = audioPositionToSave(audio, restored.current);
@@ -105,7 +109,7 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
     if (!audio.paused) audio.pause();
     else {
       try { await audio.play(); }
-      catch { setError("Could not play this audiobook."); }
+      catch { notify("Could not play this audiobook."); }
     }
   }
 
@@ -166,22 +170,20 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
           saveFinalPosition(event);
         }}
         onEnded={(event) => { setPlaying(false); saveFinalPosition(event); }}
-        onError={() => setError("Could not play this audiobook. It may be incomplete, protected, or unsupported by this browser.")}
+        onError={() => notify("Could not play this audiobook. It may be incomplete, protected, or unsupported by this browser.")}
       >
         Your browser does not support audio playback.
       </audio>}
-      {error && <p role="alert">{error}</p>}
-      {restoreError && <p role="alert">{restoreError} <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => {
-        setRestoreError("");
-        restoringSeek.current = false;
-        restored.current = true;
-        if (audioRef.current) { audioRef.current.currentTime = 0; setCurrent(0); queue.current?.enqueue("0"); }
-      }}>Start from beginning</button></p>}
+      {restoreError && <div>
+        <p>Starting from the beginning will replace the saved position.</p>
+        <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => {
+          setRestoreError("");
+          restoringSeek.current = false;
+          restored.current = true;
+          if (audioRef.current) { audioRef.current.currentTime = 0; setCurrent(0); queue.current?.enqueue("0"); }
+        }}>Start from beginning</button>
+      </div>}
       <ProgressStatus error={progressError} conflict={conflict} saving={saving} pendingPosition={pendingPosition} queue={queue.current} onUseDatabase={(value) => { if (audioRef.current) { restored.current = false; audioRef.current.pause(); applyPosition(audioRef.current, value.position); } }} />
-      {chapterError && <p role="alert">{chapterError}</p>}
-      {bookmarkError && <p role="alert">{bookmarkError}</p>}
-      {wikiError && <p role="alert">{wikiError}</p>}
-      {imageError && <p role="alert">Could not load the cover.</p>}
     </section>
   );
 }

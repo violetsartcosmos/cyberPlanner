@@ -8,6 +8,7 @@ import { wikipediaImageReference, parseWikipediaExtract } from "../utils/wikiped
 import { bookCoverUrl } from "../utils/book-url";
 import { useEmbeddedDetails } from "../hooks/use-embedded-details";
 import { useSavedWikipedia } from "../hooks/use-saved-wikipedia";
+import { useNotification } from "@/components/notifications";
 
 function record(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -137,15 +138,17 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
   onRenamed: (book: LibraryBook) => void;
 }) {
   const { embedded, error: embeddedError } = useEmbeddedDetails(book);
-  const { wiki, setWiki, error: wikiError, setError: setWikiError, ready: wikiReady } = useSavedWikipedia(book);
+  const { wiki, setWiki, error: wikiError, ready: wikiReady } = useSavedWikipedia(book);
+  const notify = useNotification();
   const [wikiUrlDraft, setWikiUrl] = useState<string | null>(null);
   const [wikiImageUrlDraft, setWikiImageUrl] = useState<string | null>(null);
-  const [wikiNotice, setWikiNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [failedWikiImage, setFailedWikiImage] = useState("");
   const [title, setTitle] = useState(book.title);
-  const [renameError, setRenameError] = useState("");
   const [renaming, setRenaming] = useState(false);
+  useNotification(wikiError);
+  useNotification(embeddedError ? `Could not load embedded details: ${embeddedError}` : "");
+  useNotification(wiki?.image && failedWikiImage === wiki.image.url ? "The Wikipedia cover could not be loaded." : "");
 
   const wikiUrl = wikiUrlDraft ?? wiki?.url ?? "";
   const wikiImageUrl = wikiImageUrlDraft ?? wiki?.image?.page ?? "";
@@ -153,8 +156,6 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
   async function importWikipedia(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setWikiError("");
-    setWikiNotice("");
     try {
       const { details, notice } = await loadWikipedia(wikiUrl.trim(), wikiImageUrl.trim());
       const cover = details.image ? await cacheCover(details.image.url) : null;
@@ -167,10 +168,10 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
       setWiki({ ...details, image: details.image ? { ...details.image, cached: true } : null });
       setWikiUrl(null);
       setWikiImageUrl(null);
-      setWikiNotice(notice);
+      if (notice) notify(notice, "notice");
       setFailedWikiImage("");
     } catch (error) {
-      setWikiError(error instanceof Error ? error.message : "Could not import Wikipedia details.");
+      notify(error instanceof Error ? error.message : "Could not import Wikipedia details.");
     } finally {
       setBusy(false);
     }
@@ -178,7 +179,6 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
 
   async function rename(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setRenameError("");
     setRenaming(true);
     try {
       const response = await fetch("/api/books/rename", {
@@ -191,7 +191,7 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
       }
       onRenamed(await response.json() as LibraryBook);
     } catch (error) {
-      setRenameError(error instanceof Error ? error.message : "Could not rename the file.");
+      notify(error instanceof Error ? error.message : "Could not rename the file.");
     } finally {
       setRenaming(false);
     }
@@ -212,7 +212,6 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
             ? <img className="library-cover" src={cover} alt={wikiCover ? wikiCover.title : `Cover or first page of ${book.title}`} referrerPolicy={wikiCover ? "no-referrer" : undefined} onError={wikiCover ? () => setFailedWikiImage(wikiCover.url) : undefined} />
             : <div className="library-cover library-cover-placeholder"><span>{book.format.toUpperCase()}</span><strong>{book.title}</strong></div>}
           {wiki?.image && <p className="library-cover-credit">{wiki.image.author} · {wiki.image.license} · <a href={wiki.image.page} aria-label="Image source" title="Image source" target="_blank" rel="noopener noreferrer"><ExternalLink size={13} aria-hidden="true" /></a></p>}
-          {wiki?.image && !wikiCover && <p className="inline-error" role="alert">The Wikipedia cover could not be loaded.</p>}
         </div>
         <div>
           <p className="library-kicker">A CLOSER LOOK</p>
@@ -221,12 +220,10 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
           {embedded?.description && <p>{embedded.description}</p>}
           {!embedded && !embeddedError && <p>Loading book details...</p>}
           {embedded && !embedded.description && <p>{book.format === "m4b" ? "Embedded audiobook descriptions and covers are not available here." : "No description is embedded in this book."}</p>}
-          {embeddedError && <p role="alert">Could not load embedded details: {embeddedError}</p>}
           <BookAction book={book} onRead={onRead} epubLabel="Read EPUB" />
           <form className="library-rename" onSubmit={(event) => { void rename(event); }}>
             <label htmlFor="book-title">Filename</label>
             <div><input className="form-control" id="book-title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required /> <button className="btn btn-outline-secondary btn-sm" type="submit" disabled={renaming || title.trim() === book.title}>{renaming ? "Renaming..." : "Rename"}</button></div>
-            {renameError && <p role="alert">{renameError}</p>}
           </form>
         </div>
       </div>
@@ -266,8 +263,6 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
           <input className="form-control" id="wiki-image-url" type="url" disabled={!wikiReady} value={wikiImageUrl} onChange={(event) => setWikiImageUrl(event.target.value)} placeholder="https://commons.wikimedia.org/wiki/File:..." />
         </div>
         <button className="btn btn-outline-secondary btn-sm" type="submit" disabled={busy || !wikiReady}>{busy ? "Importing..." : "Import"}</button>
-        {wikiError && <p role="alert">{wikiError}</p>}
-        {wikiNotice && <p role="status">{wikiNotice}</p>}
       </form>
     </section>
   );

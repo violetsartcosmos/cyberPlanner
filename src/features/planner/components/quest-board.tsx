@@ -4,6 +4,7 @@ import { Link, useFetcher } from "react-router";
 import { tiers, type Quest } from "../../../../shared/planner/gamification";
 import type { PlannerActionResult } from "../../../../shared/planner/types";
 import witchyAction from "@/assets/images/witchyaction.png";
+import { useActionNotifications } from "@/components/notifications";
 
 const groups = [
   { kind: "side", title: "Side Quests", detail: "Quick daily or weekly tasks", points: 10 },
@@ -13,6 +14,7 @@ const groups = [
 
 export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: string }) {
   const fetcher = useFetcher<PlannerActionResult>();
+  useActionNotifications(fetcher);
   const [kind, setKind] = useState<(typeof groups)[number]["kind"]>("main");
   const [points, setPoints] = useState(50);
 
@@ -106,8 +108,6 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
             </div>
             <button className="btn btn-primary btn-sm" disabled={fetcher.state !== "idle"}>Add quest</button>
           </fetcher.Form>
-          {fetcher.data?.message && <p className="quest-feedback" role="status">{fetcher.data.message}</p>}
-          {fetcher.data?.error && <p className="inline-error" role="alert">{fetcher.data.error}</p>}
         </div>
         <img className="quest-creator-art" src={witchyAction} alt="" />
       </section>
