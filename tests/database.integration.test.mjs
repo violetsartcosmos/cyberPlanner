@@ -47,17 +47,26 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const database = await vite.ssrLoadModule("/server/db/client.ts");
       db = database.getDatabase();
       const date = "2026-11-21";
+      const routineId = async (list, weekday, title) => String((await db.routineTask.findFirstOrThrow({
+        where: { list, weekday, title },
+      })).id);
+      const daily0 = await routineId("daily", "saturday", "Make or change the bed");
+      const daily1 = await routineId("daily", "saturday", "Refresh towels");
+      const daily2 = await routineId("daily", "saturday", "Clean the car");
+      const morning0 = await routineId("morning", null, "Stretch & PT");
+      const morning2 = await routineId("morning", null, "Water");
+      const saturday4 = await routineId("daily", "saturday", "Declutter one area");
 
       await Promise.all([
-        planner.setBuiltinTaskCompletion(date, "daily-0", true),
-        planner.setBuiltinTaskCompletion(date, "daily-1", true),
+        planner.setBuiltinTaskCompletion(date, daily0, true),
+        planner.setBuiltinTaskCompletion(date, daily1, true),
       ]);
-      await planner.setBuiltinTaskCompletion(date, "daily-0", true);
+      await planner.setBuiltinTaskCompletion(date, daily0, true);
       const journal = JSON.stringify([{ type: "paragraph", content: "A moment to remember" }]);
       await planner.savePlannerJournal(date, journal);
-      await planner.setBuiltinTaskCompletion(date, "daily-2", true);
+      await planner.setBuiltinTaskCompletion(date, daily2, true);
       const snapshot = await planner.getPlannerSnapshot(date);
-      assert.deepEqual(new Set(snapshot.checks[date]), new Set(["daily-0", "daily-1", "daily-2"]));
+      assert.deepEqual(new Set(snapshot.checks[date]), new Set([daily0, daily1, daily2]));
       assert.ok(snapshot.journalDates.includes(date));
       assert.equal(snapshot.journal, journal);
       assert.equal((await points.getPointsSummary(date)).todayPoints, 30);
@@ -172,36 +181,34 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
 
       await gamification.saveAchievement(null, {
         title: "Test routine streak", description: "Two days", category: "Daily & Routine",
-        tier: "Common", xp: 40, target: 2, tracking: "streak", taskId: "morning-0", reward: "",
+        tier: "Common", xp: 40, target: 2, tracking: "streak", taskId: morning0, reward: "",
       });
       const yesterday = utils.dateKey(utils.addDays(new Date(), -1));
-      await planner.setBuiltinTaskCompletion(yesterday, "morning-0", true);
-      const result = await planner.setBuiltinTaskCompletion(today, "morning-0", true);
+      await planner.setBuiltinTaskCompletion(yesterday, morning0, true);
+      const result = await planner.setBuiltinTaskCompletion(today, morning0, true);
       assert.ok(result.earnedAchievements.includes("Test routine streak"));
-      await planner.setBuiltinTaskCompletion(yesterday, "morning-0", false);
+      await planner.setBuiltinTaskCompletion(yesterday, morning0, false);
       const streak = await db.achievement.findFirstOrThrow({ where: { title: "Test routine streak" } });
       assert.ok(streak.earnedAt);
       assert.equal(streak.awardedXp, 40);
 
-      const routine = { list: "morning", weekday: -1, slot: 2 };
-      assert.equal((await db.routineTask.findUniqueOrThrow({ where: { list_weekday_slot: routine } })).title, "Water");
-      assert.equal((await db.routineTask.findUniqueOrThrow({
-        where: { list_weekday_slot: { list: "morning", weekday: -1, slot: 15 } },
-      })).title, "Workout");
+      const routine = { taskId: morning2 };
+      assert.equal((await db.routineTask.findUniqueOrThrow({ where: { id: Number(morning2) } })).title, "Water");
+      assert.ok(await routineId("morning", null, "Workout"));
       assert.equal(initial.questTemplates.length, 16);
       assert.equal(initial.routineGroups.length, 7);
       const firstDate = "2026-10-01";
       const nextDate = "2026-10-02";
-      await planner.setBuiltinTaskCompletion(firstDate, "morning-2", true);
+      await planner.setBuiltinTaskCompletion(firstDate, morning2, true);
       assert.equal((await points.getPointsSummary(firstDate)).todayPoints, 10);
       assert.equal((await submit({ intent: "update_routine_kind", ...routine, kind: "main" })).ok, true);
-      await planner.setBuiltinTaskCompletion(firstDate, "morning-2", false);
-      await planner.setBuiltinTaskCompletion(firstDate, "morning-2", true);
+      await planner.setBuiltinTaskCompletion(firstDate, morning2, false);
+      await planner.setBuiltinTaskCompletion(firstDate, morning2, true);
       assert.equal((await points.getPointsSummary(firstDate)).todayPoints, 10);
-      await planner.setBuiltinTaskCompletion(nextDate, "morning-2", true);
+      await planner.setBuiltinTaskCompletion(nextDate, morning2, true);
       assert.equal((await points.getPointsSummary(nextDate)).todayPoints, 50);
-      assert.equal((await submit({ intent: "toggle_builtin", date: "2026-11-23", taskId: "daily-4", completed: "true" })).ok, false);
-      assert.equal((await submit({ intent: "toggle_builtin", date: "2026-11-28", taskId: "daily-4", completed: "true" })).ok, true);
+      assert.equal((await submit({ intent: "toggle_builtin", date: "2026-11-23", taskId: saturday4, completed: "true" })).ok, false);
+      assert.equal((await submit({ intent: "toggle_builtin", date: "2026-11-28", taskId: saturday4, completed: "true" })).ok, true);
       assert.equal((await submit({ intent: "update_routine_kind", ...routine, kind: "invalid" })).ok, false);
 
       const templateId = "cyber-certification";

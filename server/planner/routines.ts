@@ -2,16 +2,19 @@ import type { Prisma } from "../generated/prisma/client";
 import {
   routineKinds,
   routineLists,
+  routineWeekday,
+  routineWeekdays,
   type RoutineGroup,
   type RoutineKind,
   type RoutineList,
   type RoutineTask,
+  type RoutineWeekday,
 } from "../../shared/planner/routines";
 import { parseDate, weekdayIndex } from "../../shared/planner/utils";
 
 type RoutineClient = Pick<Prisma.TransactionClient, "routineTask" | "routineGroup">;
 
-const routineIdPattern = /^(morning|night|daily)-(0|[1-9]\d*)$/;
+const routineIdPattern = /^[1-9]\d*$/;
 
 function routineList(value: string): RoutineList {
   if (!routineLists.some((list) => list === value)) throw new Error("Stored routine list is invalid.");
@@ -23,41 +26,54 @@ function routineKind(value: string): RoutineKind {
   return value as RoutineKind;
 }
 
+function storedWeekday(value: string): RoutineWeekday {
+  if (!routineWeekdays.some((weekday) => weekday === value)) {
+    throw new Error("Stored routine weekday is invalid.");
+  }
+  return value as RoutineWeekday;
+}
+
 export async function loadRoutines(client: RoutineClient) {
   const [rows, groups] = await Promise.all([
-    client.routineTask.findMany({ orderBy: [{ list: "asc" }, { weekday: "asc" }, { slot: "asc" }] }),
+    client.routineTask.findMany({ orderBy: [{ list: "asc" }, { weekday: "asc" }, { id: "asc" }] }),
     client.routineGroup.findMany({ orderBy: { weekday: "asc" } }),
   ]);
   const routines: RoutineTask[] = rows.map((row) => ({
+    id: row.id,
     list: routineList(row.list),
-    weekday: row.weekday,
-    slot: row.slot,
+    weekday: row.weekday === null ? null : storedWeekday(row.weekday),
     title: row.title,
     kind: routineKind(row.kind),
     points: row.points,
   }));
+  routines.sort((a, b) => a.list.localeCompare(b.list)
+    || (a.weekday === null ? -1 : routineWeekdays.indexOf(a.weekday))
+      - (b.weekday === null ? -1 : routineWeekdays.indexOf(b.weekday))
+    || a.id - b.id);
   const routineGroups: RoutineGroup[] = groups.map((group) => ({
-    weekday: group.weekday,
+    weekday: storedWeekday(group.weekday),
     title: group.title,
     message: group.message,
   }));
+  routineGroups.sort((a, b) => routineWeekdays.indexOf(a.weekday) - routineWeekdays.indexOf(b.weekday));
   return { routines, routineGroups };
 }
 
-// Morning and night routines use weekday -1; the daily list is keyed by weekday.
-export function routineKeyFor(date: string, taskId: string) {
-  const match = routineIdPattern.exec(taskId);
-  if (!match) return null;
-  const list = routineList(match[1]);
-  const slot = Number(match[2]);
-  const weekday = list === "daily" ? weekdayIndex(parseDate(date)) : -1;
-  return { list, weekday, slot };
+export function routineId(taskId: string) {
+  const id = Number(taskId);
+  return routineIdPattern.test(taskId) && Number.isSafeInteger(id) && id <= 2147483647 ? id : null;
 }
 
 export async function findRoutine(client: RoutineClient, date: string, taskId: string) {
-  const key = routineKeyFor(date, taskId);
-  if (!key) return null;
-  return client.routineTask.findUnique({
-    where: { list_weekday_slot: key },
+  const id = routineId(taskId);
+  if (id === null) return null;
+  return client.routineTask.findFirst({
+    where: {
+      id,
+      OR: [
+        { weekday: null },
+        { weekday: routineWeekday(weekdayIndex(parseDate(date))) },
+      ],
+    },
   });
 }

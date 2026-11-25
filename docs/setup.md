@@ -25,6 +25,22 @@ The commands below use PowerShell on Windows. Run them in the project folder. On
 
 Before upgrading an existing installation, back up PostgreSQL, the book folders, and any browser profiles containing old reading or listening positions. Deploy the committed database migration before starting the new server and client. This version does not automatically import old browser-local positions. If rolling back the application, retain the database and browser backups; old readers do not read database progress.
 
+### Upgrading routine task IDs
+
+Back up PostgreSQL before deploying the integer routine ID migration. Stop both
+servers while applying migrations, then start the matching updated Node and
+Python code. The migration translates existing task checks, point award keys,
+and streak achievement references. It rejects malformed checks or an unknown
+streak reference instead of silently losing history. Older servers expect the
+removed slot column and cannot run against the migrated schema; rolling back
+requires restoring the pre-migration database backup together with the old
+server. Check any separate writes before restoring a backup.
+
+The subsequent weekday migration replaces the old `-1` marker with `NULL` and
+the numeric weekdays with lowercase names in both routine tasks and groups.
+It rejects unexpected existing values instead of silently changing a schedule.
+The same backup, server shutdown, and matching-code requirements apply.
+
 ### 1. Install the project
 
 Open a terminal in the CyberPlanner project folder and run:

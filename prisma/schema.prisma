@@ -140,20 +140,18 @@ model Quest {
 }
 
 model RoutineTask {
-  id     String @id @default(uuid())
+  id     Int    @id @default(autoincrement())
   list   String
-  weekday Int
-  slot   Int
+  weekday String?
   title  String
   kind   String
   points Int
 
-  @@unique([list, weekday, slot])
   @@map("routine_tasks")
 }
 
 model RoutineGroup {
-  weekday Int    @id
+  weekday String @id
   title   String
   message String
 

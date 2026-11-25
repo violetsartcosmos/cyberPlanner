@@ -32,8 +32,8 @@ function buildOptions(values: readonly string[]) {
 }
 
 function buildRoutineOptions(routines: RoutineTask[], list: "morning" | "night") {
-  return routinesFor(routines, list, -1).map((routine) => (
-    <option value={`${list}-${routine.slot}`} key={routine.slot}>
+  return routinesFor(routines, list, null).map((routine) => (
+    <option value={routine.id} key={routine.id}>
       {routine.title}
     </option>
   ));
@@ -118,7 +118,7 @@ function AchievementDialog({ onClose, fetcher, onSubmit, routines }: {
           </select>
         </label>
         {tracking === "streak" && <label>Routine task
-          <select className="form-select" name="taskId" defaultValue="morning-0">
+          <select className="form-select" name="taskId">
             <optgroup label="Morning">{buildRoutineOptions(routines, "morning")}</optgroup>
             <optgroup label="Night">{buildRoutineOptions(routines, "night")}</optgroup>
           </select>

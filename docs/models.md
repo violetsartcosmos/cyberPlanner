@@ -55,6 +55,15 @@ Google sign-in uses `/auth/google` and `/auth/callback`; the server stores an en
 ## Data models
 
 The [Prisma schema](../prisma/schema.prisma) is the source of truth for fields, keys, and indexes.
+A **model** describes the shape of stored data; in Prisma, each model below
+maps to a PostgreSQL table. A row is one saved record, and a primary key
+identifies that record. For example, `RoutineTask` describes a task definition,
+while `PlannerDay` describes what was checked on a particular date.
+
+The Python `TaskCompletion` class is different: it is a Pydantic request model
+that validates the date and completion state sent to the API. It is not a
+database table; the Python code reads and writes the same PostgreSQL tables as
+the Node server.
 
 | Model | Purpose |
 | --- | --- |
@@ -107,7 +116,7 @@ Stores the state of built-in tasks and the journal for a particular day. Task de
 | Field | Type / default | What it holds and why |
 | --- | --- | --- |
 | `day` | Date; primary key | The planner date; ensures at most one row per day. |
-| `checks` | JSON; `[]` | Array of completed built-in task IDs, such as `daily-0` or `morning-2`. Used to display progress and calculate routine streaks. |
+| `checks` | JSON; `[]` | Array of completed built-in `RoutineTask` IDs encoded as strings, such as `"42"`. Used to display progress and calculate routine streaks. |
 | `journal` | String; `""` | The day's BlockNote JSON document; nonempty entries also mark dates on the calendar. |
 
 ### `GoogleConnection` (`google_connections`)
@@ -148,7 +157,7 @@ Each row records an award or a purchase rather than storing a mutable balance. S
 | `id` | BigInt; auto-increment; primary key | Identifies each ledger entry. |
 | `amount` | Integer | Positive points for an `earn` entry or negative points for a `spend` entry; the database rejects zero and mismatched signs. |
 | `entryType` | String | `earn` for task awards or `spend` for reward purchases; determines how the entry is interpreted. |
-| `taskKey` | String? | Unique award identity for an earned task, such as `builtin:2026-11-22:daily-0`, `external:google:<id>`, or `quest:<id>`. Required for `earn`; normally null for `spend`. |
+| `taskKey` | String? | Unique award identity for an earned task, such as `builtin:2026-11-22:42`, `external:google:<id>`, or `quest:<id>`. Required for `earn`; normally null for `spend`. |
 | `taskDate` | Date? | Date associated with an award, used to calculate points earned for a selected day; normally null for purchases. |
 | `rewardId` | String? | Purchased reward's identifier; required for `spend` and normally null for `earn`. |
 | `rewardName` | String? | Name recorded with a purchase for redemption history; normally null for `earn`. |
@@ -170,7 +179,7 @@ Combines an achievement's definition and progress in one row. The database enfor
 | `current` | Integer; `0` | Automatically calculated points or current streak toward `target`. |
 | `icon` | String; `"award"` | Icon key used when displaying the achievement. |
 | `tracking` | String; `"points"` | `points` uses lifetime earned task points; `streak` uses a specific routine task; `activity_streak` counts days with any built-in task. |
-| `taskId` | String? | Built-in routine task ID, such as `morning-2`; required for `streak` and null otherwise. |
+| `taskId` | String? | Numeric `RoutineTask` ID encoded as text, such as `"42"`; required for `streak` and null otherwise. |
 | `milestoneInterval` | Integer? | Streak milestone spacing; null for points achievements. |
 | `reward` | String; `""` | Optional personal reward description; separate from shop rewards and the points ledger. |
 | `earnedAt` | Timestamp? | When the achievement was first earned; null means it is still in progress. Stored in the existing `unlocked_at` column. |
@@ -197,7 +206,20 @@ Represents a custom quest, distinct from built-in daily and routine tasks. On co
 
 ### Routine and template models
 
-`RoutineTask` stores each checklist item's list, weekday, slot, title, type and points. Morning and night use weekday `-1`; daily tasks use Monday `0` through Sunday `6`. The unique list/weekday/slot key preserves the existing check IDs. `RoutineGroup` stores each weekday's title and message. `QuestTemplate` stores the suggested quests and their track, type, rarity, and points.
+`RoutineTask` stores each checklist item's auto-incrementing integer ID, list, weekday, title, type, and points. The ID identifies the task independently of its list or display order. Morning and night use `NULL` for weekday, meaning they are not tied to a specific day; daily tasks use names such as `monday` or `sunday`. There is no stored position; tasks are displayed by ID.
+
+| `RoutineTask` field | Purpose |
+| --- | --- |
+| `id` | Numeric primary key generated when a task is created. |
+| `list` | `morning`, `night`, or `daily`, identifying which checklist contains the task. |
+| `weekday` | `NULL` for morning/night, or a lowercase weekday name for the daily checklist. A database constraint enforces the valid combinations. |
+| `title` | The task text displayed in the planner. |
+| `kind` | `side`, `main`, or `boss`, used to classify the task. |
+| `points` | The points earned when the task is completed. |
+
+`PlannerDay.checks` stores the completed task IDs as strings for each date. `PointLedger.taskKey` combines the date and ID (for example, `builtin:2026-11-22:42`) so a task can earn points once per day. A streak-tracking `Achievement.taskId` contains the same ID as text. The integer-ID migration translates existing checks and award keys using their date's weekday, and preserves streak links; unknown historical checks and ledger keys are retained.
+
+`RoutineGroup` stores each named weekday's title and message. `QuestTemplate` stores the suggested quests and their track, type, rarity, and points. These are separate from routine task IDs.
 
 ### `BookData` (`book_data`)
 

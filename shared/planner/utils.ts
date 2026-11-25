@@ -1,4 +1,4 @@
-import { routineCheckId, routinesFor, type RoutineTask } from "./routines";
+import { routinesFor, routineWeekday, type RoutineTask } from "./routines";
 
 export const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -56,10 +56,10 @@ export function monthDates(date: Date) {
 
 export function routineIdsFor(routines: RoutineTask[], weekday: number) {
   return [
-    ...routinesFor(routines, "morning", -1),
-    ...routinesFor(routines, "night", -1),
-    ...routinesFor(routines, "daily", weekday),
-  ].map((routine) => routineCheckId(routine.list, routine.slot));
+    ...routinesFor(routines, "morning", null),
+    ...routinesFor(routines, "night", null),
+    ...routinesFor(routines, "daily", routineWeekday(weekday)),
+  ].map((routine) => String(routine.id));
 }
 
 export function dayProgress(date: Date, checked: string[], routines: RoutineTask[]) {

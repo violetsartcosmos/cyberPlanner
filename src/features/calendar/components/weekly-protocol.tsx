@@ -1,7 +1,7 @@
 import { ChevronRight, Sparkles } from "lucide-react";
 import { Link } from "react-router";
 import { weekdays } from "../../../../shared/planner/utils";
-import type { RoutineGroup } from "../../../../shared/planner/routines";
+import { routineGroupFor, routineWeekday, type RoutineGroup } from "../../../../shared/planner/routines";
 import type { ReactNode } from "react";
 
 export function WeeklyProtocolPanel({ selected, weekday, routineGroups }: {
@@ -11,7 +11,7 @@ export function WeeklyProtocolPanel({ selected, weekday, routineGroups }: {
 }) {
   const weekItems: ReactNode[] = [];
   for (let index = 0; index < weekdays.length; index += 1) {
-    const group = routineGroups.find((item) => item.weekday === index);
+    const group = routineGroupFor(routineGroups, routineWeekday(index));
     weekItems.push(
       <div key={index} className={index === weekday ? "active-weekday" : ""}>
         <span>{weekdays[index].toUpperCase()}</span>

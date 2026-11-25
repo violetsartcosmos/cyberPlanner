@@ -2,7 +2,7 @@ import { databaseDate, dateString, getDatabase, serializableTransaction } from "
 import { awardTaskPoints } from "../points/service";
 import type { ExternalTask } from "../../shared/planner/types";
 import { dateKey } from "../../shared/planner/utils";
-import { routinePoints, type RoutineKind, type RoutineList } from "../../shared/planner/routines";
+import { routinePoints, type RoutineKind } from "../../shared/planner/routines";
 import { refreshAchievements } from "../gamification/service";
 import { findRoutine } from "./routines";
 import type { Prisma } from "../generated/prisma/client";
@@ -109,11 +109,11 @@ export async function setBuiltinTaskCompletion(
 }
 
 export async function updateRoutineKind(
-  slot: { list: RoutineList; weekday: number; slot: number },
+  id: number,
   kind: RoutineKind,
 ) {
   const result = await getDatabase().routineTask.updateMany({
-    where: slot,
+    where: { id },
     data: { kind, points: routinePoints[kind] },
   });
   return result.count === 1;

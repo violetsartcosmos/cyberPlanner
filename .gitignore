@@ -4,6 +4,10 @@
 !.env.example
 /node_modules/
 /server/generated/
+/cyberServer/.venv/
+/cyberServer/.pytest_cache/
+/cyberServer/**/__pycache__/
+/cyberServer/*.egg-info/
 
 # React Router
 /.react-router/

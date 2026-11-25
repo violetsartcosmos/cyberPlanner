@@ -62,7 +62,7 @@ export function QuestLog({
         : undefined;
       cards.push(
         <RoutineCard
-          key={`${routine.list}-${routine.weekday}-${routine.slot}`}
+          key={routine.id}
           routine={routine}
           label={routineLabel(routine, groupTitle)}
           busy={busy}
@@ -162,9 +162,7 @@ function RoutineCard({
       </div>
       <fetcher.Form method="post" className="quest-actions">
         <input type="hidden" name="intent" value="update_routine_kind" />
-        <input type="hidden" name="list" value={routine.list} />
-        <input type="hidden" name="weekday" value={routine.weekday} />
-        <input type="hidden" name="slot" value={routine.slot} />
+        <input type="hidden" name="taskId" value={routine.id} />
         <select className="form-select form-select-sm" name="kind" value={kind} onChange={handleKindChange} aria-label={`Type for ${routine.title}`}>
           {routineKinds.map((item) => (
             <option key={item} value={item}>{kindLabels[item]} · {routinePoints[item]} pts</option>

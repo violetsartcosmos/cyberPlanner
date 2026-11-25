@@ -12,7 +12,7 @@ import { plannerLoader } from "@/features/planner/services/planner-route";
 import type { AuthenticatedPlannerPage } from "@/features/planner/types/planner-outlet-context";
 import witchyAction from "@/assets/images/witchyaction.png";
 import { dayProgress } from "../../shared/planner/utils";
-import { routineGroupFor } from "../../shared/planner/routines";
+import { routineGroupFor, routineWeekday } from "../../shared/planner/routines";
 import { useNotification } from "@/components/notifications";
 
 function getNavigationLabel(section: string) {
@@ -115,7 +115,7 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
                     ? "Today"
                     : date.toLocaleDateString("en-US", { weekday: "long" })}
                 </h1>
-                <p>{routineGroupFor(page.routineGroups, weekday)?.message ?? ""}</p>
+                <p>{routineGroupFor(page.routineGroups, routineWeekday(weekday))?.message ?? ""}</p>
               </div>
               <div className="mobile-momentum">
                 <strong>{percent}%</strong>

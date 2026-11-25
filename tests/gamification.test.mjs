@@ -12,7 +12,7 @@ import { NotificationProvider } from "../src/components/notifications.tsx";
 function fixture(achievements, days = [], points = 0) {
   const state = { points };
   const morningTitles = ["Stretch & PT", "Affirmations", "Water", "Meds", "Lights", "Music", "Brush teeth", "Wash face", "Shower", "Hair", "Lotion", "Get dressed", "Breakfast", "Make bed", "Prep bag", "Workout"];
-  const routineRows = morningTitles.map((title, slot) => ({ list: "morning", weekday: -1, slot, title, kind: "side", points: 10 }));
+  const routineRows = morningTitles.map((title, slot) => ({ id: slot + 1, list: "morning", weekday: null, title, kind: "side", points: 10 }));
   const client = {
     achievement: {
       findMany: async () => achievements,
@@ -20,7 +20,7 @@ function fixture(achievements, days = [], points = 0) {
     },
     plannerDay: { findMany: async () => days },
     pointLedger: { aggregate: async () => ({ _sum: { amount: state.points } }) },
-    routineTask: { findMany: async () => [...routineRows, { list: "night", weekday: -1, slot: 0, title: "Lights out", kind: "side", points: 10 }] },
+    routineTask: { findMany: async () => [...routineRows, { id: 17, list: "night", weekday: null, title: "Lights out", kind: "side", points: 10 }] },
     routineGroup: { findMany: async () => [] },
   };
   return { client, state };
@@ -97,14 +97,14 @@ test("streak milestones increase and award XP once per new record, including bac
 test("activity streak counts built-in checks, not invalid or future tasks", async () => {
   const achievement = { id: "active", title: "Active", tracking: "activity_streak", taskId: null, milestoneInterval: 2, target: 2, current: 0, xp: 10, earnedAt: null, awardedXp: 0 };
   const days = [
-    { day: new Date("2026-11-20T00:00:00Z"), checks: ["morning-0"] },
+    { day: new Date("2026-11-20T00:00:00Z"), checks: ["1"] },
     { day: new Date("2026-11-21T00:00:00Z"), checks: ["unknown"] },
-    { day: new Date("2026-11-22T00:00:00Z"), checks: ["night-0"] },
+    { day: new Date("2026-11-22T00:00:00Z"), checks: ["17"] },
   ];
   const { client } = fixture([achievement], days);
   assert.deepEqual(await refreshAchievements(client, "2026-11-21"), []);
   assert.equal(achievement.current, 1);
-  days[1].checks = ["night-0"];
+  days[1].checks = ["17"];
   assert.deepEqual(await refreshAchievements(client, "2026-11-21"), ["Active"]);
   assert.equal(achievement.target, 4);
 });
@@ -130,7 +130,7 @@ test("a long recorded streak awards every missed milestone exactly once", async 
   const achievement = { id: "week", title: "Week", tracking: "activity_streak", taskId: null, milestoneInterval: 7, target: 7, current: 0, xp: 50, earnedAt: null, awardedXp: 0 };
   const days = Array.from({ length: 14 }, (_, index) => ({
     day: new Date(`2026-11-${String(index + 1).padStart(2, "0")}T00:00:00Z`),
-    checks: ["morning-0"],
+    checks: ["1"],
   }));
   const { client } = fixture([achievement], days);
   assert.deepEqual(await refreshAchievements(client, "2026-11-14"), ["Week"]);

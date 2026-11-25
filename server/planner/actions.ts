@@ -1,5 +1,5 @@
 import { isValidDateKey } from "../../shared/planner/utils";
-import { routineKinds, routinePoints, type RoutineKind, type RoutineList } from "../../shared/planner/routines";
+import { routineKinds, routinePoints, type RoutineKind } from "../../shared/planner/routines";
 import {
   getExternalTask,
   savePlannerJournal,
@@ -7,7 +7,7 @@ import {
   setExternalTaskCompletion,
   updateRoutineKind,
 } from "./service";
-import { findRoutine } from "./routines";
+import { findRoutine, routineId } from "./routines";
 import { setGoogleTaskCompleted } from "../google/service";
 import { getDatabase } from "../db/client";
 import type { ActionHandler } from "./dispatch";
@@ -15,20 +15,6 @@ import { setTherapyCompletion } from "./therapy";
 
 async function isBuiltinTask(date: string, taskId: string) {
   return (await findRoutine(getDatabase(), date, taskId)) !== null;
-}
-
-function routineSlot(form: FormData) {
-  const list = form.get("list");
-  const weekdayText = form.get("weekday");
-  const slotText = form.get("slot");
-  const weekday = Number(weekdayText);
-  const slot = Number(slotText);
-  const validList = list === "morning" || list === "night" || list === "daily";
-  const validWeekday = validList && (list === "daily"
-    ? Number.isInteger(weekday) && weekday >= 0 && weekday <= 6
-    : weekday === -1);
-  if (!validList || !validWeekday || !/^\d+$/.test(String(slotText)) || !Number.isInteger(slot)) return null;
-  return { list: list as RoutineList, weekday, slot };
 }
 
 export const plannerFormActions = {
@@ -63,13 +49,14 @@ export const plannerFormActions = {
   },
 
   async update_routine_kind(form) {
-    const slot = routineSlot(form);
+    const rawId = form.get("taskId");
+    const id = typeof rawId === "string" ? routineId(rawId) : null;
     const kind = form.get("kind");
-    if (!slot) return { ok: false, error: "That routine is invalid." };
+    if (id === null) return { ok: false, error: "That routine is invalid." };
     if (typeof kind !== "string" || !routineKinds.some((item) => item === kind)) {
       return { ok: false, error: "That routine type is invalid." };
     }
-    const updated = await updateRoutineKind(slot, kind as RoutineKind);
+    const updated = await updateRoutineKind(id, kind as RoutineKind);
     if (!updated) return { ok: false, error: "That routine no longer exists." };
     return { ok: true, message: `Moved to ${kind} (${routinePoints[kind as RoutineKind]} pts).` };
   },

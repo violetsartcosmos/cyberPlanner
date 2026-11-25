@@ -3,7 +3,7 @@ import { CalendarSection } from "@/features/calendar/components/calendar-section
 import { GoogleIntegrationPanel } from "@/features/calendar/components/integration-panel";
 import { WeeklyProtocolPanel } from "@/features/calendar/components/weekly-protocol";
 import { TaskSection } from "@/features/planner/components/navigation-sections";
-import { routineGroupFor } from "../../shared/planner/routines";
+import { routineGroupFor, routineWeekday } from "../../shared/planner/routines";
 import { dayProgress } from "../../shared/planner/utils";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import witchyCalendar from "@/assets/images/witchycalendar.png";
@@ -22,7 +22,7 @@ export default function CalendarPage() {
     onSelectDate,
     onSelectToday,
   } = usePlannerContext();
-  const quest = routineGroupFor(page.routineGroups, weekday) ?? { title: "", message: "" };
+  const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { title: "", message: "" };
   const { total, completed, percent } = dayProgress(date, checked, page.routines);
 
   const calendarSummary = (

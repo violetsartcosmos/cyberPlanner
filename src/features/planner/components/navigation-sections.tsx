@@ -3,7 +3,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { Moon, RefreshCw, Sparkles, Sun } from "lucide-react";
 import type { ExternalTask } from "../../../../shared/planner/types";
 import { externalTaskId } from "../../../../shared/planner/utils";
-import { routineCheckId, routineGroupFor, routinesFor } from "../../../../shared/planner/routines";
+import { routineGroupFor, routinesFor, routineWeekday } from "../../../../shared/planner/routines";
 import type { RoutineGroup, RoutineTask } from "../../../../shared/planner/routines";
 import { Checklist } from "./checklist";
 import witchyHappy from "@/assets/images/witchyhappy.png";
@@ -40,17 +40,6 @@ function getEarnedIds(earnedTaskKeys: readonly string[], prefix: string) {
   const earnedIds: string[] = [];
   for (const key of earnedTaskKeys) {
     if (key.startsWith(prefix)) {
-      earnedIds.push(key.slice(prefix.length));
-    }
-  }
-  return earnedIds;
-}
-
-function getEarnedRoutineIds(earnedTaskKeys: readonly string[], prefix: string, routine: Routine) {
-  const earnedIds: string[] = [];
-  const routinePrefix = `${prefix}${routine}-`;
-  for (const key of earnedTaskKeys) {
-    if (key.startsWith(routinePrefix)) {
       earnedIds.push(key.slice(prefix.length));
     }
   }
@@ -194,16 +183,16 @@ export function TaskSection({
   }
 
   if (kind === "daily") {
-    const dailyRoutines = routinesFor(routines, "daily", weekday);
+    const dailyRoutines = routinesFor(routines, "daily", routineWeekday(weekday));
     return (
       <Checklist
-        title={routineGroupFor(routineGroups, weekday)?.title ?? ""}
+        title={routineGroupFor(routineGroups, routineWeekday(weekday))?.title ?? ""}
         label="YOUR DAILY QUESTS"
         icon={<Sparkles aria-hidden="true" size={19} />}
         sectionHref={`/calendar?date=${selected}`}
         items={getRoutineTitles(dailyRoutines)}
         points={getRoutinePoints(dailyRoutines)}
-        ids={dailyRoutines.map((routine) => routineCheckId(routine.list, routine.slot))}
+        ids={dailyRoutines.map((routine) => String(routine.id))}
         prefix="daily"
         checked={checked}
         earnedIds={getEarnedIds(earnedTaskKeys, earnedPrefix)}
@@ -234,7 +223,7 @@ export function TaskSection({
     );
   }
 
-  const activeList = routinesFor(routines, activeRoutine, -1);
+  const activeList = routinesFor(routines, activeRoutine, null);
   const routineTabs: ReactNode[] = [];
   const routineNames: Routine[] = ["morning", "night"];
   for (const routine of routineNames) {
@@ -263,10 +252,10 @@ export function TaskSection({
           sectionHref={`/calendar?date=${selected}#routines`}
           items={getRoutineTitles(activeList)}
           points={getRoutinePoints(activeList)}
-          ids={activeList.map((routine) => routineCheckId(routine.list, routine.slot))}
+          ids={activeList.map((routine) => String(routine.id))}
           prefix={activeRoutine}
           checked={checked}
-          earnedIds={getEarnedRoutineIds(earnedTaskKeys, earnedPrefix, activeRoutine)}
+          earnedIds={getEarnedIds(earnedTaskKeys, earnedPrefix)}
           disabled={disabled}
           onToggle={onToggle}
         />

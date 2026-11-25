@@ -2,7 +2,7 @@ import { Sparkles } from "lucide-react";
 import { CalendarSection } from "@/features/calendar/components/calendar-section";
 import { LevelHeader } from "@/features/planner/components/level-header";
 import { TaskSection } from "@/features/planner/components/navigation-sections";
-import { routineGroupFor } from "../../shared/planner/routines";
+import { routineGroupFor, routineWeekday } from "../../shared/planner/routines";
 import { dayProgress } from "../../shared/planner/utils";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import witchyBroom from "@/assets/images/witchybroom.png";
@@ -20,7 +20,7 @@ export default function DashboardPage() {
     onToggleTask,
     onSelectDate,
   } = usePlannerContext();
-  const quest = routineGroupFor(page.routineGroups, weekday) ?? { title: "", message: "" };
+  const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { title: "", message: "" };
   const { total, completed } = dayProgress(date, checked, page.routines);
   let earned = 0;
   for (const achievement of page.achievements) {

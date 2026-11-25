@@ -1,5 +1,4 @@
 import { achievementCategories, questKinds, tiers } from "../../shared/planner/gamification";
-import { routineCheckId } from "../../shared/planner/routines";
 import { getDatabase } from "../db/client";
 import type { ActionHandler } from "../planner/dispatch";
 import { loadRoutines } from "../planner/routines";
@@ -43,7 +42,7 @@ export const gamificationActions = {
     const taskId = tracking === "streak" ? text(form, "taskId", 100) : null;
     const routineIds = (await loadRoutines(getDatabase())).routines
       .filter((routine) => routine.list !== "daily")
-      .map((routine) => routineCheckId(routine.list, routine.slot));
+      .map((routine) => String(routine.id));
     if (taskId !== null && !routineIds.includes(taskId)) throw new Error("Choose a valid routine task.");
     const reward = text(form, "reward", 200, false);
     const earnedAchievements = await saveAchievement(id || null, {

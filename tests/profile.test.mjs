@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getProfileStats, levelProgress, streaks } from "../shared/planner/profile.ts";
+import { dayProgress, parseDate } from "../shared/planner/utils.ts";
 
 const morningTitles = [
   "Stretch & PT",
@@ -21,15 +22,28 @@ const morningTitles = [
   "Workout",
 ];
 const routines = morningTitles.map((title, slot) => ({
+  id: slot + 1,
   list: "morning",
-  weekday: -1,
-  slot,
+  weekday: null,
   title,
   kind: "side",
   points: 10,
 }));
-const workout = `morning-${morningTitles.indexOf("Workout")}`;
-const water = `morning-${morningTitles.indexOf("Water")}`;
+const workout = String(morningTitles.indexOf("Workout") + 1);
+const water = String(morningTitles.indexOf("Water") + 1);
+
+test("daily tasks count on their named weekday while routines count every day", () => {
+  const tasks = [
+    { id: 1, list: "morning", weekday: null, title: "Morning", kind: "side", points: 10 },
+    { id: 2, list: "daily", weekday: "monday", title: "Monday", kind: "side", points: 10 },
+  ];
+  assert.deepEqual(dayProgress(parseDate("2026-11-23"), ["1", "2"], tasks), {
+    completed: 2, total: 2, percent: 100,
+  });
+  assert.deepEqual(dayProgress(parseDate("2026-11-24"), ["1", "2"], tasks), {
+    completed: 1, total: 1, percent: 100,
+  });
+});
 
 test("profile stats reflect saved tasks and consecutive active days", () => {
   const checks = {
