@@ -78,15 +78,15 @@ until its forms, actions, result types, and tests follow the same pattern.
 
 Apply the rules one resource at a time; do not bundle unrelated rewrites.
 
-- [x] Audit journal reads, creation, saves, and deletion, including autosave.
-- [x] Align routine kind changes and routine completion requests.
-- [x] Align therapy and external-task completion requests.
-- [x] Audit already-migrated book reads and writes, including progress.
-- [x] Audit any already-migrated calendar and Google integration requests
+- [X] Audit journal reads, creation, saves, and deletion, including autosave.
+- [X] Align routine kind changes and routine completion requests.
+- [X] Align therapy and external-task completion requests.
+- [X] Audit already-migrated book reads and writes, including progress.
+- [X] Audit any already-migrated calendar and Google integration requests
   without changing their remote-update orchestration.
-- [x] Remove remaining UI consumers of planner intent dispatch as their
+- [X] Remove remaining UI consumers of planner intent dispatch as their
   dedicated resource actions replace it.
-- [x] Update each resource's result types, directly dependent consumers,
+- [X] Update each resource's result types, directly dependent consumers,
   JSDoc, documentation, and focused tests before marking it aligned.
 
 Quest writes demonstrate the target pattern in milestone 4. Use their
@@ -118,19 +118,19 @@ components that still use planner intents or boolean action results.
 
 Status: complete.
 
-- [x] Move journal reads and writes to `server/journals/service.ts`.
-- [x] Move routine definitions and assignment rules to
+- [X] Move journal reads and writes to `server/journals/service.ts`.
+- [X] Move routine definitions and assignment rules to
   `server/routines/definitions.ts`.
-- [x] Move routine completion reads/writes and kind changes to
+- [X] Move routine completion reads/writes and kind changes to
   `server/routines/service.ts`.
-- [x] Move existing journal and routine handlers into resource `routes.ts`
+- [X] Move existing journal and routine handlers into resource `routes.ts`
   modules and mount them from the application.
-- [x] Share existing authentication, no-store, and server-error handling rather
+- [X] Share existing authentication, no-store, and server-error handling rather
   than copying it into each router.
-- [x] Update planner form actions, page composition, gamification, and tests to
+- [X] Update planner form actions, page composition, gamification, and tests to
   use the resource modules. Do not leave forwarding exports in the old modules.
-- [x] Keep cross-resource snapshot assembly in the planner page layer.
-- [x] Verify existing API contracts and one-time awards; update related docs.
+- [X] Keep cross-resource snapshot assembly in the planner page layer.
+- [X] Verify existing API contracts and one-time awards; update related docs.
 
 Routine definitions stay separate from completion writes because achievement
 calculations read definitions, while completion writes refresh achievements.
@@ -141,25 +141,25 @@ This avoids a circular dependency between routine writes and gamification.
 Status: implemented. API verification and read-only Chrome inspection passed.
 Interactive browser write checks remain a follow-up, on a disposable database.
 
-- [x] Add collection reads, explicit creation, and deletion alongside existing
+- [X] Add collection reads, explicit creation, and deletion alongside existing
   entry reads and PUT saves.
-- [x] Use journal resource reads in the React journal page.
-- [x] Add Create entry and confirmed Delete entry controls; preserve autosave,
+- [X] Use journal resource reads in the React journal page.
+- [X] Add Create entry and confirmed Delete entry controls; preserve autosave,
   retry, unsaved-change blocking, and selected-date navigation.
-- [x] Test duplicate creation, empty entries, replacement, deletion, and errors
+- [X] Test duplicate creation, empty entries, replacement, deletion, and errors
   on an isolated database.
-- [x] Inspect the authenticated journal UI in Chrome without writing real data.
+- [X] Inspect the authenticated journal UI in Chrome without writing real data.
 - [ ] Exercise create, autosave/update, retry, and confirmed deletion through
   the React UI on a disposable database.
 
 Read these files together to follow each operation:
 
-| CRUD operation | React behavior | HTTP route | Service/database operation |
-| --- | --- | --- | --- |
-| Create | Create entry button; opens the editor after creation | `POST /api/journals` | `createJournal` / `journal.create` |
-| Read | Browse saved dates and open an entry | `GET /api/journals`, `GET /api/journals/{date}` | `listJournalDates`, `getJournal` / `findMany`, `findUnique` |
-| Update | Edit an entry; autosave | `PUT /api/journals/{date}` | `saveJournal` / `upsert` |
-| Delete | Confirm Delete entry | `DELETE /api/journals/{date}` | `deleteJournal` / `deleteMany` |
+| CRUD operation | React behavior                                       | HTTP route                                          | Service/database operation                                          |
+| -------------- | ---------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
+| Create         | Create entry button; opens the editor after creation | `POST /api/journals`                              | `createJournal` / `journal.create`                              |
+| Read           | Browse saved dates and open an entry                 | `GET /api/journals`, `GET /api/journals/{date}` | `listJournalDates`, `getJournal` / `findMany`, `findUnique` |
+| Update         | Edit an entry; autosave                              | `PUT /api/journals/{date}`                        | `saveJournal` / `upsert`                                        |
+| Delete         | Confirm Delete entry                                 | `DELETE /api/journals/{date}`                     | `deleteJournal` / `deleteMany`                                  |
 
 Start at [the React page](../src/pages/journal.tsx), then
 [journal routes](../server/journals/routes.ts) and
@@ -169,13 +169,13 @@ dates return 409. DELETE returns 204 with no body, or 404 if missing.
 
 ### 2. Extract therapy, external tasks, and Google connections
 
-- [x] Move therapy operations and routes to `server/therapy/`.
-- [x] Move external-task queries, persistence, and awards to
+- [X] Move therapy operations and routes to `server/therapy/`.
+- [X] Move external-task queries, persistence, and awards to
   `server/external-tasks/`.
-- [x] Move stored Google connection operations to `server/google/connection.ts`.
-- [x] Keep Google remote-update orchestration in the Google module so
+- [X] Move stored Google connection operations to `server/google/connection.ts`.
+- [X] Keep Google remote-update orchestration in the Google module so
   external-task persistence does not import the synchronization service back.
-- [x] Update remaining planner and integration imports.
+- [X] Update remaining planner and integration imports.
 
 Status: implemented. Therapy and external-task routes are mounted as resource
 routers, temporary planner actions use the extracted services, and the old
@@ -187,17 +187,17 @@ numeric journal content and zero-point quests are expected rejection checks.
 
 ### 3. Finish resource routing and simplify planner composition
 
-- [x] Extract quest, achievement, points, and reward routers alongside their
+- [X] Extract quest, achievement, points, and reward routers alongside their
   existing services; keep related small resources together where useful.
-- [x] Move the remaining book and calendar API handlers into their resource
+- [X] Move the remaining book and calendar API handlers into their resource
   route modules so the application file stays composition-focused.
-- [x] Make the application primarily middleware installation, router mounting,
+- [X] Make the application primarily middleware installation, router mounting,
   authentication routes, and static serving.
-- [x] Keep `getPlannerPage` responsible for authentication/date selection and
+- [X] Keep `getPlannerPage` responsible for authentication/date selection and
   assembling resource results, not resource persistence.
-- [x] Make snapshot query ownership explicit rather than using optional
+- [X] Make snapshot query ownership explicit rather than using optional
   preloaded values with implicit query fallbacks. Preserve query reuse.
-- [x] Keep planner actions and dispatch as temporary form adapters during
+- [X] Keep planner actions and dispatch as temporary form adapters during
   migration; remove them after their final consumers are gone.
 
 **Achievement refresh caveat:** `getGamification` currently recalculates and can
@@ -214,16 +214,16 @@ Achievement refresh on planner reads remains unchanged.
 
 ### 4. Finish UI resource writes
 
-- [x] Align previously migrated UI consumers with the resource request rules
+- [X] Align previously migrated UI consumers with the resource request rules
   and checklist above; endpoint migration alone is not sufficient.
-- [x] Migrate quest creation, editing, deletion, completion, and template
+- [X] Migrate quest creation, editing, deletion, completion, and template
   acceptance to existing endpoints.
-- [x] Migrate achievement creation and reward redemption.
-- [x] Use resource URLs and HTTP methods for quest writes instead of
+- [X] Migrate achievement creation and reward redemption.
+- [X] Use resource URLs and HTTP methods for quest writes instead of
   dispatching hidden form intents through a page action.
-- [x] Replace the remaining planner intent-to-resource switch with
+- [X] Replace the remaining planner intent-to-resource switch with
   feature-owned requests/actions as consumers migrate.
-- [x] Handle Google synchronization and calendar mutations separately.
+- [X] Handle Google synchronization and calendar mutations separately.
 
 Status: implemented. All client form writes use feature-owned resource actions.
 Journal autosave, navigation blocking and confirmed deletion are retained.
@@ -255,13 +255,13 @@ dispatch. Other methods return status 405 without an API request.
 Routine kind forms in the quest log now PATCH `/routines/{id}` directly.
 There is no remaining client planner action.
 
-| Operation | React Router form route | Action | Resource API |
-| --- | --- | --- | --- |
-| Create | `POST /quest-board` | `createQuestAction` | `POST /api/quests` |
-| Update | `PATCH /quest-board/{id}` | `questResourceAction` → `updateQuestAction` | `PATCH /api/quests/{id}` |
-| Delete | `DELETE /quest-board/{id}` | `questResourceAction` → `deleteQuestAction` | `DELETE /api/quests/{id}` |
-| Complete | `POST /quest-board/{id}/complete` | `completeQuestAction` | `POST /api/quests/{id}/complete` |
-| Accept template | `POST /quest-log/templates/{templateId}/accept` | `acceptQuestTemplateAction` | `POST /api/quest-templates/{templateId}/accept` |
+| Operation       | React Router form route                           | Action                                           | Resource API                                      |
+| --------------- | ------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Create          | `POST /quest-board`                             | `createQuestAction`                            | `POST /api/quests`                              |
+| Update          | `PATCH /quest-board/{id}`                       | `questResourceAction` → `updateQuestAction` | `PATCH /api/quests/{id}`                        |
+| Delete          | `DELETE /quest-board/{id}`                      | `questResourceAction` → `deleteQuestAction` | `DELETE /api/quests/{id}`                       |
+| Complete        | `POST /quest-board/{id}/complete`               | `completeQuestAction`                          | `POST /api/quests/{id}/complete`                |
+| Accept template | `POST /quest-log/templates/{templateId}/accept` | `acceptQuestTemplateAction`                    | `POST /api/quest-templates/{templateId}/accept` |
 
 Read the [forms](../src/features/planner/components/quest-board.tsx),
 [action routes](../src/routes/router.tsx),
@@ -271,20 +271,20 @@ Read the [forms](../src/features/planner/components/quest-board.tsx),
 
 Additional learning traces:
 
-| Operation | React Router route | Resource API |
-| --- | --- | --- |
-| Journal create | `POST /journal/entries` | `POST /api/journals` |
-| Journal save/delete | `PUT/DELETE /journal/entries/{date}` | `PUT/DELETE /api/journals/{date}` |
-| Routine kind | `PATCH /routines/{id}` | `PATCH /api/routines/{id}` |
-| Routine complete/uncheck | `PUT /routines/{id}/completions/{date}` | Same path under `/api` |
-| Therapy complete/uncheck | `PUT /therapy/sessions/{sessionId}/exercises/{exerciseId}/completions/{date}` | Same path under `/api` |
-| External complete/uncheck | `PUT /external-tasks/{source}/{id}/completions/{date}` | `PUT /api/external-tasks/{source}/{id}/completion`, with date in the existing JSON body |
-| Achievement create | `POST /profile/achievements` | `POST /api/achievements` |
-| Reward redeem | `POST /rewards/{id}/redemptions` | Same path under `/api` |
-| Google sync | `POST /google/tasks/sync/{date}` | Same path under `/api` |
-| Gmail search/import | `GET /google/gmail/messages`, `POST /google/gmail/messages/{id}/tasks/{date}` | Same paths under `/api` |
-| Calendar create/update | `POST /calendar/{calendarId}/events`, `PATCH /calendar/{calendarId}/events/{id}` | Same paths under `/api` |
-| Book metadata/bookmarks | `/books/{library}/{encodedPath}/details`, `/rename`, `/bookmarks`, `/bookmarks/{id}` | Existing book endpoints; no API contract changes |
+| Operation                 | React Router route                                                                           | Resource API                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Journal create            | `POST /journal/entries`                                                                    | `POST /api/journals`                                                                    |
+| Journal save/delete       | `PUT/DELETE /journal/entries/{date}`                                                       | `PUT/DELETE /api/journals/{date}`                                                       |
+| Routine kind              | `PATCH /routines/{id}`                                                                     | `PATCH /api/routines/{id}`                                                              |
+| Routine complete/uncheck  | `PUT /routines/{id}/completions/{date}`                                                    | Same path under `/api`                                                                  |
+| Therapy complete/uncheck  | `PUT /therapy/sessions/{sessionId}/exercises/{exerciseId}/completions/{date}`              | Same path under `/api`                                                                  |
+| External complete/uncheck | `PUT /external-tasks/{source}/{id}/completions/{date}`                                     | `PUT /api/external-tasks/{source}/{id}/completion`, with date in the existing JSON body |
+| Achievement create        | `POST /profile/achievements`                                                               | `POST /api/achievements`                                                                |
+| Reward redeem             | `POST /rewards/{id}/redemptions`                                                           | Same path under `/api`                                                                  |
+| Google sync               | `POST /google/tasks/sync/{date}`                                                           | Same path under `/api`                                                                  |
+| Gmail search/import       | `GET /google/gmail/messages`, `POST /google/gmail/messages/{id}/tasks/{date}`            | Same paths under `/api`                                                                 |
+| Calendar create/update    | `POST /calendar/{calendarId}/events`, `PATCH /calendar/{calendarId}/events/{id}`         | Same paths under `/api`                                                                 |
+| Book metadata/bookmarks   | `/books/{library}/{encodedPath}/details`, `/rename`, `/bookmarks`, `/bookmarks/{id}` | Existing book endpoints; no API contract changes                                          |
 
 The shared planner read remains temporarily for the rest of the UI. Next,
 migrate its consumers by page and delete planner fields as each read moves.
@@ -296,15 +296,15 @@ Apply the UI resource request rules to every loader/action introduced here.
 Treat a page migration as incomplete if its old fields are still loaded by the
 combined planner request merely because the shared layout is convenient.
 
-- [x] Therapy: use a page loader for `GET /api/therapy/sessions`, preserve
+- [X] Therapy: use a page loader for `GET /api/therapy/sessions`, preserve
   selected-date navigation, and omit therapy from the UI planner request.
-- [x] Journal: use one dated route loader for the browser and selected entry;
+- [X] Journal: use one dated route loader for the browser and selected entry;
   remove journal reads from the UI planner request.
 - [ ] Quest log: load routines plus templates and historical acceptance with
   page-owned reads; remove those fields from the UI planner request. The
   quest-log route now owns all three reads, but routines remain in the shared
   snapshot until dashboard and calendar migrate.
-- [ ] Profile: add purpose-built completion history and XP/streak summaries;
+- [X] Profile: add purpose-built completion history and XP/streak summaries;
   do not make the profile recalculate unrelated quests or calendar state.
 - [ ] Main calendar and dashboard: own their routines, completions, synced
   tasks, points, journal-date markers and achievement preview reads.
@@ -385,10 +385,12 @@ Milestone 5 therapy-read slice is implemented. Next bounded task: extract the
 session/configuration shell, then migrate quest-log reads. The journal
 fetcher-read now uses its page route loader, and journal fields are no longer
 loaded by the UI planner request.
-The quest-log route now owns reads for routines, templates, and historical
-template acceptance; the combined planner snapshot no longer returns templates
-or acceptance history. Routines remain in that snapshot for the dashboard and
-calendar until their page-owned read migration.
+The quest-log route owns reads for routines, templates, and historical template
+acceptance; the combined planner snapshot no longer returns templates or
+acceptance history. Routines remain in that snapshot for the dashboard and
+calendar until their page-owned read migration. The profile route now owns
+completion history, routine definitions needed by achievement creation, current
+achievement progress, and lifetime XP without loading quests or calendar tasks.
 Preserve selected-date navigation and keep achievement refresh behavior on
 planner reads until equivalent write/streak coverage exists. Do not run write
 tests against the normal app database.

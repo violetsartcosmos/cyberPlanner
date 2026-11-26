@@ -9,14 +9,12 @@ import witchyPonder from "@/assets/images/witchyponder.png";
 type ProfileProps = {
   checks: Record<string, string[]>;
   routines: RoutineTask[];
-  selected: string;
   today: string;
-  balance: number;
   totalXp: number;
   achievements: Achievement[];
 };
 
-export function Profile({ checks, routines, selected, today, balance, totalXp, achievements }: ProfileProps) {
+export function Profile({ checks, routines, today, totalXp, achievements }: ProfileProps) {
   const stats = getProfileStats(checks, today, routines);
   const earned = achievements.filter((achievement) => achievement.earnedAt).length;
 

@@ -1,17 +1,18 @@
 import { Profile } from "@/features/planner/components/profile";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
+import { useLoaderData } from "react-router";
+import { profileLoader } from "@/features/planner/services/profile-route";
 
 export default function ProfileRoute() {
-  const { page, selected, today } = usePlannerContext();
+  const { today } = usePlannerContext();
+  const profile = useLoaderData<typeof profileLoader>();
   return (
     <Profile
-      checks={page.checks}
-      routines={page.routines}
-      selected={selected}
+      checks={profile.checks}
+      routines={profile.routines}
       today={today}
-      balance={page.balance}
-      totalXp={page.totalXp}
-      achievements={page.achievements}
+      totalXp={profile.totalXp}
+      achievements={profile.achievements}
     />
   );
 }

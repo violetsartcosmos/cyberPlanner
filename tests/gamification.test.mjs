@@ -8,6 +8,7 @@ import { Achievements } from "../src/features/planner/components/achievements.ts
 import { QuestLog } from "../src/features/planner/components/quest-log.tsx";
 import { plannerLoader } from "../src/features/planner/services/planner-route.ts";
 import { questLogLoader } from "../src/features/planner/services/quest-log-route.ts";
+import { profileLoader } from "../src/features/planner/services/profile-route.ts";
 import { NotificationProvider } from "../src/components/notifications.tsx";
 
 function fixture(achievements, days = [], points = 0) {
@@ -70,6 +71,19 @@ test("the quest-log loader reads routines, templates, and acceptance history", a
     "/api/quest-templates/accepted",
     "/api/routines",
   ]);
+});
+
+test("the profile loader reads only profile-owned resources", async (t) => {
+  let requestedUrl;
+  t.mock.method(globalThis, "fetch", async (input) => {
+    requestedUrl = input;
+    return Response.json({ checks: {}, routines: [], achievements: [], totalXp: 125 });
+  });
+  assert.deepEqual(
+    await profileLoader({ request: new Request("http://localhost/profile?date=2026-11-23") }),
+    { checks: {}, routines: [], achievements: [], totalXp: 125 },
+  );
+  assert.equal(requestedUrl, "/api/profile");
 });
 
 test("points milestones use lifetime earned points and award XP only once", async () => {

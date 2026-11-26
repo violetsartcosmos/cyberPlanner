@@ -90,6 +90,7 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.equal((await app.request("http://localhost/api/points?date=2026-11-21")).status, 401);
     assert.equal((await app.request("http://localhost/api/rewards")).status, 401);
     assert.equal((await app.request("http://localhost/api/achievements")).status, 401);
+    assert.equal((await app.request("http://localhost/api/profile")).status, 401);
 
     const storage = createCookieSessionStorage({
       cookie: {

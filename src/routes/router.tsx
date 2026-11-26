@@ -16,6 +16,7 @@ import {
 import {
   createJournalAction, journalLoader, journalMarkersLoader, journalResourceAction,
 } from "../features/planner/services/journal-actions";
+import { profileLoader } from "../features/planner/services/profile-route";
 import {
   calendarLoader, createCalendarEventAction, gmailMessagesLoader, importGmailAction,
   syncGoogleTasksAction, updateCalendarEventAction,
@@ -99,7 +100,7 @@ export const router = createBrowserRouter([{
     { path: "books/:library/:path/chapters", loader: chaptersLoader, ErrorBoundary: PageError },
     { path: "rewards", Component: RewardsPage, ErrorBoundary: PageError },
     { path: "rewards/:id/redemptions", action: redeemRewardAction, ErrorBoundary: PageError },
-    { path: "profile", Component: ProfilePage, ErrorBoundary: PageError },
+    { path: "profile", Component: ProfilePage, loader: profileLoader, ErrorBoundary: PageError },
     { path: "profile/achievements", action: createAchievementAction, ErrorBoundary: PageError },
     { path: "physical-therapy", Component: PhysicalTherapyPlan, loader: therapyLoader, ErrorBoundary: PageError },
   ],

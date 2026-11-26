@@ -95,6 +95,14 @@ export type TherapyPlan = {
   earnedPoints: number;
 };
 
+/** Profile resources used by the profile page. */
+export type ProfileSummary = {
+  checks: Record<string, string[]>;
+  routines: RoutineTask[];
+  achievements: Achievement[];
+  totalXp: number;
+};
+
 export type PlannerPage =
   | {
       authenticated: false;

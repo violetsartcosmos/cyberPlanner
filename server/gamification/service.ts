@@ -167,6 +167,40 @@ export async function saveAchievement(id: string | null, input: AchievementInput
   });
 }
 
+/**
+ * Builds the profile's completion history, achievement progress, and XP total.
+ * @param today - The date used to refresh date-dependent achievement progress.
+ * @returns The profile resources without quests or selected-date task state.
+ */
+export async function getProfileSummary(today: string) {
+  return serializableTransaction(async (client) => {
+    const completions = await client.routineTaskCompletion.findMany({
+      orderBy: [{ day: "asc" }, { taskId: "asc" }],
+    });
+    await refreshAchievements(client, today, completions);
+    const [achievements, taskXp, achievementXp, { routines }] = await Promise.all([
+      client.achievement.findMany({ where: { deleted: false }, orderBy: { createdAt: "asc" } }),
+      client.pointLedger.aggregate({ where: { entryType: "earn" }, _sum: { amount: true } }),
+      client.achievement.aggregate({ _sum: { awardedXp: true } }),
+      loadRoutines(client),
+    ]);
+    const checks: Record<string, string[]> = {};
+    for (const completion of completions) {
+      const date = dateString(completion.day);
+      (checks[date] ??= []).push(String(completion.taskId));
+    }
+    return {
+      checks,
+      routines,
+      achievements: achievements.map(({ earnedAt, ...achievement }) => ({
+        ...achievement,
+        earnedAt: earnedAt?.toISOString() ?? null,
+      })),
+      totalXp: (taskXp._sum.amount ?? 0) + (achievementXp._sum.awardedXp ?? 0),
+    };
+  });
+}
+
 // These reads supply individual resource endpoints without assembling the
 // larger planner page. Deleted quests and achievements stay hidden.
 export async function listQuests() {

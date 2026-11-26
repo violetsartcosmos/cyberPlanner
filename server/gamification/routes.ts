@@ -1,11 +1,21 @@
 import { Hono } from "hono";
+import { dateKey } from "../../shared/planner/utils";
 import { noStore, reportServerError, requireSignIn } from "../http";
 import {
   acceptTemplate, completeQuest, createQuest, deleteQuest, getQuest, listAchievements, listQuests,
-  listAcceptedTemplateIds, listQuestTemplates, saveAchievement, updateQuest, type AchievementInput, type QuestInput,
+  getProfileSummary, listAcceptedTemplateIds, listQuestTemplates, saveAchievement, updateQuest,
+  type AchievementInput, type QuestInput,
 } from "./service";
 
 export const gamificationRoutes = new Hono();
+
+gamificationRoutes.get("/profile", noStore, requireSignIn, async (context) => {
+  try {
+    return context.json(await getProfileSummary(dateKey(new Date())));
+  } catch (error) {
+    return reportServerError(context, error, "Could not load profile.");
+  }
+});
 
 gamificationRoutes.get("/quests", noStore, requireSignIn, async (context) => {
   try {

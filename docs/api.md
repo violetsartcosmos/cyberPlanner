@@ -109,6 +109,7 @@ These endpoints require a signed-in session. Dates use `YYYY-MM-DD`.
 
 | Method and path | Description |
 | --- | --- |
+| `GET /api/profile` | Returns routine completion history, current achievement progress, and lifetime XP for the profile page. |
 | `GET /api/achievements` | Lists non-deleted stored achievements. It does not recalculate progress. |
 | `POST /api/achievements` | Creates an achievement, refreshes progress, and returns the achievement and newly earned achievements. |
 | `GET /api/quest-templates` | Lists quest templates by track and position. |
