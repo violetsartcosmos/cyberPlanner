@@ -3,6 +3,9 @@ import { plannerAction, plannerLoader } from "../features/planner/services/plann
 import {
   acceptQuestTemplateAction, completeQuestAction, createQuestAction, questResourceAction,
 } from "../features/planner/services/quest-actions";
+import {
+  createAchievementAction, redeemRewardAction,
+} from "../features/planner/services/gamification-actions";
 import PlannerLayout from "../layouts/planner-layout";
 import BooksPage from "../pages/books";
 import CalendarPage from "../pages/calendar";
@@ -58,7 +61,9 @@ export const router = createBrowserRouter([{
     { path: "journal", Component: JournalPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "books", Component: BooksPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "rewards", Component: RewardsPage, action: plannerAction, ErrorBoundary: PageError },
+    { path: "rewards/:id/redemptions", action: redeemRewardAction, ErrorBoundary: PageError },
     { path: "profile", Component: ProfilePage, action: plannerAction, ErrorBoundary: PageError },
+    { path: "profile/achievements", action: createAchievementAction, ErrorBoundary: PageError },
     { path: "physical-therapy", Component: PhysicalTherapyPlan, action: plannerAction, ErrorBoundary: PageError },
   ],
 }]);

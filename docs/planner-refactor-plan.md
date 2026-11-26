@@ -209,7 +209,7 @@ Achievement refresh on planner reads remains unchanged.
   and checklist above; endpoint migration alone is not sufficient.
 - [x] Migrate quest creation, editing, deletion, completion, and template
   acceptance to existing endpoints.
-- [ ] Migrate achievement creation and reward redemption.
+- [x] Migrate achievement creation and reward redemption.
 - [x] Use resource URLs and HTTP methods for quest writes instead of
   dispatching hidden form intents through a page action.
 - [ ] Replace the remaining planner intent-to-resource switch with

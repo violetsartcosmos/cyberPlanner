@@ -9,7 +9,7 @@ import {
 import { useFetcher } from "react-router";
 import { achievementCategories, tiers, type Achievement } from "../../../../shared/planner/gamification";
 import { routinesFor, type RoutineTask } from "../../../../shared/planner/routines";
-import type { PlannerActionResult } from "../../../../shared/planner/types";
+import type { QuestActionResult } from "../../../../shared/planner/types";
 import { useNotification } from "@/components/notifications";
 
 const icons: Record<string, typeof Award> = {
@@ -76,7 +76,7 @@ export function AchievementPreview({ achievements }: { achievements: Achievement
 
 function AchievementDialog({ onClose, fetcher, onSubmit, routines }: {
   onClose: () => void;
-  fetcher: ReturnType<typeof useFetcher<PlannerActionResult>>;
+  fetcher: ReturnType<typeof useFetcher<QuestActionResult>>;
   onSubmit: () => void;
   routines: RoutineTask[];
 }) {
@@ -100,9 +100,7 @@ function AchievementDialog({ onClose, fetcher, onSubmit, routines }: {
         <h2 id="achievement-dialog-title">Create achievement</h2>
         <button type="button" className="btn btn-outline-secondary btn-sm" onClick={closeDialog}>Close</button>
       </div>
-      <fetcher.Form method="post" className="gamification-form" onSubmit={onSubmit}>
-        <input type="hidden" name="intent" value="save_achievement" />
-        <input type="hidden" name="id" value="" />
+      <fetcher.Form method="post" action="/profile/achievements" className="gamification-form" onSubmit={onSubmit}>
         <label>Title<input className="form-control" name="title" required maxLength={100} /></label>
         <label>Description<textarea className="form-control" name="description" required maxLength={500} /></label>
         <div className="row g-2">
@@ -136,7 +134,7 @@ export function Achievements({ achievements, earned, routines }: {
   earned: number;
   routines: RoutineTask[];
 }) {
-  const fetcher = useFetcher<PlannerActionResult>();
+  const fetcher = useFetcher<QuestActionResult>();
   const [filters, setFilters] = useState({ category: "all", tier: "all", status: "all" });
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState("");
@@ -148,13 +146,11 @@ export function Achievements({ achievements, earned, routines }: {
 
   useEffect(function syncAchievementFetcher() {
     if (fetcher.state !== "idle" || !fetcher.data || !pending.current) return;
-    if (fetcher.data.ok) {
+    if (fetcher.data.status >= 200 && fetcher.data.status < 300) {
       if (pending.current === "save") setEditing(false);
       setDialogError("");
       setNoticeIsError(false);
-      setNotice(fetcher.data.earnedAchievements?.length
-        ? `Achievement milestone earned: ${fetcher.data.earnedAchievements.join(", ")}!`
-        : fetcher.data.message ?? "Progress saved.");
+      setNotice(fetcher.data.message ?? "Achievement saved.");
     } else {
       const error = fetcher.data.error ?? "Could not save your changes.";
       if (pending.current === "save") setDialogError(error);

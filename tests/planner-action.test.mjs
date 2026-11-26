@@ -10,6 +10,10 @@ import {
   questResourceAction,
   updateQuestAction,
 } from "../src/features/planner/services/quest-actions.ts";
+import {
+  createAchievementAction,
+  redeemRewardAction,
+} from "../src/features/planner/services/gamification-actions.ts";
 
 function request(signal) {
   return new Request("http://localhost/profile", {
@@ -92,6 +96,78 @@ test("resource actions report server errors without retrying the legacy API", as
   await assert.rejects(plannerAction({ request: new Request("http://localhost/", {
     method: "POST", body: new URLSearchParams(fields), signal: controller.signal,
   }) }), { name: "AbortError" });
+});
+
+test("achievement and reward writes use resource URLs and statuses", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", async (url, options) => {
+    if (url === "/api/achievements") {
+      assert.equal(options.method, "POST");
+      assert.deepEqual(JSON.parse(options.body), {
+        title: "Water goal",
+        description: "Drink water",
+        category: "Daily & Routine",
+        tier: "Common",
+        xp: 25,
+        target: 7,
+        tracking: "streak",
+        taskId: "3",
+        reward: "A treat",
+      });
+      return Response.json({ id: "water" }, { status: 201 });
+    }
+    assert.equal(url, "/api/rewards/snacks/redemptions");
+    assert.equal(options.method, "POST");
+    assert.equal(options.body, undefined);
+    return Response.json({ rewardId: "snacks", balance: 10 }, { status: 201 });
+  });
+  const achievementRequest = new Request("http://localhost/profile/achievements", {
+    method: "POST",
+    body: new URLSearchParams({
+      title: "Water goal",
+      description: "Drink water",
+      category: "Daily & Routine",
+      tier: "Common",
+      xp: "25",
+      target: "7",
+      tracking: "streak",
+      taskId: "3",
+      reward: "A treat",
+    }),
+  });
+  assert.deepEqual(await createAchievementAction({ request: achievementRequest, params: {} }), {
+    status: 201,
+    message: "Achievement created.",
+  });
+  assert.deepEqual(await redeemRewardAction({
+    request: new Request("http://localhost/rewards/snacks/redemptions", { method: "POST" }),
+    params: { id: "snacks" },
+  }), { status: 201, message: "Reward redeemed." });
+});
+
+test("achievement and reward actions report API errors and unsupported methods", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", async () =>
+    Response.json({ error: "Rejected." }, { status: 409 }));
+  assert.deepEqual(await createAchievementAction({
+    request: new Request("http://localhost/profile/achievements", {
+      method: "POST",
+      body: new URLSearchParams(),
+    }),
+    params: {},
+  }), { status: 409, error: "Rejected." });
+  assert.deepEqual(await redeemRewardAction({
+    request: new Request("http://localhost/rewards/snacks/redemptions", { method: "POST" }),
+    params: { id: "snacks" },
+  }), { status: 409, error: "Rejected." });
+  assert.equal(fetch.mock.callCount(), 2);
+  assert.deepEqual(await createAchievementAction({
+    request: new Request("http://localhost/profile/achievements", { method: "DELETE" }),
+    params: {},
+  }), { status: 405, error: "Method not allowed." });
+  assert.deepEqual(await redeemRewardAction({
+    request: new Request("http://localhost/rewards/snacks/redemptions", { method: "PATCH" }),
+    params: { id: "snacks" },
+  }), { status: 405, error: "Method not allowed." });
+  assert.equal(fetch.mock.callCount(), 2);
 });
 
 test("quest actions use resource URLs, HTTP methods, and statuses without form intents", async (t) => {

@@ -15,7 +15,7 @@ import {
   Tv,
   Utensils,
 } from "lucide-react";
-import type { PlannerActionResult } from "../../../../shared/planner/types";
+import type { QuestActionResult } from "../../../../shared/planner/types";
 import { rewards } from "../../../../shared/planner/definitions";
 import shopkeeper from "@/assets/images/shopkeeperv2.jpg";
 import { useActionNotifications } from "@/components/notifications";
@@ -64,7 +64,7 @@ type RewardShopProps = {
 };
 
 export function RewardShop({ balance, selected, redemptions }: RewardShopProps) {
-  const fetcher = useFetcher<PlannerActionResult>();
+  const fetcher = useFetcher<QuestActionResult>();
   useActionNotifications(fetcher);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const reward = rewards[selectedIndex];
@@ -141,11 +141,9 @@ export function RewardShop({ balance, selected, redemptions }: RewardShopProps) 
               {!canAfford && <p className="shop-shortfall">You need {reward.cost - balance} more points.</p>}
               <fetcher.Form
                 method="post"
+                action={`/rewards/${encodeURIComponent(reward.id)}/redemptions`}
                 onSubmit={confirmRedemption}
               >
-                <input type="hidden" name="intent" value="redeem_reward" />
-                <input type="hidden" name="rewardId" value={reward.id} />
-                <input type="hidden" name="date" value={selected} />
                 <button className="btn btn-primary w-100" type="submit" disabled={!canAfford || fetcher.state !== "idle"}>
                   {fetcher.state === "idle" ? `REDEEM / ${reward.cost} PTS` : "REDEEMING..."}
                 </button>
