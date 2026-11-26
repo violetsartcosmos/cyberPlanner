@@ -40,25 +40,6 @@ export async function routineCompletionAction({ request, params }: ActionFunctio
 }
 
 /**
- * Saves a therapy exercise's checked state on its assigned date.
- * @param args - The session, exercise and date parameters and completed form field.
- * @returns The HTTP status, earned milestones, or API error.
- */
-export async function therapyCompletionAction({ request, params }: ActionFunctionArgs): Promise<RoutineActionResult> {
-  const form = await request.formData();
-  const completed = form.get("completed");
-  const response = await fetch(`/api/therapy/sessions/${encodeURIComponent(params.sessionId as string)}/exercises/${encodeURIComponent(params.exerciseId as string)}/completions/${encodeURIComponent(params.date as string)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ completed: completed === "true" }),
-    signal: request.signal,
-  });
-  if (!response.ok) return { status: response.status, error: (await response.json() as { error: string }).error };
-  const { earnedAchievements } = await response.json() as { earnedAchievements: string[] };
-  return { status: response.status, earnedAchievements };
-}
-
-/**
  * Updates a synced task locally and through the existing Google orchestration.
  * @param args - The source, external ID and date parameters and completed form field.
  * @returns The HTTP status or API error.

@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useFetcher } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { useActionNotifications, useNotification } from "@/components/notifications";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import africanBeautyTree from "@/assets/images/africanbeautytree.jpg";
 import type { RoutineActionResult, TherapyPlan } from "../../shared/planner/types";
+import { therapyLoader } from "@/features/therapy/services/therapy-route";
 
 /**
  * Formats an exercise count with at least two digits.
@@ -17,8 +18,8 @@ const padCount = (count: number) => String(count).padStart(2, "0");
  * @returns The therapy progress, exercise controls and instructions.
  */
 export default function PhysicalTherapyPlan() {
-  const { page, selected, date } = usePlannerContext();
-  const { therapySessions, earnedPoints } = page.therapy;
+  const { selected, date } = usePlannerContext();
+  const { therapySessions, earnedPoints } = useLoaderData<typeof therapyLoader>();
   const fetcher = useFetcher<RoutineActionResult>();
   useActionNotifications(fetcher);
   useNotification(fetcher.state === "idle" && fetcher.data?.earnedAchievements?.length

@@ -7,8 +7,11 @@ import {
   createAchievementAction, redeemRewardAction,
 } from "../features/planner/services/gamification-actions";
 import {
-  externalCompletionAction, routineCompletionAction, therapyCompletionAction, updateRoutineAction,
+  externalCompletionAction, routineCompletionAction, updateRoutineAction,
 } from "../features/planner/services/routine-actions";
+import {
+  therapyCompletionAction, therapyLoader,
+} from "../features/therapy/services/therapy-route";
 import {
   createJournalAction, journalLoader, journalResourceAction,
 } from "../features/planner/services/journal-actions";
@@ -97,6 +100,6 @@ export const router = createBrowserRouter([{
     { path: "rewards/:id/redemptions", action: redeemRewardAction, ErrorBoundary: PageError },
     { path: "profile", Component: ProfilePage, ErrorBoundary: PageError },
     { path: "profile/achievements", action: createAchievementAction, ErrorBoundary: PageError },
-    { path: "physical-therapy", Component: PhysicalTherapyPlan, ErrorBoundary: PageError },
+    { path: "physical-therapy", Component: PhysicalTherapyPlan, loader: therapyLoader, ErrorBoundary: PageError },
   ],
 }]);

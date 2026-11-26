@@ -38,11 +38,11 @@ test("the planner loader requests only visible task keys without losing the sele
   assert.equal(query.get("taskKeys"), "visible");
 });
 
-test("the planner loader accepts the renamed therapy sessions field", async (t) => {
+test("the planner loader accepts responses without a therapy plan", async (t) => {
   const page = {
     authenticated: true, journal: "", journalDates: [], achievements: [], quests: [],
     routines: [], routineGroups: [], questTemplates: [], acceptedTemplateIds: [],
-    newlyEarned: [], totalXp: 0, therapy: { therapySessions: [], earnedPoints: 0 },
+    newlyEarned: [], totalXp: 0,
   };
   t.mock.method(globalThis, "fetch", async () => Response.json(page));
   assert.deepEqual(await plannerLoader({ request: new Request("http://localhost/physical-therapy") }), page);

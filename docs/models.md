@@ -49,16 +49,19 @@ The client uses browser APIs; server modules run in Node.js. The Vite configurat
 
 ## Typical request flow
 
-1. React Router's loader requests `/api/planner` for the selected date.
+1. React Router's shared loader requests `/api/planner` for resources that
+   have not yet moved to page-owned loaders.
 2. The Hono route calls `getPlannerPage`, which checks configuration and the signed-in session.
 3. Planner, points, and gamification services assemble the response from PostgreSQL.
 4. Feature-owned React Router actions submit form writes to resource endpoints
    and return numeric HTTP statuses. Forms use actual HTTP methods and URL
-   parameters rather than hidden operation intents. Legacy `/api/planner`
-   write adapters remain available to older clients, using the same services.
+   parameters rather than hidden operation intents. The obsolete
+   `/api/planner` write adapter remains temporarily for migration cleanup.
 
-The journal page reads saved dates and entry content through its own GET
-endpoints, while the shared planner shell still uses the combined loader. See
+The therapy page reads sessions through `/api/therapy/sessions?date=...` in its
+own loader, and `/api/planner` no longer returns therapy data. The journal page
+reads saved dates and entry content through its own GET endpoints. The shared
+planner shell still uses the combined loader for remaining resources. See
 the [refactor plan](planner-refactor-plan.md) for the CRUD learning slice and
 remaining migrations.
 

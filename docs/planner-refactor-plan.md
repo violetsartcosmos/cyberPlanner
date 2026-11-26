@@ -8,8 +8,9 @@ follow from React requests through Node routes to Prisma queries. Avoid a
 generic CRUD framework that hides those operations, repository classes, or
 extra controller layers.
 
-Keep `GET /api/planner` and `POST /api/planner` compatible while gradually
-migrating the UI. Follow [the coding instructions](../.github/copilot-instructions.md).
+Migrate the UI off `GET /api/planner` and `POST /api/planner`, then remove
+obsolete planner contracts. This is a test application with no legacy clients
+to preserve. Follow [the coding instructions](../.github/copilot-instructions.md).
 Python implementation is a later learning milestone. Database redesign and
 further book API changes are outside this plan.
 
@@ -20,7 +21,7 @@ React Router action, resource HTTP route, service operation, and focused
 contract test. Keep those names and boundaries explicit so a learner can trace
 where input changes shape and where business rules run. Use purpose-first
 JSDoc on functions added or changed, then compare the old planner adapter with
-the new resource path to understand what compatibility still protects.
+the new resource path before deleting the obsolete adapter.
 
 ## UI resource request rules
 
@@ -41,21 +42,26 @@ until its forms, actions, result types, and tests follow the same pattern.
   fields. Do not select operations using hidden `intent` strings.
 - React Router has one action per URL. Where an item supports multiple write
   methods, select the operation using `request.method` only; unsupported
-  methods return status 405 without calling the API.
+  methods return status 405 without calling the API. Single-operation actions
+  do not repeat method guards: their forms declare the method and Hono routes
+  own API method routing.
 - Keep each operation readable from start to finish: its request, payload,
   HTTP result check, and result. Do not introduce generic submission wrappers,
   method/path/body accumulators, response factories, or helpers that merely
   forward another function. Inline one-off payloads and URLs.
 - Return the API's numeric HTTP `status`, plus its error or the operation's
   notification message. Do not introduce custom `ok` booleans. Update the
-  consuming fetchers, notifications, and tests together; retain legacy API
-  response contracts while migrating their UI consumers.
+  consuming fetchers, notifications, and tests together. Remove obsolete
+  planner response contracts after their last UI consumer is migrated.
 - Check the HTTP result once. Read the documented API error directly.
   Do not add response-header guards, runtime object-type guards, redundant
   fallbacks, catch-and-rethrow layers, or explicit aborted-signal checks.
   Pass `request.signal` to fetch and let React Router handle unexpected
   request failures through the existing route error boundary.
-- Preserve deliberate feature behavior, including journal autosave/retry,
+- Trust typed application and library contracts. Do not reproduce database
+  constraints or upstream field-length limits. Validate actual domain values,
+  such as date assignments, event ordering and update revisions, in their owner.
+- Preserve deliberate feature behavior, including journal autosave,
   unsaved-change blocking, deletion confirmation, busy states, notifications,
   celebrations, selected-date navigation, cancellation, and revalidation.
   Do not remove intentional recovery flows when removing defensive layers.
@@ -72,15 +78,15 @@ until its forms, actions, result types, and tests follow the same pattern.
 
 Apply the rules one resource at a time; do not bundle unrelated rewrites.
 
-- [ ] Audit journal reads, creation, saves, and deletion, including autosave.
-- [ ] Align routine kind changes and routine completion requests.
-- [ ] Align therapy and external-task completion requests.
-- [ ] Audit already-migrated book reads and writes, including progress.
-- [ ] Audit any already-migrated calendar and Google integration requests
+- [x] Audit journal reads, creation, saves, and deletion, including autosave.
+- [x] Align routine kind changes and routine completion requests.
+- [x] Align therapy and external-task completion requests.
+- [x] Audit already-migrated book reads and writes, including progress.
+- [x] Audit any already-migrated calendar and Google integration requests
   without changing their remote-update orchestration.
-- [ ] Remove remaining UI consumers of planner intent dispatch as their
-  dedicated resource actions replace it; keep the legacy server adapters.
-- [ ] Update each resource's result types, directly dependent consumers,
+- [x] Remove remaining UI consumers of planner intent dispatch as their
+  dedicated resource actions replace it.
+- [x] Update each resource's result types, directly dependent consumers,
   JSDoc, documentation, and focused tests before marking it aligned.
 
 Quest writes demonstrate the target pattern in milestone 4. Use their
@@ -89,9 +95,11 @@ components that still use planner intents or boolean action results.
 
 ## Required behavior
 
-- Legacy and resource endpoints call the same operations.
-- Preserve endpoint paths, response shapes, authentication, CSRF protection,
-  cache policy, date handling, ordering, and error responses during extraction.
+- While planner and resource endpoints coexist, they call the same operations.
+- Preserve authentication, CSRF protection, cache policy, date handling,
+  ordering, and documented error behavior during extraction.
+- Delete planner endpoints, adapters, fields, and tests once the UI no longer
+  needs them; do not add compatibility flags for removed resources.
 - Preserve routine weekday and therapy assignment checks.
 - Point values remain server-owned. Preserve ledger keys, unique awards, and
   completion/award transactions, including concurrent requests and retries.
@@ -138,8 +146,8 @@ Interactive browser write checks remain a follow-up, on a disposable database.
 - [x] Use journal resource reads in the React journal page.
 - [x] Add Create entry and confirmed Delete entry controls; preserve autosave,
   retry, unsaved-change blocking, and selected-date navigation.
-- [x] Test duplicate creation, empty entries, replacement, deletion, errors,
-  and compatibility with the planner API on an isolated database.
+- [x] Test duplicate creation, empty entries, replacement, deletion, and errors
+  on an isolated database.
 - [x] Inspect the authenticated journal UI in Chrome without writing real data.
 - [ ] Exercise create, autosave/update, retry, and confirmed deletion through
   the React UI on a disposable database.
@@ -148,7 +156,7 @@ Read these files together to follow each operation:
 
 | CRUD operation | React behavior | HTTP route | Service/database operation |
 | --- | --- | --- | --- |
-| Create | Create entry button or first autosave | `POST /api/journals` | `createJournal` / `journal.create` |
+| Create | Create entry button; opens the editor after creation | `POST /api/journals` | `createJournal` / `journal.create` |
 | Read | Browse saved dates and open an entry | `GET /api/journals`, `GET /api/journals/{date}` | `listJournalDates`, `getJournal` / `findMany`, `findUnique` |
 | Update | Edit an entry; autosave | `PUT /api/journals/{date}` | `saveJournal` / `upsert` |
 | Delete | Confirm Delete entry | `DELETE /api/journals/{date}` | `deleteJournal` / `deleteMany` |
@@ -156,7 +164,7 @@ Read these files together to follow each operation:
 Start at [the React page](../src/pages/journal.tsx), then
 [journal routes](../server/journals/routes.ts) and
 [journal services](../server/journals/service.ts). PUT retains its existing
-create-or-replace behavior for compatibility. POST only creates; duplicate
+create-or-replace contract. POST only creates; duplicate
 dates return 409. DELETE returns 204 with no body, or 404 if missing.
 
 ### 2. Extract therapy, external tasks, and Google connections
@@ -170,7 +178,7 @@ dates return 409. DELETE returns 204 with no body, or 404 if missing.
 - [x] Update remaining planner and integration imports.
 
 Status: implemented. Therapy and external-task routes are mounted as resource
-routers, legacy planner actions use the extracted services, and the old
+routers, temporary planner actions use the extracted services, and the old
 planner service/therapy forwarding modules were removed. Verification:
 `npm run typecheck`, `npm run test:server`, and `npm run build` pass.
 The user subsequently ran `npm run test:database` against the disposable test
@@ -189,7 +197,8 @@ numeric journal content and zero-point quests are expected rejection checks.
   assembling resource results, not resource persistence.
 - [x] Make snapshot query ownership explicit rather than using optional
   preloaded values with implicit query fallbacks. Preserve query reuse.
-- [x] Keep planner actions and dispatch as thin legacy form adapters.
+- [x] Keep planner actions and dispatch as temporary form adapters during
+  migration; remove them after their final consumers are gone.
 
 **Achievement refresh caveat:** `getGamification` currently recalculates and can
 award achievements during a planner page read. Do not silently remove this
@@ -205,16 +214,29 @@ Achievement refresh on planner reads remains unchanged.
 
 ### 4. Finish UI resource writes
 
-- [ ] Align previously migrated UI consumers with the resource request rules
+- [x] Align previously migrated UI consumers with the resource request rules
   and checklist above; endpoint migration alone is not sufficient.
 - [x] Migrate quest creation, editing, deletion, completion, and template
   acceptance to existing endpoints.
 - [x] Migrate achievement creation and reward redemption.
 - [x] Use resource URLs and HTTP methods for quest writes instead of
   dispatching hidden form intents through a page action.
-- [ ] Replace the remaining planner intent-to-resource switch with
+- [x] Replace the remaining planner intent-to-resource switch with
   feature-owned requests/actions as consumers migrate.
-- [ ] Handle Google synchronization and calendar mutations separately.
+- [x] Handle Google synchronization and calendar mutations separately.
+
+Status: implemented. All client form writes use feature-owned resource actions.
+Journal autosave, navigation blocking and confirmed deletion are retained.
+Creation is an explicit new-entry form; autosave only updates an existing
+entry by date ID, and deletion uses a separate fetcher. Journal retry controls
+and session-storage draft recovery were removed at the user's request.
+Routine, therapy and external-task writes retain numeric statuses, assignment
+checks, milestone notifications and completion celebrations. Book API contracts,
+licensed reference import, rename updates and the revisioned progress queue are
+unchanged. Google synchronization, Gmail search/import and calendar writes have
+dedicated authenticated routes, with unchanged remote orchestration and
+conditional event updates. The client planner action switch has been removed;
+temporary server adapters remain.
 
 Quest write learning trace:
 
@@ -230,9 +252,8 @@ submission wrapper, form conversion helper, or combined success response type.
 React Router allows one action per URL, so `questResourceAction` selects PATCH
 or DELETE using `request.method`. This is HTTP routing, not form intent
 dispatch. Other methods return status 405 without an API request.
-The remaining planner action also uses explicit requests rather than accumulating method,
-path, and payload variables. Routine kind forms in the quest log target the
-root planner action.
+Routine kind forms in the quest log now PATCH `/routines/{id}` directly.
+There is no remaining client planner action.
 
 | Operation | React Router form route | Action | Resource API |
 | --- | --- | --- | --- |
@@ -248,19 +269,43 @@ Read the [forms](../src/features/planner/components/quest-board.tsx),
 [HTTP routes](../server/gamification/routes.ts) and
 [service operations](../server/gamification/service.ts).
 
-The shared planner read is intentionally unchanged in this step. Next,
-continue with achievement creation and reward redemption, then move reads by
-page as described in milestone 5.
+Additional learning traces:
 
-Already migrated: journal saves, routine kind changes, and routine, therapy,
-and external-task completions use resource endpoints. The UI still loads its
-combined page through `GET /api/planner`.
+| Operation | React Router route | Resource API |
+| --- | --- | --- |
+| Journal create | `POST /journal/entries` | `POST /api/journals` |
+| Journal save/delete | `PUT/DELETE /journal/entries/{date}` | `PUT/DELETE /api/journals/{date}` |
+| Routine kind | `PATCH /routines/{id}` | `PATCH /api/routines/{id}` |
+| Routine complete/uncheck | `PUT /routines/{id}/completions/{date}` | Same path under `/api` |
+| Therapy complete/uncheck | `PUT /therapy/sessions/{sessionId}/exercises/{exerciseId}/completions/{date}` | Same path under `/api` |
+| External complete/uncheck | `PUT /external-tasks/{source}/{id}/completions/{date}` | `PUT /api/external-tasks/{source}/{id}/completion`, with date in the existing JSON body |
+| Achievement create | `POST /profile/achievements` | `POST /api/achievements` |
+| Reward redeem | `POST /rewards/{id}/redemptions` | Same path under `/api` |
+| Google sync | `POST /google/tasks/sync/{date}` | Same path under `/api` |
+| Gmail search/import | `GET /google/gmail/messages`, `POST /google/gmail/messages/{id}/tasks/{date}` | Same paths under `/api` |
+| Calendar create/update | `POST /calendar/{calendarId}/events`, `PATCH /calendar/{calendarId}/events/{id}` | Same paths under `/api` |
+| Book metadata/bookmarks | `/books/{library}/{encodedPath}/details`, `/rename`, `/bookmarks`, `/bookmarks/{id}` | Existing book endpoints; no API contract changes |
+
+The shared planner read remains temporarily for the rest of the UI. Next,
+migrate its consumers by page and delete planner fields as each read moves.
 
 ### 5. Migrate UI reads by page
 
 Recommended order: therapy, journal, quest log, profile, then the main calendar.
 Apply the UI resource request rules to every loader/action introduced here.
+Treat a page migration as incomplete if its old fields are still loaded by the
+combined planner request merely because the shared layout is convenient.
 
+- [x] Therapy: use a page loader for `GET /api/therapy/sessions`, preserve
+  selected-date navigation, and omit therapy from the UI planner request.
+- [ ] Journal: use one dated route loader for the browser and selected entry;
+  remove journal reads from the UI planner request.
+- [ ] Quest log: load routines plus templates and historical acceptance with
+  page-owned reads; remove those fields from the UI planner request.
+- [ ] Profile: add purpose-built completion history and XP/streak summaries;
+  do not make the profile recalculate unrelated quests or calendar state.
+- [ ] Main calendar and dashboard: own their routines, completions, synced
+  tasks, points, journal-date markers and achievement preview reads.
 - [ ] Use page-specific React Router loaders/actions with shared session and
   selected-date navigation.
 - [ ] Add only missing read contracts: journal browser dates, completion
@@ -268,7 +313,30 @@ Apply the UI resource request rules to every loader/action introduced here.
   and session/configuration state independent of the planner page.
 - [ ] Avoid fetching every resource on every navigation. Purpose-built read
   summaries are acceptable where they reduce requests and preserve consistency.
-- [ ] Preserve legacy planner endpoints after the UI no longer needs them.
+  A page-owned loader must not silently replace the combined request with
+  duplicate requests for the same resource.
+- [ ] Remove obsolete planner fields, endpoints, dispatch, and tests after
+  their final UI consumers move.
+
+**Review additions**
+
+- Extract session/configuration, selected-date, balance, and XP shell data
+  before the journal/quest/profile migrations. Anonymous configuration and
+  OAuth errors must continue to render the sign-in shell without triggering
+  authenticated resource loaders.
+- Keep the achievement-refresh behavior on reads until a purpose-built summary
+  has tests proving that date-dependent streaks and newly earned milestones
+  remain equivalent.
+- Define loader-level fixtures and tests for every page: selected date, API
+  error, request cancellation, revalidation after that page's writes, and no
+  request for unrelated page resources.
+- Do not add query flags such as `include...` or `without...` to hide resources
+  from `/api/planner`. Move the read, remove that field from the planner
+  contract, and let tests enforce the smaller response.
+
+Status: in progress. The therapy read is now owned by
+`src/features/therapy/services/therapy-route.ts`, and `PlannerPage` no longer
+loads or returns therapy. No compatibility query parameter was introduced.
 
 ### 6. Python CRUD learning equivalent
 
@@ -302,19 +370,20 @@ Verification for milestone 3: `npm run test:server`, `npm run test:profile`,
 integration suite was not run because `TEST_DATABASE_URL` is unset; it requires
 an empty, disposable database.
 
-Milestone 4 progress: quest create/edit/delete/complete and template acceptance
-now use their resource endpoints through feature-owned React Router actions.
-Previously migrated journal, routine, therapy, external-task, book, and
-integration consumers must also be audited against the UI resource request
-rules; not all are aligned yet.
+Milestone 4 is complete, including the retroactive resource-consumer audit.
+All UI writes are resource-owned and use numeric statuses. The obsolete planner
+write API and adapters should be removed as follow-up work. No schema or Python
+changes were made.
+Reader progress retains its direct resource requests and intentional save queue.
 
-Next bounded task: audit and align the journal UI as the first previously
-migrated resource, preserving autosave and retry. Continue the alignment
-checklist resource by resource, and use the same rules for achievement creation,
-reward redemption, and all subsequent migrations. Do not run write tests
-against the normal app database or begin unrelated migrations.
+Milestone 5 therapy-read slice is implemented. Next bounded task: extract the
+session/configuration shell, then migrate journal's fetcher-read into its
+page route loader and remove journal fields from the UI planner request.
+Preserve selected-date navigation and keep achievement refresh behavior on
+planner reads until equivalent write/streak coverage exists. Do not run write
+tests against the normal app database.
 
-Verification completed:
+Earlier bounded-slice verification:
 
 - `npm run test:database`: user-provided output confirms 5 tests passed on the
   disposable test database after the milestone 2 extraction.
@@ -334,6 +403,57 @@ Verification completed:
 - Automated browser write checks could not start because the integrated
   browser's cookie API is unavailable. The user requested sparse Chrome use;
   retain the isolated API test coverage and finish interactive checks later.
+
+Full milestone 4 verification:
+
+- 54 focused tests passed across profile, gamification, resource actions,
+  calendar, books and reader progress. Coverage includes bodyless deletion,
+  encoded book paths, numeric statuses, API errors,
+  cancellation, router error propagation and revision-conflict recovery.
+- `npm run test:server` passed both suites, including dedicated Google/calendar
+  routes, authentication, CSRF rejection, no-store headers, conditional event
+  updates, duplicate Gmail imports and invalid inputs.
+- `npm run test:database` passed all 5 tests on the disposable database in this
+  session. Expected constraint-rejection logs are not test failures.
+- `npm run typecheck`, `npm run lint:hooks`, `npm run build`, and
+  `git diff --check` passed. The build retains dependency bundling warnings.
+- Chrome verified journal creation, autosave failure/retry, unsaved-navigation
+  blocking, draft recovery after an unexpected response/reload, confirmed
+  deletion and selected-date navigation against an in-memory API fixture.
+  Its synthetic write sequence was POST, failed PUT, retry PUT, unexpected
+  response PUT, recovery PUT and DELETE. No real app or Google data was written.
+  This is separate from database persistence coverage; the earlier interactive
+  Chrome-on-disposable-database checkbox remains incomplete.
+
+Follow-up simplification: single-operation action method guards and speculative
+planner/library response checks were removed. Shared item actions still route
+their supported methods. Calendar writes check only event ordering and update
+etags; field types, timestamp formats and lengths are left to Google. Mantine
+owns periodic progress scheduling, while the smaller queue retains ordered
+writes and explicit conflict recovery. epubjs/PDF.js extraction now releases
+parser resources after producing persistent thumbnail data. Chrome read-only
+checks verified PDF thumbnails and EPUB author, description and cover loading.
+Follow-up verification: all 55 focused tests, both server/action validation
+suites, typecheck, hook lint, production build and whitespace checks passed.
+
+Journal follow-up: new entries are created explicitly before editing. Existing
+entries only PUT content to their date-ID URL; deletion has a separate DELETE
+form and fetcher. Reader revalidation updates the browser and switches between
+new and saved states without save/delete callbacks or local existence flags.
+Retries and session-storage draft recovery were removed intentionally.
+Single-letter variables were renamed throughout authored application source,
+including therapy exercise keys and child callback parameters. Generated
+Prisma code is unchanged; the Python application had no single-letter bindings.
+Verification: 55 focused tests, both server/action suites, typecheck, hook lint,
+production build and whitespace checks passed. AST scans found no single-letter
+bindings in authored application code. Chrome confirmed a missing entry shows
+Create entry without an editor or retry controls; no journal data was written.
+
+Therapy read follow-up: the physical-therapy route owns its dated loader and
+continues to own completion writes. The planner page no longer queries, returns,
+or types therapy data, so revalidation performs one direct therapy read.
+Verification: 31 focused planner/profile tests passed and TypeScript typecheck
+passed.
 
 Temporary browser servers are stopped after testing. The database suite leaves
 tables and test data behind; recreate only the disposable test database before

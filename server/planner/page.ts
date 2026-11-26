@@ -4,10 +4,8 @@ import { getMissingConfiguration, getSignedInEmail } from "../auth/service";
 import { getPointsSummary } from "../points/service";
 import { getExternalTasks } from "../external-tasks/service";
 import { getGamification } from "../gamification/service";
-import { getTherapyPlan } from "../therapy/service";
 import { dateString } from "../db/client";
 import { listJournals } from "../journals/service";
-import { listRoutineCompletions } from "../routines/service";
 
 type RoutineCompletion = { day: Date; taskId: number };
 
@@ -31,6 +29,11 @@ export async function getPlannerSnapshot(
   };
 }
 
+/**
+ * Assembles the remaining combined planner snapshot.
+ * @param request - The planner request, including the selected date.
+ * @returns The authenticated planner data or sign-in configuration state.
+ */
 export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const url = new URL(request.url);
   const authError = url.searchParams.get("authError")?.slice(0, 240) ?? "";
@@ -51,9 +54,17 @@ export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const pointsRequest = url.searchParams.get("taskKeys") === "visible"
     ? tasks.then((visible) => getPointsSummary(selected, visible))
     : getPointsSummary(selected);
-  const [{ completions, ...gamification }, plannerTasks, points, therapy] = await Promise.all([
-    getGamification(today), tasks, pointsRequest, getTherapyPlan(selected),
+  const [{ completions, ...gamification }, plannerTasks, points] = await Promise.all([
+    getGamification(today), tasks, pointsRequest,
   ]);
   const planner = await getPlannerSnapshot(selected, completions, plannerTasks);
-  return { authenticated: true, email, today, selected, ...planner, ...points, ...gamification, therapy };
+  return {
+    authenticated: true,
+    email,
+    today,
+    selected,
+    ...planner,
+    ...points,
+    ...gamification,
+  };
 }

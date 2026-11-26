@@ -121,7 +121,6 @@ export type PlannerPage =
       acceptedTemplateIds: string[];
       routines: RoutineTask[];
       routineGroups: RoutineGroup[];
-      therapy: TherapyPlan;
       redemptions: Array<{
         rewardId: string;
         rewardName: string;

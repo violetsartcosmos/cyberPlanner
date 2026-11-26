@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createMemoryRouter } from "react-router";
 import {
-  externalCompletionAction, routineCompletionAction, therapyCompletionAction, updateRoutineAction,
+  externalCompletionAction, routineCompletionAction, updateRoutineAction,
 } from "../src/features/planner/services/routine-actions.ts";
+import {
+  therapyCompletionAction, therapyLoader,
+} from "../src/features/therapy/services/therapy-route.ts";
 import {
   createJournalAction, journalLoader, journalResourceAction,
 } from "../src/features/planner/services/journal-actions.ts";
@@ -59,6 +62,42 @@ test("routine and completion forms use URL identities, HTTP methods and mileston
     });
     assert.deepEqual(await action({ request: actionRequest, params }), expected);
   }
+});
+
+test("therapy loader reads only the selected date resource", async (t) => {
+  const plan = { therapySessions: [], earnedPoints: 20 };
+  const controller = new AbortController();
+  const request = new Request("http://localhost/physical-therapy?date=2026-11-21", {
+    signal: controller.signal,
+  });
+  const fetch = t.mock.method(globalThis, "fetch", async (url, options) => {
+    assert.equal(url, "/api/therapy/sessions?date=2026-11-21");
+    assert.equal(options.signal, request.signal);
+    return Response.json(plan);
+  });
+  const result = await therapyLoader({
+    request,
+    params: {},
+  });
+  assert.deepEqual(result, plan);
+  assert.equal(fetch.mock.callCount(), 1);
+});
+
+test("therapy loader uses planner date fallback and propagates request failures", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", async (url) => {
+    const requested = new URL(url, "http://localhost").searchParams.get("date");
+    assert.match(requested, /^\d{4}-\d{2}-\d{2}$/);
+    return Response.json({ error: "Unavailable." }, { status: 503 });
+  });
+  await assert.rejects(therapyLoader({
+    request: new Request("http://localhost/physical-therapy?date=2026-02-30"),
+    params: {},
+  }), /Could not load therapy sessions \(503\)/);
+  fetch.mock.mockImplementation(async () => { throw new Error("Network unavailable"); });
+  await assert.rejects(therapyLoader({
+    request: new Request("http://localhost/physical-therapy"),
+    params: {},
+  }), { message: "Network unavailable" });
 });
 
 test("resource actions report server errors without retrying the legacy API", async (t) => {

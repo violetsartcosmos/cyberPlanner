@@ -15,21 +15,26 @@ Book requests that take a `path` require a non-empty path of at most 2,048 chara
 | `POST /api/planner` | Validates and dispatches a planner action. |
 
 `GET /api/planner` returns all earned task keys by default. Set `taskKeys=visible` to return only keys for the selected date's built-in tasks and its visible synced tasks.
-
 The shared UI shell still loads its combined page through `GET /api/planner`.
+Therapy is now the exception: its page uses a dated resource loader, and
+`/api/planner` no longer returns therapy data.
 All UI form writes now use feature-owned React Router actions and resource endpoints.
 No UI forms dispatch hidden planner intents or write to `POST /api/planner`.
-That legacy endpoint remains supported for existing clients. Both APIs use
-the same services and database; switching between them does not award points again.
+The planner endpoints are temporary migration surfaces and will be removed once
+their remaining UI consumers move to resource endpoints.
 Resource action results carry numeric HTTP statuses and API errors, rather
-than the legacy planner response's `ok` flag.
+than the planner action's obsolete `ok` flag.
 
 Planner form fields are text. Date and completion-state checks remain at the
 request boundary; task assignments and one-time awards are checked in the
 services. Routine kinds are checked against the server's point-value mapping.
 Stored-field constraints are left to Prisma and the database.
 
-For a signed-in user, the response also includes `therapy.therapySessions` with exercise definitions, point values, and completion states for the selected date, plus `therapy.earnedPoints` from the points ledger. Submit the `toggle_physical_therapy` planner action with form fields `date` (`YYYY-MM-DD`), `sessionId`, `exerciseId`, and `completed` (`true` or `false`). The server validates the session assignment and determines the point value; an award occurs at most once for that date, session, and exercise. Unchecking does not reverse an award.
+The physical-therapy page reads exercise definitions, point values, completion
+states, and earned points from `GET /api/therapy/sessions?date=...`. Writes use
+the dated completion resource URL below. The server validates the session
+assignment and determines the point value; an award occurs at most once for
+that date, session, and exercise. Unchecking does not reverse an award.
 
 ## Journals
 
