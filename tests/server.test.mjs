@@ -105,6 +105,37 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
     const cookie = await storage.commitSession(session);
     const journalHeaders = { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" };
+    const sessionSecret = process.env.SESSION_SECRET;
+    delete process.env.SESSION_SECRET;
+    try {
+      const shell = await app.request("http://localhost/api/planner?authError=denied");
+      assert.deepEqual(await shell.json(), {
+        authenticated: false, missingConfiguration: ["SESSION_SECRET"], authError: "denied",
+      });
+    } finally {
+      process.env.SESSION_SECRET = sessionSecret;
+    }
+    const googleClientId = process.env.GOOGLE_CLIENT_ID;
+    delete process.env.GOOGLE_CLIENT_ID;
+    try {
+      const response = await app.request("http://localhost/api/rewards", { headers: { Cookie: cookie } });
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      const calendar = await app.request("http://localhost/api/planner/calendar?date=invalid", {
+        headers: { Cookie: cookie },
+      });
+      assert.equal(calendar.status, 400);
+    } finally {
+      process.env.GOOGLE_CLIENT_ID = googleClientId;
+    }
+    for (const query of ["", "?date=invalid", "?date=2026-02-30"]) {
+      const response = await app.request(`http://localhost/api/planner/calendar${query}`, {
+        headers: { Cookie: cookie },
+      });
+      assert.equal(response.status, 400);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      assert.deepEqual(await response.json(), { error: "That planner date is invalid." });
+    }
     const calendarWrites = [];
     globalThis.googleRouteTest = {};
     t.after(() => { delete globalThis.googleRouteTest; });

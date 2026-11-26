@@ -2,6 +2,9 @@
 
 The API is served by the same origin as the app. Book and calendar endpoints require a session for the configured Google account. Planner, calendar, and book responses are marked non-cacheable. Requests that change data must pass the server's same-origin CSRF check.
 
+Authenticated resource endpoints return `401` if the configured Google account
+is not signed in.
+
 JSON request bodies should use the types shown below. Invalid values rejected by the database can return `500`.
 
 The optional `library` parameter accepts `ebooks` (the default) or `audiblebooks`.

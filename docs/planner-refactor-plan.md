@@ -324,7 +324,7 @@ combined planner request merely because the shared layout is convenient.
 - [X] Keep authentication, selected-date, balance and XP shell data at the
   root while dashboard/calendar reads are owned by their nested page loader.
   Anonymous configuration errors keep the sign-in shell; the calendar API
-  checks configuration and session before reading authenticated resources.
+  requires a valid session before reading authenticated resources.
 - Keep the achievement-refresh behavior on reads until a purpose-built summary
   has tests proving that date-dependent streaks and newly earned milestones
   remain equivalent.
