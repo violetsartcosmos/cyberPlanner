@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useInterval } from "@mantine/hooks";
 import type { BookProgress, LibraryBook } from "../../../../shared/planner/books";
 import { loadProgress, writeProgress } from "../services/progress-api";
 
@@ -6,8 +7,6 @@ type State = { progress: BookProgress | null; error: string; conflict: BookProgr
 
 export class ProgressQueue {
   state: State = { progress: null, error: "", conflict: null, saving: false, pendingPosition: null };
-  private pending: string | null = null;
-  private timer: ReturnType<typeof setTimeout> | null = null;
   private running: Promise<boolean> | null = null;
 
   constructor(private book: Pick<LibraryBook, "path" | "library">, private notify: (state: State) => void) {}
@@ -22,39 +21,45 @@ export class ProgressQueue {
     catch (error) { this.update({ error: error instanceof Error ? error.message : "Could not load progress." }); }
   }
 
+  /**
+   * Keeps the latest position while a write is pending.
+   * @param position - The reader position to save.
+   * @returns Nothing; the hook schedules the write.
+   */
   enqueue(position: string) {
     if (!this.state.progress) return;
-    this.pending = position;
     this.update({ pendingPosition: position });
-    if (!this.timer && !this.state.conflict && !this.state.error) {
-      this.timer = setTimeout(() => { this.timer = null; void this.flush(); }, 5000);
-    }
   }
 
+  /**
+   * Joins an in-flight save or starts one for the pending position.
+   * @returns Whether the queued positions were saved.
+   */
   flush(): Promise<boolean> {
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = null;
     if (this.running) return this.running;
-    if (!this.state.progress || this.state.conflict || this.state.error) return Promise.resolve(false);
+    if (!this.state.progress || this.state.pendingPosition === null || this.state.conflict || this.state.error) return Promise.resolve(false);
     this.running = this.save().finally(() => { this.running = null; });
     return this.running;
   }
 
+  /**
+   * Serializes pending writes and pauses on conflicting database progress.
+   * @returns Whether all queued positions were saved.
+   */
   private async save(): Promise<boolean> {
     this.update({ saving: true });
     try {
-      while (this.pending !== null && this.state.progress) {
-        const position = this.pending;
+      while (this.state.pendingPosition !== null && this.state.progress) {
+        const position = this.state.pendingPosition;
         const result = await writeProgress(this.book, position, this.state.progress.revision);
-        if (result.conflict && result.progress.position !== position) {
+        if (result.status === 409 && result.progress.position !== position) {
           this.update({ conflict: result.progress });
           return false;
         }
-        this.update({ progress: result.progress });
-        if (this.pending === position) {
-          this.pending = null;
-          this.update({ pendingPosition: null });
-        }
+        this.update({
+          progress: result.progress,
+          pendingPosition: this.state.pendingPosition === position ? null : this.state.pendingPosition,
+        });
       }
       return true;
     } catch (error) {
@@ -77,19 +82,26 @@ export class ProgressQueue {
 
   useDatabase() {
     if (!this.state.conflict) return;
-    this.pending = null;
     this.update({ progress: this.state.conflict, conflict: null, error: "", pendingPosition: null });
   }
 }
 
+/**
+ * Saves pending reader positions periodically and when leaving the page.
+ * @param book - The library book whose revisioned progress is saved.
+ * @returns Progress, recovery feedback and the write queue.
+ */
 export function useBookProgress(book: LibraryBook) {
   const { path, library } = book;
   const [state, setState] = useState<State>({ progress: null, error: "", conflict: null, saving: false, pendingPosition: null });
   const queue = useRef<ProgressQueue | null>(null);
+  const savePending = useCallback(() => { void queue.current?.flush(); }, []);
+  useInterval(savePending, 5000, { autoInvoke: true });
   useEffect(() => {
     let active = true;
     const current = new ProgressQueue({ path, library }, (next) => { if (active) setState(next); });
     queue.current = current;
+    setState(current.state);
     void current.load();
     const flush = () => { void current.flush(); };
     window.addEventListener("pagehide", flush);

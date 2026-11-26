@@ -7,7 +7,6 @@ import type { QuestActionResult } from "../../../../shared/planner/types";
  * @returns The HTTP status and creation notification or API error.
  */
 export async function createQuestAction({ request }: ActionFunctionArgs): Promise<QuestActionResult> {
-  if (request.method !== "POST") return { status: 405, error: "Method not allowed." };
   const form = await request.formData();
   const response = await fetch("/api/quests", {
     method: "POST",
@@ -90,7 +89,6 @@ export async function questResourceAction(args: ActionFunctionArgs): Promise<Que
  * @returns The HTTP status and completion notification or API error.
  */
 export async function completeQuestAction({ request, params }: ActionFunctionArgs): Promise<QuestActionResult> {
-  if (request.method !== "POST") return { status: 405, error: "Method not allowed." };
   const response = await fetch(`/api/quests/${encodeURIComponent(params.id as string)}/complete`, {
     method: "POST",
     signal: request.signal,
@@ -107,7 +105,6 @@ export async function completeQuestAction({ request, params }: ActionFunctionArg
  * @returns The HTTP status and acceptance notification or API error.
  */
 export async function acceptQuestTemplateAction({ request, params }: ActionFunctionArgs): Promise<QuestActionResult> {
-  if (request.method !== "POST") return { status: 405, error: "Method not allowed." };
   const response = await fetch(`/api/quest-templates/${encodeURIComponent(params.templateId as string)}/accept`, {
     method: "POST",
     signal: request.signal,

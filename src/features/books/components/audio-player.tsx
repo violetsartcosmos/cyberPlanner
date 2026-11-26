@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { SyntheticEvent } from "react";
+import { useFetcher } from "react-router";
 import { BookmarkPlus, Headphones, ListMusic, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward } from "lucide-react";
 import type { LibraryBook } from "../../../../shared/planner/books";
-import { bookCoverUrl, bookQuery, bookUrl } from "../utils/book-url";
+import { bookCoverUrl, bookUrl } from "../utils/book-url";
 import { useBookmarks } from "../hooks/use-bookmarks";
 import { useSavedWikipedia } from "../hooks/use-saved-wikipedia";
 import { useBookProgress } from "../hooks/use-book-progress";
 import { ProgressStatus } from "./progress-status";
 import { audioPositionToSave, restoredAudioSeconds } from "../utils/audio-progress";
 import { useNotification } from "@/components/notifications";
-
-type Chapter = { title: string; start: number };
+import type { BookReadResult } from "../services/book-actions";
 
 function formatTime(seconds: number) {
   const total = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
@@ -20,11 +20,19 @@ function formatTime(seconds: number) {
   return hours ? `${hours}:${String(minutes).padStart(2, "0")}:${remainder}` : `${minutes}:${remainder}`;
 }
 
+/**
+ * Plays an audiobook with resource bookmarks, chapters and recoverable progress.
+ * @param props - The selected book and reader close callback.
+ * @returns The player controls and saved-position feedback.
+ */
 export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () => void }) {
   const { path, library } = book;
   const { progress, error: progressError, conflict, saving, pendingPosition, queue } = useBookProgress(book);
   const [restoreError, setRestoreError] = useState("");
-  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const chapterReader = useFetcher<BookReadResult>();
+  const { load } = chapterReader;
+  const chapters = chapterReader.data?.chapters ?? [];
+  useNotification(chapterReader.data?.error);
   const notify = useNotification();
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -45,19 +53,8 @@ export function AudioPlayer({ book, onClose }: { book: LibraryBook; onClose: () 
   useNotification(restoreError);
 
   useEffect(function loadChapters() {
-    const controller = new AbortController();
-    async function load() {
-      try {
-        const response = await fetch(`/api/books/chapters?${bookQuery({ path, library })}`, { signal: controller.signal });
-        if (!response.ok) throw new Error(`Could not load chapters (${response.status}).`);
-        setChapters(await response.json() as Chapter[]);
-      } catch (error) {
-        if (!controller.signal.aborted) notify(error instanceof Error ? error.message : "Could not load chapters.");
-      }
-    }
-    void load();
-    return () => controller.abort();
-  }, [path, library, notify]);
+    void load(`/books/${library ?? "ebooks"}/${encodeURIComponent(path)}/chapters`);
+  }, [path, library, load]);
 
   function savePosition(audio: HTMLAudioElement, force = false) {
     const position = audioPositionToSave(audio, restored.current);

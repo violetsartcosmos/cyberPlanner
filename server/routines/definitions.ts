@@ -51,17 +51,17 @@ export async function loadRoutines(client: RoutineClient) {
     kind: routineKind(row.kind),
     points: row.points,
   }));
-  routines.sort((a, b) => a.list.localeCompare(b.list)
-    || (a.weekday === null ? -1 : routineWeekdays.indexOf(a.weekday))
-      - (b.weekday === null ? -1 : routineWeekdays.indexOf(b.weekday))
-    || a.id - b.id);
+  routines.sort((firstRoutine, secondRoutine) => firstRoutine.list.localeCompare(secondRoutine.list)
+    || (firstRoutine.weekday === null ? -1 : routineWeekdays.indexOf(firstRoutine.weekday))
+      - (secondRoutine.weekday === null ? -1 : routineWeekdays.indexOf(secondRoutine.weekday))
+    || firstRoutine.id - secondRoutine.id);
   const routineGroups: RoutineGroup[] = groups.map((group) => ({
     id: group.id,
     weekday: storedWeekday(group.weekday),
     title: group.title,
     message: group.message,
   }));
-  routineGroups.sort((a, b) => routineWeekdays.indexOf(a.weekday) - routineWeekdays.indexOf(b.weekday));
+  routineGroups.sort((firstGroup, secondGroup) => routineWeekdays.indexOf(firstGroup.weekday) - routineWeekdays.indexOf(secondGroup.weekday));
   return { routines, routineGroups };
 }
 

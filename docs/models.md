@@ -39,7 +39,7 @@ In development, Vite serves the browser app and proxies `/api` and `/auth` to th
 | [`server/journals/`](../server/journals/) | Journal CRUD routes and database operations. |
 | [`server/routines/`](../server/routines/) | Routine routes, definitions, assignment rules, completions, and kind changes. |
 | [`server/http.ts`](../server/http.ts) | Shared sign-in, no-store, and server-error handling for API routes. |
-| [`server/auth/`](../server/auth/), [`server/google/`](../server/google/) | Session and OAuth handling; Google Tasks, Gmail, Calendar integration, and calendar routes. |
+| [`server/auth/`](../server/auth/), [`server/google/`](../server/google/) | Session and OAuth handling; Google Tasks, Gmail and Calendar resource routes and remote-update orchestration. |
 | [`server/db/`](../server/db/) | Prisma client and database helpers. |
 | [`shared/planner/`](../shared/planner/) | Types, task and reward definitions, validation, and utilities used by client and server. |
 | [`prisma/schema.prisma`](../prisma/schema.prisma), [`prisma/migrations/`](../prisma/migrations/) | Persistent schema and committed database migrations. |
@@ -52,14 +52,30 @@ The client uses browser APIs; server modules run in Node.js. The Vite configurat
 1. React Router's loader requests `/api/planner` for the selected date.
 2. The Hono route calls `getPlannerPage`, which checks configuration and the signed-in session.
 3. Planner, points, and gamification services assemble the response from PostgreSQL.
-4. Journal CRUD, routine changes, and task completions use their resource
-   endpoints. Remaining actions are posted to `/api/planner` and dispatched to
-   the same underlying services. Calendar and book endpoints have their own routes.
+4. Feature-owned React Router actions submit form writes to resource endpoints
+   and return numeric HTTP statuses. Forms use actual HTTP methods and URL
+   parameters rather than hidden operation intents. Legacy `/api/planner`
+   write adapters remain available to older clients, using the same services.
 
 The journal page reads saved dates and entry content through its own GET
 endpoints, while the shared planner shell still uses the combined loader. See
 the [refactor plan](planner-refactor-plan.md) for the CRUD learning slice and
 remaining migrations.
+
+Journal, book and calendar resource loaders support the already-migrated
+consumers; they do not replace the combined planner shell loader. Journals have
+an explicit new-entry creation state. Existing entries autosave by date ID;
+deletion uses a separate fetcher. Journal writes have no retry controls or
+session-storage draft recovery. Book metadata updates
+retain local cache updates and do not reread obsolete paths during rename.
+Reader progress keeps its explicit retry and revision-conflict queue because
+those are intentional recovery flows, not generic request wrappers.
+Mantine's `useInterval` schedules pending progress saves every five seconds,
+including during continuous playback. The queue owns only latest-position
+coalescing, ordered revisioned writes and conflict recovery, not timer state.
+Embedded metadata uses epubjs and PDF.js directly. EPUB covers are data URLs
+so the archive can be destroyed after extraction; PDF workers are destroyed
+after thumbnail rendering or cancellation.
 
 Google sign-in uses `/auth/google` and `/auth/callback`; the server stores an encrypted refresh token and uses it for Google API calls. Only the configured Google account can sign in.
 

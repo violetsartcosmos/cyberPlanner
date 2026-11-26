@@ -9,7 +9,7 @@ import {
 import { useFetcher } from "react-router";
 import { achievementCategories, tiers, type Achievement } from "../../../../shared/planner/gamification";
 import { routinesFor, type RoutineTask } from "../../../../shared/planner/routines";
-import type { QuestActionResult } from "../../../../shared/planner/types";
+import type { AchievementActionResult } from "../../../../shared/planner/types";
 import { useNotification } from "@/components/notifications";
 
 const icons: Record<string, typeof Award> = {
@@ -42,7 +42,7 @@ function buildRoutineOptions(routines: RoutineTask[], list: "morning" | "night")
 export function AchievementPreview({ achievements }: { achievements: Achievement[] }) {
   const earned = achievements.filter((achievement) => achievement.earnedAt);
   const featured = [...achievements]
-    .sort((a, b) => Number(Boolean(b.earnedAt)) - Number(Boolean(a.earnedAt)))
+    .sort((firstAchievement, secondAchievement) => Number(Boolean(secondAchievement.earnedAt)) - Number(Boolean(firstAchievement.earnedAt)))
     .slice(0, 4);
 
   return (
@@ -74,9 +74,14 @@ export function AchievementPreview({ achievements }: { achievements: Achievement
   );
 }
 
+/**
+ * Collects a points or routine-streak goal for the achievement creation action.
+ * @param props - The dialog callbacks, resource fetcher and available routines.
+ * @returns The achievement form and modal controls.
+ */
 function AchievementDialog({ onClose, fetcher, onSubmit, routines }: {
   onClose: () => void;
-  fetcher: ReturnType<typeof useFetcher<QuestActionResult>>;
+  fetcher: ReturnType<typeof useFetcher<AchievementActionResult>>;
   onSubmit: () => void;
   routines: RoutineTask[];
 }) {
@@ -129,12 +134,17 @@ function AchievementDialog({ onClose, fetcher, onSubmit, routines }: {
   );
 }
 
+/**
+ * Browses achievements and reports creation feedback, including immediate milestones.
+ * @param props - The achievement list, lifetime points and tracked routines.
+ * @returns Filtered cards and the achievement creation dialog.
+ */
 export function Achievements({ achievements, earned, routines }: {
   achievements: Achievement[];
   earned: number;
   routines: RoutineTask[];
 }) {
-  const fetcher = useFetcher<QuestActionResult>();
+  const fetcher = useFetcher<AchievementActionResult>();
   const [filters, setFilters] = useState({ category: "all", tier: "all", status: "all" });
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState("");
@@ -150,9 +160,11 @@ export function Achievements({ achievements, earned, routines }: {
       if (pending.current === "save") setEditing(false);
       setDialogError("");
       setNoticeIsError(false);
-      setNotice(fetcher.data.message ?? "Achievement saved.");
+      setNotice(fetcher.data.earnedAchievements?.length
+        ? `Achievement milestone earned: ${fetcher.data.earnedAchievements.join(", ")}!`
+        : fetcher.data.message as string);
     } else {
-      const error = fetcher.data.error ?? "Could not save your changes.";
+      const error = fetcher.data.error as string;
       if (pending.current === "save") setDialogError(error);
       else { setNotice(error); setNoticeIsError(true); }
     }

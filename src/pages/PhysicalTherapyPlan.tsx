@@ -3,38 +3,49 @@ import { useFetcher } from "react-router";
 import { useActionNotifications, useNotification } from "@/components/notifications";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import africanBeautyTree from "@/assets/images/africanbeautytree.jpg";
-import type { PlannerActionResult, TherapyPlan } from "../../shared/planner/types";
+import type { RoutineActionResult, TherapyPlan } from "../../shared/planner/types";
 
-const pad = (n: number) => String(n).padStart(2, "0");
+/**
+ * Formats an exercise count with at least two digits.
+ * @param count - The number of exercises.
+ * @returns The padded count label.
+ */
+const padCount = (count: number) => String(count).padStart(2, "0");
 
+/**
+ * Displays assigned therapy sessions and submits dated exercise completions.
+ * @returns The therapy progress, exercise controls and instructions.
+ */
 export default function PhysicalTherapyPlan() {
   const { page, selected, date } = usePlannerContext();
   const { therapySessions, earnedPoints } = page.therapy;
-  const fetcher = useFetcher<PlannerActionResult>();
+  const fetcher = useFetcher<RoutineActionResult>();
   useActionNotifications(fetcher);
   useNotification(fetcher.state === "idle" && fetcher.data?.earnedAchievements?.length
     ? `Achievement milestone earned: ${fetcher.data.earnedAchievements.join(", ")}!` : "", "notice");
-  const [sessionIdx, setSessionIdx] = useState(0);
-  const [open, setOpen] = useState<string | null>(null);
-  const session = therapySessions[sessionIdx] ?? therapySessions[0];
+  const [selectedSessionIndex, setSelectedSessionIndex] = useState(0);
+  const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
+  const session = therapySessions[selectedSessionIndex] ?? therapySessions[0];
   const countFor = (therapySession: TherapyPlan["therapySessions"][number]) => therapySession.exercises.filter((exercise) => exercise.completed).length;
-  const total = therapySessions.reduce((n, s) => n + s.exercises.length, 0);
-  const complete = therapySessions.reduce((n, s) => n + countFor(s), 0);
-  const pct = total ? Math.round((complete / total) * 100) : 0;
+  const totalExerciseCount = therapySessions.reduce((exerciseCount, therapySession) => exerciseCount + therapySession.exercises.length, 0);
+  const completedExerciseCount = therapySessions.reduce((exerciseCount, therapySession) => exerciseCount + countFor(therapySession), 0);
+  const completionPercentage = totalExerciseCount ? Math.round((completedExerciseCount / totalExerciseCount) * 100) : 0;
   const shortDate = date.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }).replace(".", "");
 
   if (!session) return <p>No physical therapy sessions are configured.</p>;
 
   const sessionDone = countFor(session);
-  const toggle = (exerciseId: string, completed: boolean) => {
+  /**
+   * Saves the exercise's checked state for the selected session and date.
+   * @param exerciseId - The exercise being checked or unchecked.
+   * @param completed - Its new checked state.
+   * @returns Nothing; the resource action revalidates the therapy plan.
+   */
+  function toggle(exerciseId: string, completed: boolean) {
     fetcher.submit({
-      intent: "toggle_physical_therapy",
-      date: selected,
-      sessionId: session.id,
-      exerciseId,
       completed: String(completed),
-    }, { method: "post" });
-  };
+    }, { method: "put", action: `/therapy/sessions/${encodeURIComponent(session.id)}/exercises/${encodeURIComponent(exerciseId)}/completions/${selected}` });
+  }
 
   return (
     <div className="pt-page container-fluid px-3 px-lg-5 py-4">
@@ -47,24 +58,24 @@ export default function PhysicalTherapyPlan() {
             <p className="pt-muted mb-4">Short sessions, done gently. A little progress is still progress.</p>
             <div className="d-flex justify-content-between align-items-end mb-2">
               <span className="pt-label pt-ink">Mission progress</span>
-              <span className="pt-pct">{pct}%</span>
+              <span className="pt-pct">{completionPercentage}%</span>
             </div>
-            <div className="pt-bar"><i style={{ width: `${pct}%` }} /></div>
-            <div className="pt-label mt-2">{complete} / {total} exercises complete</div>
+            <div className="pt-bar"><i style={{ width: `${completionPercentage}%` }} /></div>
+            <div className="pt-label mt-2">{completedExerciseCount} / {totalExerciseCount} exercises complete</div>
           </section>
 
           {/* Session toggle */}
           <div className="pt-seg mb-4" role="tablist" aria-label="Session">
-            {therapySessions.map((s, i) => (
+            {therapySessions.map((therapySession, sessionIndex) => (
               <button
-                key={s.id}
+                key={therapySession.id}
                 type="button"
                 role="tab"
-                aria-selected={i === sessionIdx}
-                className={i === sessionIdx ? "active" : ""}
-                onClick={() => { setSessionIdx(i); setOpen(null); }}
+                aria-selected={sessionIndex === selectedSessionIndex}
+                className={sessionIndex === selectedSessionIndex ? "active" : ""}
+                onClick={() => { setSelectedSessionIndex(sessionIndex); setExpandedExerciseId(null); }}
               >
-                {s.label}
+                {therapySession.label}
               </button>
             ))}
           </div>
@@ -76,43 +87,43 @@ export default function PhysicalTherapyPlan() {
                 <div className="pt-label pt-pink">Your daily quests</div>
                 <h2 className="pt-h2 mb-0">{session.title}</h2>
               </div>
-              <div className="pt-label">{pad(sessionDone)} / {pad(session.exercises.length)}</div>
+              <div className="pt-label">{padCount(sessionDone)} / {padCount(session.exercises.length)}</div>
             </div>
 
             <ul className="list-unstyled mb-0">
-              {session.exercises.map((ex) => {
-                const k = `${session.id}:${ex.id}`;
-                const checked = ex.completed;
-                const isOpen = open === k;
+              {session.exercises.map((exercise) => {
+                const exerciseKey = `${session.id}:${exercise.id}`;
+                const checked = exercise.completed;
+                const isOpen = expandedExerciseId === exerciseKey;
                 return (
-                  <li key={k} className="pt-rule py-3">
+                  <li key={exerciseKey} className="pt-rule py-3">
                     <div className="d-flex align-items-start gap-3">
                       <input
-                        id={k}
+                        id={exerciseKey}
                         type="checkbox"
                         className="pt-check"
                         checked={checked}
                         disabled={fetcher.state !== "idle"}
-                        onChange={(event) => toggle(ex.id, event.target.checked)}
+                        onChange={(event) => toggle(exercise.id, event.target.checked)}
                       />
-                      <label htmlFor={k} className={`flex-grow-1 ${checked ? "pt-struck" : ""}`}>
-                        <span className="pt-name">{ex.name}</span>
-                        <span className="pt-rx d-block">{ex.prescription}</span>
+                      <label htmlFor={exerciseKey} className={`flex-grow-1 ${checked ? "pt-struck" : ""}`}>
+                        <span className="pt-name">{exercise.name}</span>
+                        <span className="pt-rx d-block">{exercise.prescription}</span>
                       </label>
-                      <span className="pt-label text-nowrap">+{ex.points} pts</span>
+                      <span className="pt-label text-nowrap">+{exercise.points} pts</span>
                     </div>
                     <button
                       type="button"
                       className="pt-link ms-5 mt-1"
                       aria-expanded={isOpen}
-                      onClick={() => setOpen(isOpen ? null : k)}
+                      onClick={() => setExpandedExerciseId(isOpen ? null : exerciseKey)}
                     >
                       {isOpen ? "Hide guide" : "How to do it"}
                     </button>
                     {isOpen && (
                       <div className="pt-guide ms-5 mt-2">
-                        <p className="mb-2">{ex.instructions}</p>
-                        <p className="mb-0 pt-muted"><strong className="pt-ink">Why:</strong> {ex.purpose}</p>
+                        <p className="mb-2">{exercise.instructions}</p>
+                        <p className="mb-0 pt-muted"><strong className="pt-ink">Why:</strong> {exercise.purpose}</p>
                       </div>
                     )}
                   </li>
@@ -128,12 +139,12 @@ export default function PhysicalTherapyPlan() {
             <div className="pt-label mb-1">Your timeline</div>
             <h2 className="pt-h2 mb-3">Sessions for this date</h2>
             <ul className="list-unstyled mb-0">
-              {therapySessions.map((s, i) => (
-                <li key={s.id} className="pt-rule py-3 d-flex justify-content-between align-items-center">
-                  <button type="button" className="pt-linkplain" onClick={() => { setSessionIdx(i); setOpen(null); }}>
-                    {s.label}
+              {therapySessions.map((therapySession, sessionIndex) => (
+                <li key={therapySession.id} className="pt-rule py-3 d-flex justify-content-between align-items-center">
+                  <button type="button" className="pt-linkplain" onClick={() => { setSelectedSessionIndex(sessionIndex); setExpandedExerciseId(null); }}>
+                    {therapySession.label}
                   </button>
-                  <span className="pt-label">{countFor(s)} / {s.exercises.length}</span>
+                  <span className="pt-label">{countFor(therapySession)} / {therapySession.exercises.length}</span>
                 </li>
               ))}
             </ul>

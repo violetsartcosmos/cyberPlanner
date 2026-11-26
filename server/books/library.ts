@@ -42,7 +42,7 @@ export async function listBooks(root: string, library: LibraryName = "ebooks"): 
     }
   }
   await visit(root, "");
-  return books.sort((a, b) => a.title.localeCompare(b.title) || a.path.localeCompare(b.path));
+  return books.sort((firstBook, secondBook) => firstBook.title.localeCompare(secondBook.title) || firstBook.path.localeCompare(secondBook.path));
 }
 
 export async function findBook(root: string, path: string, library: LibraryName = "ebooks"): Promise<LibraryBook | null> {

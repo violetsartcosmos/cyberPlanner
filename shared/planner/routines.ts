@@ -39,7 +39,7 @@ export function routineWeekday(index: number): RoutineWeekday {
 export function routinesFor(routines: RoutineTask[], list: RoutineList, weekday: RoutineWeekday | null) {
   return routines
     .filter((routine) => routine.list === list && routine.weekday === weekday)
-    .sort((a, b) => a.id - b.id);
+    .sort((firstRoutine, secondRoutine) => firstRoutine.id - secondRoutine.id);
 }
 
 export function routineGroupFor(groups: RoutineGroup[], weekday: RoutineWeekday) {

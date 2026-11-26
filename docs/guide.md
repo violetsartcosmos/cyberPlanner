@@ -10,10 +10,10 @@ The dashboard combines a calendar, daily quests, and routines. Routines default 
 
 On the calendar, switch between day, week, and month, select a date, or use **Today**. The selected day's built-in and synced tasks appear alongside Google Calendar events. Day view separates all-day events from its 24-hour timeline. You can add events to writable calendars and edit an event's title and time; edits to a recurring event apply only to the selected occurrence. Use **Refresh** to pick up external changes. Calendars shared with free/busy-only access cannot show event details.
 
-Open **Journal** from the sidebar or calendar to write for the selected date. Use the date picker or entry list to browse entries, and type `/` for blocks such as headings and checklists. Changes save automatically; the status shows when a save is pending or fails. Retry a failed save before leaving, or explicitly discard the unsaved changes. The calendar marks dates with entries. An abrupt browser or device closure can lose changes that have not finished saving.
+Open **Journal** from the sidebar or calendar to write for the selected date. Use the date picker or entry list to browse entries, and type `/` for blocks such as headings and checklists. Changes to existing entries save automatically. Failed saves show an error without retrying; further edits submit new content. Unsaved changes block navigation until saved or explicitly discarded. Reloading or closing the page can lose changes that have not finished saving.
 
-Choose **Create entry** to save an empty entry, or start typing to create it
-through autosave. The journal browser includes empty saved entries; the
+Choose **Create entry** to save an empty entry and open its editor. Autosave
+only updates existing entries; it never creates one. The journal browser includes empty saved entries; the
 calendar marks only dates with non-empty content. **Delete entry** asks for
 confirmation and permanently removes the selected entry without changing
 points. Wait for pending edits to save before deleting.

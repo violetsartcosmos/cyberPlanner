@@ -1,33 +1,27 @@
 import { useEffect, useState } from "react";
-import { isWikipediaDetails, type LibraryBook, type WikipediaDetails } from "../../../../shared/planner/books";
-import { bookQuery } from "../utils/book-url";
+import { useFetcher } from "react-router";
+import type { LibraryBook, WikipediaDetails } from "../../../../shared/planner/books";
+import type { BookReadResult } from "../services/book-actions";
 
+/**
+ * Loads a book's saved article, retaining lazy cover loading.
+ * @param book - The library book whose metadata is requested.
+ * @param enabled - Whether the cover or details are currently visible.
+ * @returns Saved metadata, its local update callback and request feedback.
+ */
 export function useSavedWikipedia(book: LibraryBook, enabled = true) {
-  const { path, library } = book;
+  const url = `/books/${book.library ?? "ebooks"}/${encodeURIComponent(book.path)}/details`;
+  const fetcher = useFetcher<BookReadResult>();
+  const { load } = fetcher;
   const [wiki, setWiki] = useState<WikipediaDetails | null>(null);
-  const [error, setError] = useState("");
-  const [ready, setReady] = useState(false);
 
   useEffect(function loadSavedDetails() {
-    if (!enabled) return;
-    const controller = new AbortController();
-    setReady(false);
-    setError("");
-    async function load() {
-      try {
-        const response = await fetch(`/api/books/details?${bookQuery({ path, library })}`, { signal: controller.signal });
-        if (!response.ok) throw new Error(`Could not load saved Wikipedia details (${response.status}).`);
-        const data: unknown = await response.json();
-        if (data !== null && !isWikipediaDetails(data)) throw new Error("Saved Wikipedia details are invalid.");
-        setWiki(data);
-        setReady(true);
-      } catch (error) {
-        if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Could not load saved details.");
-      }
-    }
-    void load();
-    return () => controller.abort();
-  }, [path, library, enabled]);
+    if (enabled) void load(url);
+  }, [url, enabled, load]);
 
-  return { wiki, setWiki, error, setError, ready };
+  useEffect(function applySavedDetails() {
+    if (fetcher.state === "idle" && fetcher.data && !fetcher.data.error) setWiki(fetcher.data.wiki ?? null);
+  }, [fetcher.state, fetcher.data]);
+
+  return { wiki, setWiki, error: fetcher.data?.error ?? "", ready: fetcher.state === "idle" && !!fetcher.data && !fetcher.data.error };
 }

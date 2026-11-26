@@ -17,11 +17,12 @@ Book requests that take a `path` require a non-empty path of at most 2,048 chara
 `GET /api/planner` returns all earned task keys by default. Set `taskKeys=visible` to return only keys for the selected date's built-in tasks and its visible synced tasks.
 
 The shared UI shell still loads its combined page through `GET /api/planner`.
-The journal page reads its entries directly from the journal endpoints. Journal saves,
-routine kind changes, and routine, therapy, and external-task completions now
-use the resource endpoints below. Other UI actions still use `POST /api/planner`,
-which remains supported for existing clients. Both APIs use the same services
-and database; switching between them does not award points again.
+All UI form writes now use feature-owned React Router actions and resource endpoints.
+No UI forms dispatch hidden planner intents or write to `POST /api/planner`.
+That legacy endpoint remains supported for existing clients. Both APIs use
+the same services and database; switching between them does not award points again.
+Resource action results carry numeric HTTP statuses and API errors, rather
+than the legacy planner response's `ok` flag.
 
 Planner form fields are text. Date and completion-state checks remain at the
 request boundary; task assignments and one-time awards are checked in the
@@ -45,6 +46,16 @@ These endpoints require a signed-in session. Dates use `YYYY-MM-DD`.
 These endpoints share journal data with `/api/planner`. Deleting a journal does
 not alter points. The planner's existing `journalDates` still lists only
 non-empty entries; the journal browser lists every saved entry.
+
+The UI submits POST to `/journal/entries`, and PUT or DELETE to
+`/journal/entries/{date}`. Its dated resource loader reads both saved dates and
+entry content. A missing entry shows an explicit creation form; the editor
+opens only after creation and always saves using the existing entry's date ID.
+Deletion has its own fetcher and confirmed DELETE form, separate from autosave.
+Autosave keeps the submitted content separate from edits made while saving.
+Failed content is not automatically retried; subsequent edits submit new
+content. There are no journal retry controls or session-storage draft recovery.
+Unsaved changes still block navigation until saved or explicitly discarded.
 
 For the readable React/Node CRUD walkthrough and remaining work, see the
 [planner refactor plan](planner-refactor-plan.md).
@@ -100,7 +111,22 @@ These endpoints require a signed-in session. Dates use `YYYY-MM-DD`.
 | `GET /api/rewards` | Lists rewards and their server-defined costs. |
 | `POST /api/rewards/{id}/redemptions` | Redeems a reward; returns `409` if the balance is insufficient. |
 
-To create an achievement, send `title`, `description`, `category`, `tier`, integer `xp` and `target`, and `tracking` (`points` or `streak`). A streak also requires a routine `taskId`; `reward` is optional. Existing achievements cannot be edited. Point awards and redemptions remain ledger operations rather than arbitrary ledger edits. Google synchronization remains a planner action.
+To create an achievement, send `title`, `description`, `category`, `tier`, integer `xp` and `target`, and `tracking` (`points` or `streak`). A streak also requires a routine `taskId`; `reward` is optional. Existing achievements cannot be edited. Creation returns `201` with `achievement` and `earnedAchievements`; the UI retains immediate milestone notifications. Point awards and redemptions remain ledger operations rather than arbitrary ledger edits.
+
+## Google Tasks and Gmail
+
+These endpoints require the configured signed-in session and use the same
+Google service operations as the legacy planner adapters.
+
+| Method and path | Description |
+| --- | --- |
+| `POST /api/google/tasks/sync/{date}` | Synchronizes Google tasks and returns the checked-record `count` and notification `message`. Invalid dates return `400`. |
+| `GET /api/google/gmail/messages?query=...` | Searches Gmail and returns `{"emails":[...]}` with message IDs, subjects, senders and snippets. Queries must be non-empty after trimming. |
+| `POST /api/google/gmail/messages/{id}/tasks/{date}` | Imports one email as a task; returns a notification `message` with `201` when created or `200` when already imported. Invalid IDs/dates return `400`. |
+
+Google remote-update orchestration and local persistence are unchanged.
+These operations retain no-store headers, sign-in checks and same-origin CSRF
+protection for writes.
 
 ## Books
 
@@ -121,11 +147,31 @@ To create an achievement, send `title`, `description`, `category`, `tier`, integ
 
 The `details` value is a Wikipedia details object described in the [models guide](models.md). Book progress positions are format-specific: EPUB uses a CFI, audiobooks use a non-negative time, and PDFs do not support saved progress.
 
+Book API paths and methods are unchanged. The UI uses book-owned routes with
+library, encoded file path and bookmark IDs in URL parameters. Metadata imports
+still verify Wikipedia text and image licensing before submitting the saved
+article and offline cover. Renaming remains a file operation, not a new CRUD
+endpoint. Reader progress retains serialized PUT writes, page-exit keepalive,
+retry after uncertain writes, and explicit keep-mine/use-database recovery for
+`409` conflicts. Progress results now expose the numeric HTTP status.
+
 ## Calendar
 
 | Method and path | Description |
 | --- | --- |
 | `GET /api/calendar?start=...&end=...` | Loads Google Calendar events for a valid date range. |
+| `POST /api/calendar/{calendarId}/events` | Creates an event and returns a notification `message` with `201`. |
+| `PATCH /api/calendar/{calendarId}/events/{id}` | Updates one event occurrence and returns a notification `message`; a changed Google etag returns `409`. |
+
+Event writes accept `title`, `start`, `end`, boolean `allDay`, `etag`,
+`startTimeZone` and `endTimeZone`. Creation uses an empty etag; updates require
+the current etag. All-day dates use `YYYY-MM-DD` with an exclusive end date.
+The UI submits timed starts/ends as canonical UTC timestamps and preserves
+unchanged instants and existing time zones when editing. The end must follow
+the start, and updates require the current etag; these rules return `400` when
+violated. Field formats and limits are left to Google rather than duplicated
+in the client or server. Updates retain Google `If-Match` checks and only
+patch the edited fields, preserving unrelated event metadata.
 
 ## Sign-in
 

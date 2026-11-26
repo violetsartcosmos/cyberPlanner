@@ -1,11 +1,25 @@
 import { createBrowserRouter, Link, useRouteError } from "react-router";
-import { plannerAction, plannerLoader } from "../features/planner/services/planner-route";
+import { plannerLoader } from "../features/planner/services/planner-route";
 import {
   acceptQuestTemplateAction, completeQuestAction, createQuestAction, questResourceAction,
 } from "../features/planner/services/quest-actions";
 import {
   createAchievementAction, redeemRewardAction,
 } from "../features/planner/services/gamification-actions";
+import {
+  externalCompletionAction, routineCompletionAction, therapyCompletionAction, updateRoutineAction,
+} from "../features/planner/services/routine-actions";
+import {
+  createJournalAction, journalLoader, journalResourceAction,
+} from "../features/planner/services/journal-actions";
+import {
+  calendarLoader, createCalendarEventAction, gmailMessagesLoader, importGmailAction,
+  syncGoogleTasksAction, updateCalendarEventAction,
+} from "../features/calendar/services/google-actions";
+import {
+  bookDetailsLoader, bookmarksLoader, booksLoader, chaptersLoader, createBookmarkAction,
+  deleteBookmarkAction, renameBookAction, saveBookDetailsAction,
+} from "../features/books/services/book-actions";
 import PlannerLayout from "../layouts/planner-layout";
 import BooksPage from "../pages/books";
 import CalendarPage from "../pages/calendar";
@@ -41,29 +55,48 @@ function HydrateFallback() {
   return <main className="app-shell sign-in-shell">Loading planner...</main>;
 }
 
+/** Composes planner pages and feature-owned resource loaders/actions. */
 export const router = createBrowserRouter([{
   id: "planner",
   path: "/",
   Component: PlannerLayout,
   loader: plannerLoader,
-  action: plannerAction,
   HydrateFallback,
   ErrorBoundary: RootError,
   children: [
-    { index: true, Component: DashboardPage, action: plannerAction, ErrorBoundary: PageError },
-    { path: "calendar", Component: CalendarPage, action: plannerAction, ErrorBoundary: PageError },
-    { path: "quests", Component: CalendarPage, action: plannerAction, ErrorBoundary: PageError },
+    { index: true, Component: DashboardPage, ErrorBoundary: PageError },
+    { path: "calendar", Component: CalendarPage, ErrorBoundary: PageError },
+    { path: "quests", Component: CalendarPage, ErrorBoundary: PageError },
+    { path: "calendar/events", loader: calendarLoader, shouldRevalidate: () => false, ErrorBoundary: PageError },
+    { path: "calendar/:calendarId/events", action: createCalendarEventAction, ErrorBoundary: PageError },
+    { path: "calendar/:calendarId/events/:id", action: updateCalendarEventAction, ErrorBoundary: PageError },
+    { path: "google/tasks/sync/:date", action: syncGoogleTasksAction, ErrorBoundary: PageError },
+    { path: "google/gmail/messages", loader: gmailMessagesLoader, ErrorBoundary: PageError },
+    { path: "google/gmail/messages/:id/tasks/:date", action: importGmailAction, ErrorBoundary: PageError },
     { path: "quest-board", Component: QuestBoardPage, action: createQuestAction, ErrorBoundary: PageError },
     { path: "quest-board/:id", action: questResourceAction, ErrorBoundary: PageError },
     { path: "quest-board/:id/complete", action: completeQuestAction, ErrorBoundary: PageError },
     { path: "quest-log", Component: QuestLogPage, ErrorBoundary: PageError },
     { path: "quest-log/templates/:templateId/accept", action: acceptQuestTemplateAction, ErrorBoundary: PageError },
-    { path: "journal", Component: JournalPage, action: plannerAction, ErrorBoundary: PageError },
-    { path: "books", Component: BooksPage, action: plannerAction, ErrorBoundary: PageError },
-    { path: "rewards", Component: RewardsPage, action: plannerAction, ErrorBoundary: PageError },
+    { path: "routines/:id", action: updateRoutineAction, ErrorBoundary: PageError },
+    { path: "routines/:id/completions/:date", action: routineCompletionAction, ErrorBoundary: PageError },
+    { path: "therapy/sessions/:sessionId/exercises/:exerciseId/completions/:date", action: therapyCompletionAction, ErrorBoundary: PageError },
+    { path: "external-tasks/:source/:id/completions/:date", action: externalCompletionAction, ErrorBoundary: PageError },
+    { path: "journal", Component: JournalPage, ErrorBoundary: PageError },
+    { path: "journal/entries", action: createJournalAction, ErrorBoundary: PageError },
+    { path: "journal/entries/:date", loader: journalLoader, action: journalResourceAction, ErrorBoundary: PageError },
+    { path: "books", Component: BooksPage, ErrorBoundary: PageError },
+    // Metadata mutations update local state; avoid rereading old paths during a rename.
+    { path: "books/collection", loader: booksLoader, shouldRevalidate: () => false, ErrorBoundary: PageError },
+    { path: "books/:library/:path/details", loader: bookDetailsLoader, action: saveBookDetailsAction, shouldRevalidate: () => false, ErrorBoundary: PageError },
+    { path: "books/:library/:path/rename", action: renameBookAction, ErrorBoundary: PageError },
+    { path: "books/:library/:path/bookmarks", loader: bookmarksLoader, action: createBookmarkAction, ErrorBoundary: PageError },
+    { path: "books/:library/:path/bookmarks/:id", action: deleteBookmarkAction, ErrorBoundary: PageError },
+    { path: "books/:library/:path/chapters", loader: chaptersLoader, ErrorBoundary: PageError },
+    { path: "rewards", Component: RewardsPage, ErrorBoundary: PageError },
     { path: "rewards/:id/redemptions", action: redeemRewardAction, ErrorBoundary: PageError },
-    { path: "profile", Component: ProfilePage, action: plannerAction, ErrorBoundary: PageError },
+    { path: "profile", Component: ProfilePage, ErrorBoundary: PageError },
     { path: "profile/achievements", action: createAchievementAction, ErrorBoundary: PageError },
-    { path: "physical-therapy", Component: PhysicalTherapyPlan, action: plannerAction, ErrorBoundary: PageError },
+    { path: "physical-therapy", Component: PhysicalTherapyPlan, ErrorBoundary: PageError },
   ],
 }]);

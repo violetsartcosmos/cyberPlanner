@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { listCalendarData, saveCalendarEvent, validCalendarRange } from "../server/google/calendar.ts";
+import { Common } from "googleapis";
+import { calendarWriteError, listCalendarData, saveCalendarEvent, validCalendarRange } from "../server/google/calendar.ts";
 import { eventHour, eventOccursOnDate } from "../src/features/calendar/components/google-calendar.tsx";
 import { parseDate } from "../shared/planner/utils.ts";
 
@@ -47,8 +48,21 @@ test("event writes preserve unrelated fields and use conditional updates", async
   assert.deepEqual(calls[0][1].requestBody, { summary: "New", start: { date: "2026-11-22" }, end: { date: "2026-11-23" } });
   assert.deepEqual(calls[1][1].requestBody, { summary: "Updated", start: { dateTime: "2026-11-22T09:00:00.000Z", timeZone: "America/Chicago" }, end: { dateTime: "2026-11-22T10:00:00.000Z", timeZone: "America/Chicago" } });
   assert.deepEqual(calls[1][2], { headers: { "If-Match": '"etag"' } });
-  const conflict = { events: { patch: async () => { const error = new Error("Precondition Failed"); error.response = { status: 412 }; throw error; } } };
+  const conflict = { events: { patch: async () => {
+    throw new Common.GaxiosError("Precondition Failed", {}, new Response(null, { status: 412 }));
+  } } };
   await assert.rejects(saveCalendarEvent(conflict, "cal", "instance", '"etag"', "Updated", "2026-11-22", "2026-11-23", true, "", ""), /changed in Google Calendar/);
+});
+
+test("calendar write checks concern event timing and update revisions, not field types or lengths", () => {
+  const input = {
+    title: "x".repeat(1025), start: "2026-11-22T09:00:00-06:00", end: "2026-11-22T10:00:00-06:00",
+    allDay: false, etag: "x".repeat(1025), startTimeZone: "", endTimeZone: "",
+  };
+  assert.equal(calendarWriteError("instance", input), null);
+  assert.match(calendarWriteError("instance", { ...input, etag: "" }), /Refresh/);
+  assert.match(calendarWriteError("", { ...input, end: input.start }), /end must be after/);
+  assert.match(calendarWriteError("", { ...input, start: "invalid" }), /valid start/);
 });
 
 test("calendar ranges and event placement respect exclusive end dates", () => {

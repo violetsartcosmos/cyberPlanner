@@ -4,7 +4,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router";
-import type { ExternalTask, PlannerActionResult } from "../../../../shared/planner/types";
+import type { ExternalTask, RoutineActionResult } from "../../../../shared/planner/types";
 import {
   dateKey,
   externalTaskId,
@@ -29,10 +29,15 @@ function getCompletedExternalTaskIds(tasks: readonly ExternalTask[]) {
   return ids;
 }
 
+/**
+ * Coordinates selected dates, task resource writes and completion celebrations.
+ * @param page - The authenticated planner snapshot from the shared loader.
+ * @returns The page context and request state used by the planner layout.
+ */
 export function usePlannerController(page: AuthenticatedPlannerPage) {
   const navigate = useNavigate();
   const location = useLocation();
-  const toggleFetcher = useFetcher<PlannerActionResult>();
+  const toggleFetcher = useFetcher<RoutineActionResult>();
   const [today, setToday] = useState(page.today);
   const [celebration, setCelebration] = useState(0);
   const pendingCelebration = useRef(false);
@@ -48,7 +53,8 @@ export function usePlannerController(page: AuthenticatedPlannerPage) {
       toggleInFlight.current = true;
     } else if (toggleInFlight.current) {
       toggleInFlight.current = false;
-      if (pendingCelebration.current && toggleFetcher.data?.ok && location.pathname === "/") {
+      if (pendingCelebration.current && toggleFetcher.data &&
+          toggleFetcher.data.status >= 200 && toggleFetcher.data.status < 300 && location.pathname === "/") {
         setCelebration(incrementCelebration);
       }
       pendingCelebration.current = false;
@@ -93,6 +99,11 @@ export function usePlannerController(page: AuthenticatedPlannerPage) {
     return cleanupTodaySync;
   }, [navigate, page, location.pathname, location.hash]);
 
+  /**
+   * Submits a checked-state change to the task's resource URL.
+   * @param taskId - The routine ID or source-prefixed external task ID.
+   * @returns Nothing; the fetcher revalidates the planner after saving.
+   */
   function toggleTask(taskId: string) {
     const completed = isExternalTaskId(taskId)
       ? !externalChecked.includes(taskId)
@@ -104,24 +115,17 @@ export function usePlannerController(page: AuthenticatedPlannerPage) {
       const externalId = taskId.slice(separator + 1);
       toggleFetcher.submit(
         {
-          intent: "toggle_external",
-          source,
-          externalId,
-          date: selected,
           completed: String(completed),
         },
-        { method: "post" },
+        { method: "put", action: `/external-tasks/${encodeURIComponent(source)}/${encodeURIComponent(externalId)}/completions/${selected}` },
       );
       return;
     }
     toggleFetcher.submit(
       {
-        intent: "toggle_builtin",
-        taskId,
-        date: selected,
         completed: String(completed),
       },
-      { method: "post" },
+      { method: "put", action: `/routines/${encodeURIComponent(taskId)}/completions/${selected}` },
     );
   }
 

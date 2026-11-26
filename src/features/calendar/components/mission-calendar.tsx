@@ -142,7 +142,7 @@ export function MissionCalendar({
 
   const selectedEvents = (googleCalendar.data?.events ?? [])
     .filter((event) => eventOccursOnDate(event, date))
-    .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start.localeCompare(b.start));
+    .sort((firstEvent, secondEvent) => Number(secondEvent.allDay) - Number(firstEvent.allDay) || firstEvent.start.localeCompare(secondEvent.start));
 
   function showEvent(event: CalendarEvent) {
     const content = <><strong>{event.title}</strong><span>{eventTime(event)} · {event.calendarName}</span></>;

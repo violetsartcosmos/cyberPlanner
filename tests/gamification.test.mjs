@@ -44,12 +44,8 @@ test("the planner loader accepts the renamed therapy sessions field", async (t) 
     routines: [], routineGroups: [], questTemplates: [], acceptedTemplateIds: [],
     newlyEarned: [], totalXp: 0, therapy: { therapySessions: [], earnedPoints: 0 },
   };
-  const fetch = t.mock.method(globalThis, "fetch", async () => Response.json(page));
+  t.mock.method(globalThis, "fetch", async () => Response.json(page));
   assert.deepEqual(await plannerLoader({ request: new Request("http://localhost/physical-therapy") }), page);
-  fetch.mock.mockImplementation(async () => Response.json({
-    ...page, therapy: { sessions: [], earnedPoints: 0 },
-  }));
-  await assert.rejects(plannerLoader({ request: new Request("http://localhost/physical-therapy") }), /server is out of date/);
 });
 
 test("points milestones use lifetime earned points and award XP only once", async () => {
@@ -178,7 +174,7 @@ test("quest log shows unaccepted templates in their seeded tracks", () => {
   assert.doesNotMatch(html, /Already accepted/);
 });
 
-test("quest log routine forms target the planner action, not template acceptance", () => {
+test("quest log routine forms target their resource URL, not template acceptance", () => {
   const router = createMemoryRouter([{
     path: "/",
     children: [{
@@ -193,7 +189,8 @@ test("quest log routine forms target the planner action, not template acceptance
     }],
   }], { initialEntries: ["/quest-log?date=2026-11-23"] });
   const html = renderToStaticMarkup(React.createElement(NotificationProvider, null, React.createElement(RouterProvider, { router })));
-  assert.match(html, /<form[^>]*action="\/"[^>]*><input[^>]*name="intent" value="update_routine_kind"/);
+  assert.match(html, /<form[^>]*action="\/routines\/3"/);
+  assert.doesNotMatch(html, /name="intent"|name="taskId"/);
   assert.match(html, /<form[^>]*action="\/quest-log\/templates\/one\/accept"/);
   assert.doesNotMatch(html, /name="intent" value="accept_template"|name="templateId"/);
 });

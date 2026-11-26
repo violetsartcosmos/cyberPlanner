@@ -1,6 +1,31 @@
-import type { calendar_v3 } from "googleapis";
+import { Common, type calendar_v3 } from "googleapis";
 import type { CalendarData, CalendarEvent, GoogleCalendar } from "../../shared/planner/types";
 import { getGoogleCalendarClient } from "./service";
+
+/** Calendar fields shared by JSON routes and the legacy planner form adapter. */
+export type CalendarEventInput = {
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  etag: string;
+  startTimeZone: string;
+  endTimeZone: string;
+};
+
+/**
+ * Checks event timing and the revision required for an occurrence update.
+ * @param eventId - The occurrence ID, or an empty string when creating.
+ * @param input - The event timing and revision fields.
+ * @returns The validation message, or null for valid input.
+ */
+export function calendarWriteError(eventId: string, { start, end, etag }: CalendarEventInput): string | null {
+  if (eventId && !etag) return "Refresh the event before updating it.";
+  if (!(Date.parse(end) > Date.parse(start))) {
+    return "The event end must be after its valid start.";
+  }
+  return null;
+}
 
 export async function listCalendarData(
   calendar: calendar_v3.Calendar,
@@ -96,9 +121,7 @@ export async function saveCalendarEvent(
       await calendar.events.insert({ calendarId, requestBody });
     }
   } catch (error) {
-    if (error instanceof Error && "response" in error &&
-        typeof error.response === "object" && error.response !== null &&
-        "status" in error.response && error.response.status === 412) {
+    if (error instanceof Common.GaxiosError && error.status === 412) {
       throw new Error("This event changed in Google Calendar. Refresh and try again.");
     }
     throw error;

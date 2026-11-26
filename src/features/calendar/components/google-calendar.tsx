@@ -1,14 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { CalendarData, CalendarEvent, GoogleCalendar, PlannerActionResult } from "../../../../shared/planner/types";
+import { useFetcher } from "react-router";
+import type { CalendarEvent, GoogleCalendar } from "../../../../shared/planner/types";
 import { addDays, dateKey, monthDates, parseDate } from "../../../../shared/planner/utils";
-import { useNotification } from "@/components/notifications";
-
-type CalendarState = {
-  key: string;
-  data: CalendarData | null;
-  error: string;
-};
+import { useActionNotifications, useNotification } from "@/components/notifications";
+import type { CalendarReadResult, GoogleActionResult } from "../services/google-actions";
 
 function midnight(date: Date) {
   const result = new Date(date);
@@ -16,40 +12,30 @@ function midnight(date: Date) {
   return result;
 }
 
+/**
+ * Loads only the visible calendar range using a cancellable resource loader.
+ * @param enabled - Whether Google calendar reads are enabled on this page.
+ * @param date - The selected date defining the visible range.
+ * @returns Calendar data, load feedback and a refresh callback.
+ */
 export function useGoogleCalendar(enabled: boolean, date: Date) {
   const first = addDays(monthDates(date)[0], -1);
   const start = midnight(first).toISOString();
   const end = midnight(addDays(first, 44)).toISOString();
-  const key = `${start}/${end}`;
+  const range = `?${new URLSearchParams({ start, end })}`;
   const [revision, setRevision] = useState(0);
-  const [state, setState] = useState<CalendarState>({ key: "", data: null, error: "" });
+  const fetcher = useFetcher<CalendarReadResult>();
+  const { load } = fetcher;
 
   useEffect(function loadCalendar() {
     if (!enabled) return;
-    const controller = new AbortController();
-    setState({ key, data: null, error: "" });
-    async function load() {
-      try {
-        const query = new URLSearchParams({ start, end });
-        const response = await fetch(`/api/calendar?${query}`, { signal: controller.signal });
-        const result = await response.json() as CalendarData | { error: string };
-        if (!response.ok || "error" in result) {
-          throw new Error("error" in result ? result.error : `Calendar request failed (${response.status}).`);
-        }
-        setState({ key, data: result, error: "" });
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        setState({ key, data: null, error: error instanceof Error ? error.message : "Could not load Google Calendar." });
-      }
-    }
-    void load();
-    return () => controller.abort();
-  }, [enabled, start, end, key, revision]);
+    void load(`/calendar/events${range}`);
+  }, [enabled, range, revision, load]);
 
   return {
-    data: enabled && state.key === key ? state.data : null,
-    error: enabled && state.key === key ? state.error : "",
-    loading: enabled && (state.key !== key || (!state.data && !state.error)),
+    data: enabled && fetcher.state === "idle" && fetcher.data?.range === range ? fetcher.data.data ?? null : null,
+    error: enabled && fetcher.data?.range === range ? fetcher.data.error ?? "" : "",
+    loading: enabled && (fetcher.state !== "idle" || fetcher.data?.range !== range),
     refresh: () => setRevision((value) => value + 1),
   };
 }
@@ -91,6 +77,7 @@ function normalizedLocalTime(value: string) {
   return value.padEnd(23, "0");
 }
 
+/** Event identity, visible calendars and editor navigation callbacks. */
 type EventEditorProps = {
   selected: string;
   calendars: GoogleCalendar[];
@@ -99,11 +86,23 @@ type EventEditorProps = {
   onSaved: (message: string) => void;
 };
 
+/**
+ * Edits Google events while preserving local-time conversion and occurrence metadata.
+ * @param props - The selected date, writable calendars, event and close callbacks.
+ * @returns The event form with method-based resource submission.
+ */
 export function EventEditor({ selected, calendars, event, onCancel, onSaved }: EventEditorProps) {
   const [allDay, setAllDay] = useState(event?.allDay ?? false);
-  const [busy, setBusy] = useState(false);
+  const fetcher = useFetcher<GoogleActionResult>();
+  const busy = fetcher.state !== "idle";
+  const pending = useRef(false);
+  useActionNotifications(fetcher);
   const notify = useNotification();
   const writable = calendars.filter((calendar) => calendar.writable);
+  const [calendarId, setCalendarId] = useState(event?.calendarId ?? writable[0]?.id ?? "");
+  const action = event
+    ? `/calendar/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(event.id)}`
+    : `/calendar/${encodeURIComponent(calendarId)}/events`;
   const start = event ? (event.allDay ? event.start : localDateTime(event.start)) : `${selected}T09:00`;
   const end = event ? (event.allDay ? dateKey(addDays(parseDate(event.end), -1)) : localDateTime(event.end)) : `${selected}T10:00`;
   const [timedStart, setTimedStart] = useState(start.length === 10 ? `${start}T09:00` : start);
@@ -122,7 +121,18 @@ export function EventEditor({ selected, calendars, event, onCancel, onSaved }: E
     setAllDay(checked);
   }
 
-  async function submit(eventForm: FormEvent<HTMLFormElement>) {
+  useEffect(function finishEventWrite() {
+    if (fetcher.state !== "idle" || !fetcher.data || !pending.current) return;
+    pending.current = false;
+    if (fetcher.data.status >= 200 && fetcher.data.status < 300) onSaved(fetcher.data.message as string);
+  }, [fetcher.state, fetcher.data, onSaved]);
+
+  /**
+   * Normalizes the user's local times before submitting a calendar resource form.
+   * @param eventForm - The form event containing start and end values.
+   * @returns Nothing; validation errors notify without submitting.
+   */
+  function submit(eventForm: FormEvent<HTMLFormElement>) {
     eventForm.preventDefault();
     const form = new FormData(eventForm.currentTarget);
     const startValue = form.get("start");
@@ -148,38 +158,27 @@ export function EventEditor({ selected, calendars, event, onCancel, onSaved }: E
       form.set("end", unchangedEnd ? new Date(event.end).toISOString() : to.toISOString());
     }
     form.set("allDay", String(allDay));
-    form.set("intent", "save_calendar_event");
-    form.set("eventId", event?.id ?? "");
     form.set("etag", event?.etag ?? "");
     form.set("startTimeZone", !allDay && event && !event.allDay ? event.startTimeZone ?? "" : "");
     form.set("endTimeZone", !allDay && event && !event.allDay ? event.endTimeZone ?? "" : "");
-    setBusy(true);
-    try {
-      const response = await fetch("/api/planner", { method: "POST", body: form });
-      if (!response.ok) throw new Error(`Could not save event (${response.status}).`);
-      const result = await response.json() as PlannerActionResult;
-      if (!result.ok) throw new Error(result.error || "Could not save event.");
-      onSaved(result.message || "Event saved.");
-    } catch (caught) {
-      notify(caught instanceof Error ? caught.message : "Could not save event.");
-      setBusy(false);
-    }
+    pending.current = true;
+    fetcher.submit(form, { method: event ? "patch" : "post", action });
   }
 
   return (
-    <form className="calendar-event-form" onSubmit={submit}>
+    <fetcher.Form method={event ? "patch" : "post"} action={action} className="calendar-event-form" onSubmit={submit}>
       <h3>{event ? "Edit event" : "New event"}</h3>
       {event?.recurring && <p>Changes apply only to this occurrence.</p>}
       <label>Calendar
         {event ? (
-          <><span>{event.calendarName}</span><input type="hidden" name="calendarId" value={event.calendarId} /></>
+          <span>{event.calendarName}</span>
         ) : (
-          <select className="form-select" name="calendarId" required defaultValue={writable[0]?.id ?? ""}>
+          <select className="form-select" required value={calendarId} onChange={(change) => setCalendarId(change.target.value)}>
             {writable.map((calendar) => <option key={calendar.id} value={calendar.id}>{calendar.name}</option>)}
           </select>
         )}
       </label>
-      <label>Title<input className="form-control" name="title" defaultValue={event?.title ?? ""} maxLength={1024} required /></label>
+      <label>Title<input className="form-control" name="title" defaultValue={event?.title ?? ""} required /></label>
       <label className="calendar-all-day">
         <input className="form-check-input" type="checkbox" checked={allDay} onChange={(change) => changeAllDay(change.target.checked)} />
         All day
@@ -194,6 +193,6 @@ export function EventEditor({ selected, calendars, event, onCancel, onSaved }: E
         <button className="btn btn-outline-primary btn-sm rounded-pill" type="submit" disabled={busy}>{busy ? "SAVING..." : "SAVE EVENT"}</button>
         <button className="btn btn-outline-primary btn-sm rounded-pill" type="button" disabled={busy} onClick={onCancel}>CANCEL</button>
       </div>
-    </form>
+    </fetcher.Form>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ReactReader } from "react-reader";
+import { useFetcher } from "react-router";
 import { ArrowRight, BookOpen, Headphones, Search } from "lucide-react";
 import type { LibraryBook } from "../../../../shared/planner/books";
 import { BookDetails } from "./book-details";
@@ -13,6 +14,7 @@ import { useBookmarks } from "../hooks/use-bookmarks";
 import { useBookProgress } from "../hooks/use-book-progress";
 import { ProgressStatus } from "./progress-status";
 import { useNotification } from "@/components/notifications";
+import type { BookReadResult } from "../services/book-actions";
 
 function ReaderError() {
   useNotification("Could not open this EPUB. It may be damaged or DRM-protected.");
@@ -121,9 +123,15 @@ function EpubReader({ book, onClose }: { book: LibraryBook; onClose: () => void 
   );
 }
 
+/**
+ * Browses the book collection and opens its existing reader and metadata controls.
+ * @returns The library shelf or selected book view.
+ */
 export function BookLibrary() {
   const [library, setLibrary] = useState<{ books: LibraryBook[]; featuredOrder: LibraryBook[] } | null>(null);
-  const [error, setError] = useState("");
+  const reader = useFetcher<BookReadResult>();
+  const { load } = reader;
+  const error = reader.data?.error ?? "";
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<LibraryFilter>("all");
   const [selected, setSelected] = useState<LibraryBook | null>(null);
@@ -131,23 +139,14 @@ export function BookLibrary() {
   useNotification(error);
 
   useEffect(function loadLibrary() {
-    const controller = new AbortController();
-    async function load() {
-      try {
-        const response = await fetch("/api/books", { signal: controller.signal });
-        if (!response.ok) throw new Error(`Could not load the library (${response.status}).`);
-        const books = await response.json() as LibraryBook[];
-        if (controller.signal.aborted) return;
-        setLibrary({ books, featuredOrder: shuffleBooks(books) });
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          setError(error instanceof Error ? error.message : "Could not load the library.");
-        }
-      }
-    }
-    void load();
-    return () => controller.abort();
-  }, []);
+    void load("/books/collection");
+  }, [load]);
+
+  useEffect(function applyLibraryRead() {
+    if (reader.state !== "idle" || !reader.data?.books) return;
+    const books = reader.data.books;
+    setLibrary({ books, featuredOrder: shuffleBooks(books) });
+  }, [reader.state, reader.data]);
 
   if (selected) {
     if (selected.format === "m4b") {

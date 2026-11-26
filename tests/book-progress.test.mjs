@@ -3,6 +3,7 @@ import test from "node:test";
 import { validBookPosition } from "../shared/planner/books.ts";
 import { ProgressQueue } from "../src/features/books/hooks/use-book-progress.ts";
 import { audioPositionToSave, restoredAudioSeconds } from "../src/features/books/utils/audio-progress.ts";
+import { loadProgress, writeProgress } from "../src/features/books/services/progress-api.ts";
 
 const book = { path: "New.epub", title: "New", format: "epub" };
 const cfi = "epubcfi(/6/2!/4/2)";
@@ -73,10 +74,41 @@ test("in-flight updates are serialized and the latest position is saved", async 
   await queue.load();
   queue.enqueue(cfi);
   const saving = queue.flush();
+  assert.equal(queue.flush(), saving);
   queue.enqueue("epubcfi(/6/4)");
   release();
   assert.equal(await saving, true);
   assert.deepEqual(writes.map(({ revision }) => revision), [0, 1]);
   assert.equal(remote.position, "epubcfi(/6/4)");
   await queue.flush();
+});
+
+test("choosing database progress discards the pending position without writing it", async (t) => {
+  const remote = { position: cfi, revision: 2 };
+  const fetch = t.mock.method(globalThis, "fetch", async (_url, options) =>
+    Response.json(remote, { status: options?.method === "PUT" ? 409 : 200 }));
+  const queue = new ProgressQueue(book, () => {});
+  await queue.load();
+  queue.enqueue("epubcfi(/6/4)");
+  await queue.flush();
+  assert.deepEqual(queue.state.conflict, remote);
+  queue.useDatabase();
+  assert.deepEqual(queue.state.progress, remote);
+  assert.equal(queue.state.pendingPosition, null);
+  assert.equal(queue.state.conflict, null);
+  await queue.flush();
+  assert.equal(fetch.mock.callCount(), 2);
+});
+
+test("progress requests expose API errors and numeric revision-conflict statuses", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", async () => Response.json({ error: "Book not found." }, { status: 404 }));
+  await assert.rejects(loadProgress(book), { message: "Book not found." });
+  await assert.rejects(writeProgress(book, cfi, 0), { message: "Book not found." });
+  const progress = { position: cfi, revision: 2 };
+  fetch.mock.mockImplementation(async (_url, options) => {
+    assert.equal(options.method, "PUT");
+    assert.equal(options.keepalive, true);
+    return Response.json(progress, { status: 409 });
+  });
+  assert.deepEqual(await writeProgress(book, cfi, 0), { status: 409, progress });
 });

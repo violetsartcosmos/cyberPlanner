@@ -1,6 +1,8 @@
 # Coding instructions
 
 - Write direct, idiomatic code that is easy to read and learn from.
+- Use descriptive variable names, including callback parameters and indices.
+  Do not use single-letter names in authored application code.
 - Use TypeScript types for expected inputs instead of treating every field as `unknown`.
 - Avoid repeated per-field type and range checks. Check values in one place when necessary, and let the database enforce its constraints.
 - Keep essential business rules, such as awarding points only once, intact.

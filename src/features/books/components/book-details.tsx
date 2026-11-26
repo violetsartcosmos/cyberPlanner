@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { useFetcher } from "react-router";
 import { ExternalLink } from "lucide-react";
 import { isWikipediaDetails, isWikipediaUrl, MAX_WIKIPEDIA_TEXT_LENGTH, type LibraryBook, type WikipediaDetails } from "../../../../shared/planner/books";
 import { BookAction } from "./book-action";
-import { renameErrorMessage } from "../utils/library-utils";
 import { wikipediaImageReference, parseWikipediaExtract } from "../utils/wikipedia-utils";
 import { bookCoverUrl } from "../utils/book-url";
 import { useEmbeddedDetails } from "../hooks/use-embedded-details";
 import { useSavedWikipedia } from "../hooks/use-saved-wikipedia";
-import { useNotification } from "@/components/notifications";
+import { useActionNotifications, useNotification } from "@/components/notifications";
+import type { BookActionResult } from "../services/book-actions";
 
 function record(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -131,6 +132,11 @@ function articleHistory(url: string) {
   return history.href;
 }
 
+/**
+ * Displays book metadata and submits filename and article changes to resource actions.
+ * @param props - The selected book and navigation/update callbacks.
+ * @returns The metadata panel, import form and filename controls.
+ */
 export function BookDetails({ book, onClose, onRead, onRenamed }: {
   book: LibraryBook;
   onClose: () => void;
@@ -142,58 +148,63 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
   const notify = useNotification();
   const [wikiUrlDraft, setWikiUrl] = useState<string | null>(null);
   const [wikiImageUrlDraft, setWikiImageUrl] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const wikiFetcher = useFetcher<BookActionResult>();
+  const renameFetcher = useFetcher<BookActionResult>();
+  useActionNotifications(wikiFetcher);
+  useActionNotifications(renameFetcher);
+  const [preparing, setPreparing] = useState(false);
+  const busy = preparing || wikiFetcher.state !== "idle";
+  const renaming = renameFetcher.state !== "idle";
+  const pendingWiki = useRef<{ notice: string } | null>(null);
+  const pendingRename = useRef(false);
   const [failedWikiImage, setFailedWikiImage] = useState("");
   const [title, setTitle] = useState(book.title);
-  const [renaming, setRenaming] = useState(false);
   useNotification(wikiError);
   useNotification(embeddedError ? `Could not load embedded details: ${embeddedError}` : "");
   useNotification(wiki?.image && failedWikiImage === wiki.image.url ? "The Wikipedia cover could not be loaded." : "");
 
   const wikiUrl = wikiUrlDraft ?? wiki?.url ?? "";
   const wikiImageUrl = wikiImageUrlDraft ?? wiki?.image?.page ?? "";
+  const resourceUrl = `/books/${book.library ?? "ebooks"}/${encodeURIComponent(book.path)}`;
 
+  useEffect(function finishWikipediaSave() {
+    if (wikiFetcher.state !== "idle" || !wikiFetcher.data || !pendingWiki.current) return;
+    const pending = pendingWiki.current;
+    pendingWiki.current = null;
+    if (wikiFetcher.data.wiki) {
+      setWiki(wikiFetcher.data.wiki);
+      setWikiUrl(null);
+      setWikiImageUrl(null);
+      if (pending.notice) notify(pending.notice, "notice");
+      setFailedWikiImage("");
+    }
+  }, [wikiFetcher.state, wikiFetcher.data, setWiki, notify]);
+
+  useEffect(function finishRename() {
+    if (renameFetcher.state !== "idle" || !renameFetcher.data || !pendingRename.current) return;
+    pendingRename.current = false;
+    if (renameFetcher.data.book) onRenamed(renameFetcher.data.book);
+  }, [renameFetcher.state, renameFetcher.data, onRenamed]);
+
+  /**
+   * Prepares licensed Wikipedia metadata before submitting it to the book action.
+   * @param event - The article import form event.
+   * @returns A promise resolving once preparation has submitted or reported an error.
+   */
   async function importWikipedia(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
+    setPreparing(true);
     try {
       const { details, notice } = await loadWikipedia(wikiUrl.trim(), wikiImageUrl.trim());
       const cover = details.image ? await cacheCover(details.image.url) : null;
-      const response = await fetch("/api/books/details", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: book.path, library: book.library, details, cover }),
+      pendingWiki.current = { notice };
+      wikiFetcher.submit({ details: JSON.stringify(details), cover: JSON.stringify(cover) }, {
+        method: "post", action: `${resourceUrl}/details`,
       });
-      if (!response.ok) throw new Error(`Could not save Wikipedia details (${response.status}).`);
-      setWiki({ ...details, image: details.image ? { ...details.image, cached: true } : null });
-      setWikiUrl(null);
-      setWikiImageUrl(null);
-      if (notice) notify(notice, "notice");
-      setFailedWikiImage("");
     } catch (error) {
       notify(error instanceof Error ? error.message : "Could not import Wikipedia details.");
     } finally {
-      setBusy(false);
-    }
-  }
-
-  async function rename(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setRenaming(true);
-    try {
-      const response = await fetch("/api/books/rename", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: book.path, library: book.library, title }),
-      });
-      if (!response.ok) {
-        throw new Error(await renameErrorMessage(response));
-      }
-      onRenamed(await response.json() as LibraryBook);
-    } catch (error) {
-      notify(error instanceof Error ? error.message : "Could not rename the file.");
-    } finally {
-      setRenaming(false);
+      setPreparing(false);
     }
   }
 
@@ -221,10 +232,10 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
           {!embedded && !embeddedError && <p>Loading book details...</p>}
           {embedded && !embedded.description && <p>{book.format === "m4b" ? "Embedded audiobook descriptions and covers are not available here." : "No description is embedded in this book."}</p>}
           <BookAction book={book} onRead={onRead} epubLabel="Read EPUB" />
-          <form className="library-rename" onSubmit={(event) => { void rename(event); }}>
+          <renameFetcher.Form method="post" action={`${resourceUrl}/rename`} className="library-rename" onSubmit={() => { pendingRename.current = true; }}>
             <label htmlFor="book-title">Filename</label>
-            <div><input className="form-control" id="book-title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required /> <button className="btn btn-outline-secondary btn-sm" type="submit" disabled={renaming || title.trim() === book.title}>{renaming ? "Renaming..." : "Rename"}</button></div>
-          </form>
+            <div><input className="form-control" id="book-title" name="title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required /> <button className="btn btn-outline-secondary btn-sm" type="submit" disabled={renaming || busy || title.trim() === book.title}>{renaming ? "Renaming..." : "Rename"}</button></div>
+          </renameFetcher.Form>
         </div>
       </div>
       {wiki && (
@@ -251,7 +262,7 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
           </p>
         </section>
       )}
-      <form className="library-wikipedia" onSubmit={(event) => { void importWikipedia(event); }}>
+      <wikiFetcher.Form method="post" action={`${resourceUrl}/details`} className="library-wikipedia" onSubmit={(event) => { void importWikipedia(event); }}>
         <h3>Wikipedia</h3>
         <p>Import an article and optional cover image.</p>
         <label htmlFor="wiki-url">Wikipedia article URL</label>
@@ -262,8 +273,8 @@ export function BookDetails({ book, onClose, onRead, onRenamed }: {
         <div>
           <input className="form-control" id="wiki-image-url" type="url" disabled={!wikiReady} value={wikiImageUrl} onChange={(event) => setWikiImageUrl(event.target.value)} placeholder="https://commons.wikimedia.org/wiki/File:..." />
         </div>
-        <button className="btn btn-outline-secondary btn-sm" type="submit" disabled={busy || !wikiReady}>{busy ? "Importing..." : "Import"}</button>
-      </form>
+        <button className="btn btn-outline-secondary btn-sm" type="submit" disabled={busy || renaming || !wikiReady}>{busy ? "Importing..." : "Import"}</button>
+      </wikiFetcher.Form>
     </section>
   );
 }

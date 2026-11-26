@@ -8,6 +8,22 @@ export type QuestActionResult = {
   error?: string;
 };
 
+/** HTTP feedback and milestone awards returned by completion and routine actions. */
+export type RoutineActionResult = {
+  status: number;
+  message?: string;
+  error?: string;
+  earnedAchievements?: string[];
+};
+
+/** HTTP feedback and immediate milestone awards from achievement creation. */
+export type AchievementActionResult = {
+  status: number;
+  message?: string;
+  error?: string;
+  earnedAchievements?: string[];
+};
+
 export type PlannerActionResult = {
   ok: boolean;
   message?: string;

@@ -1,13 +1,12 @@
 import type { ActionFunctionArgs } from "react-router";
-import type { QuestActionResult } from "../../../../shared/planner/types";
+import type { AchievementActionResult, QuestActionResult } from "../../../../shared/planner/types";
 
 /**
  * Creates an achievement submitted to POST /profile/achievements.
  * @param args - The action request containing the achievement fields.
  * @returns The HTTP status and save notification or API error.
  */
-export async function createAchievementAction({ request }: ActionFunctionArgs): Promise<QuestActionResult> {
-  if (request.method !== "POST") return { status: 405, error: "Method not allowed." };
+export async function createAchievementAction({ request }: ActionFunctionArgs): Promise<AchievementActionResult> {
   const form = await request.formData();
   const tracking = form.get("tracking");
   const response = await fetch("/api/achievements", {
@@ -29,7 +28,8 @@ export async function createAchievementAction({ request }: ActionFunctionArgs): 
   if (response.status < 200 || response.status >= 300) {
     return { status: response.status, error: (await response.json() as { error: string }).error };
   }
-  return { status: response.status, message: "Achievement created." };
+  const { earnedAchievements } = await response.json() as { earnedAchievements: string[] };
+  return { status: response.status, message: "Achievement created.", earnedAchievements };
 }
 
 /**
@@ -38,7 +38,6 @@ export async function createAchievementAction({ request }: ActionFunctionArgs): 
  * @returns The HTTP status and redemption notification or API error.
  */
 export async function redeemRewardAction({ request, params }: ActionFunctionArgs): Promise<QuestActionResult> {
-  if (request.method !== "POST") return { status: 405, error: "Method not allowed." };
   const response = await fetch(`/api/rewards/${encodeURIComponent(params.id as string)}/redemptions`, {
     method: "POST",
     signal: request.signal,

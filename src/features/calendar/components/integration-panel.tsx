@@ -1,7 +1,7 @@
 import { Link, useFetcher } from "react-router";
 import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
-import type { PlannerActionResult } from "../../../../shared/planner/types";
+import type { GoogleActionResult } from "../services/google-actions";
 import { useActionNotifications } from "@/components/notifications";
 
 type GoogleIntegrationPanelProps = {
@@ -9,13 +9,18 @@ type GoogleIntegrationPanelProps = {
   selected: string;
 };
 
+/**
+ * Submits task synchronization, Gmail searches and individual message imports.
+ * @param props - The connection email and selected planner date.
+ * @returns The Google resource forms and search results.
+ */
 export function GoogleIntegrationPanel({
   email,
   selected,
 }: GoogleIntegrationPanelProps) {
-  const syncFetcher = useFetcher<PlannerActionResult>();
-  const searchFetcher = useFetcher<PlannerActionResult>();
-  const importFetcher = useFetcher<PlannerActionResult>();
+  const syncFetcher = useFetcher<GoogleActionResult>();
+  const searchFetcher = useFetcher<GoogleActionResult>();
+  const importFetcher = useFetcher<GoogleActionResult>();
   useActionNotifications(syncFetcher);
   useActionNotifications(searchFetcher);
   useActionNotifications(importFetcher);
@@ -26,10 +31,7 @@ export function GoogleIntegrationPanel({
         <strong>{message.subject}</strong>
         <small>{message.from}</small>
         <p>{message.snippet}</p>
-        <importFetcher.Form method="post">
-          <input type="hidden" name="intent" value="import_gmail" />
-          <input type="hidden" name="messageId" value={message.id} />
-          <input type="hidden" name="date" value={selected} />
+        <importFetcher.Form method="post" action={`/google/gmail/messages/${encodeURIComponent(message.id)}/tasks/${selected}`}>
           <button
             className="btn btn-outline-primary btn-sm rounded-pill"
             type="submit"
@@ -50,9 +52,7 @@ export function GoogleIntegrationPanel({
       </Link>
       <h2 className="h5">Bring in your tasks.</h2>
       <p>Signed in as {email}. Google Tasks syncs when you ask it to.</p>
-      <syncFetcher.Form method="post">
-        <input type="hidden" name="intent" value="sync_google_tasks" />
-        <input type="hidden" name="date" value={selected} />
+      <syncFetcher.Form method="post" action={`/google/tasks/sync/${selected}`}>
         <button
           className="btn btn-outline-primary btn-sm rounded-pill"
           type="submit"
@@ -70,8 +70,7 @@ export function GoogleIntegrationPanel({
           the subject, sender, and Gmail link—not the message body. Google
           grants read-only access to the mailbox.
         </p>
-        <searchFetcher.Form method="post">
-          <input type="hidden" name="intent" value="search_gmail" />
+        <searchFetcher.Form method="get" action="/google/gmail/messages">
           <label className="visually-hidden" htmlFor="gmail-query">
             Gmail search
           </label>

@@ -4,10 +4,10 @@ import { useFetcher } from "react-router";
 import type { QuestTemplate } from "../../../../shared/planner/gamification";
 import type { RoutineGroup, RoutineKind, RoutineTask } from "../../../../shared/planner/routines";
 import { routineKinds, routinePoints } from "../../../../shared/planner/routines";
-import type { PlannerActionResult, QuestActionResult } from "../../../../shared/planner/types";
+import type { RoutineActionResult, QuestActionResult } from "../../../../shared/planner/types";
 import { useActionNotifications } from "@/components/notifications";
 
-type FetcherType = ReturnType<typeof useFetcher<PlannerActionResult | QuestActionResult>>;
+type FetcherType = ReturnType<typeof useFetcher<RoutineActionResult | QuestActionResult>>;
 
 const kindSections = [
   { kind: "side", title: "Side Quests", detail: "Quick daily or weekly tasks" },
@@ -31,6 +31,11 @@ function routineLabel(routine: RoutineTask, groupTitle: string | undefined) {
   return routine.list === "morning" ? "Morning checklist" : "Night checklist";
 }
 
+/**
+ * Groups routines and suggested quests with resource-owned kind and acceptance forms.
+ * @param props - The routines, suggestions, accepted IDs and selected date.
+ * @returns The grouped routine cards and unaccepted quest templates.
+ */
 export function QuestLog({
   routines,
   routineGroups,
@@ -44,7 +49,7 @@ export function QuestLog({
   acceptedTemplateIds: string[];
   selected: string;
 }) {
-  const fetcher = useFetcher<PlannerActionResult | QuestActionResult>();
+  const fetcher = useFetcher<RoutineActionResult | QuestActionResult>();
   useActionNotifications(fetcher);
   const busy = fetcher.state !== "idle";
 
@@ -135,6 +140,11 @@ export function QuestLog({
   );
 }
 
+/**
+ * Displays a routine and edits its kind through the shared item URL.
+ * @param props - The routine, display label and shared fetcher state.
+ * @returns The routine's kind form.
+ */
 function RoutineCard({
   routine,
   label,
@@ -158,9 +168,7 @@ function RoutineCard({
         <span className="text-label">{label} · {routine.points} PTS</span>
         <h3>{routine.title}</h3>
       </div>
-      <fetcher.Form method="post" action="/" className="quest-actions">
-        <input type="hidden" name="intent" value="update_routine_kind" />
-        <input type="hidden" name="taskId" value={routine.id} />
+      <fetcher.Form method="patch" action={`/routines/${routine.id}`} className="quest-actions">
         <select className="form-select form-select-sm" name="kind" value={kind} onChange={handleKindChange} aria-label={`Type for ${routine.title}`}>
           {routineKinds.map((item) => (
             <option key={item} value={item}>{kindLabels[item]} · {routinePoints[item]} pts</option>

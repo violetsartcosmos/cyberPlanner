@@ -58,7 +58,7 @@ bookRoutes.get("/", noStore, requireSignIn, async (context) => {
       listBooks(libraryDirectory),
       listBooks(audiobookDirectory, "audiblebooks"),
     ]);
-    return context.json(await attachBookIds([...books, ...audiobooks].sort((a, b) => a.title.localeCompare(b.title) || a.path.localeCompare(b.path))));
+    return context.json(await attachBookIds([...books, ...audiobooks].sort((firstBook, secondBook) => firstBook.title.localeCompare(secondBook.title) || firstBook.path.localeCompare(secondBook.path))));
   } catch (error) {
     return reportServerError(context, error, "Could not load ebook library.", "Could not load the ebook library.");
   }
