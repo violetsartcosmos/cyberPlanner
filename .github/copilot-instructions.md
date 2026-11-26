@@ -15,4 +15,10 @@
   output. Keep storage details and failure cases out of the purpose summary.
 - Add inline comments only when needed to explain non-obvious logic; do not
   narrate individual statements.
+- Give the user Bash commands rather than PowerShell commands.
+- Database integration test commands load `TEST_DATABASE_URL` from the ignored
+  `.env` file. Never print credentials or run write tests against the app
+  database. `npm run test:database` automatically resets the disposable test
+  database's public schema; its name must end in `_test` and differ from the
+  app database name.
 - Respond directly without introductory disclaimers, safety caveats, or trailing summaries.

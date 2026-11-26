@@ -12,10 +12,11 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "test:database": "node --test tests/database.integration.test.mjs tests/routine-id-migration.integration.test.mjs",
+    "pretest:database": "node scripts/reset-test-database.mjs",
+    "test:database": "node --require dotenv/config --test tests/database.integration.test.mjs tests/routine-id-migration.integration.test.mjs",
     "test:profile": "node --import tsx --test tests/profile.test.mjs tests/gamification.test.mjs tests/planner-action.test.mjs",
     "test:books": "node --import tsx --test tests/books.test.mjs tests/book-progress.test.mjs tests/backup-books.test.mjs",
-    "test:book-data": "node --import tsx --test tests/book-data.integration.test.mjs tests/book-progress-api.integration.test.mjs",
+    "test:book-data": "node --require dotenv/config --import tsx --test tests/book-data.integration.test.mjs tests/book-progress-api.integration.test.mjs",
     "test:server": "node --test tests/server.test.mjs tests/action-validation.test.mjs",
     "lint:hooks": "eslint src --max-warnings 0",
     "typecheck": "tsc"
