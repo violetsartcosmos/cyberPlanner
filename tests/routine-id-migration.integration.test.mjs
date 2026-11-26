@@ -172,3 +172,76 @@ test("planner day IDs and book storage paths preserve existing data", async () =
     await client.end();
   }
 });
+
+test("entity ID migration preserves existing records and natural-key constraints", async () => {
+  const url = process.env.TEST_DATABASE_URL;
+  if (!url) throw new Error("TEST_DATABASE_URL must point to a disposable PostgreSQL database.");
+  const client = new pg.Client({ connectionString: url });
+  const schema = `entity_migration_${randomUUID().replaceAll("-", "")}`;
+  await client.connect();
+  try {
+    await client.query(`CREATE SCHEMA "${schema}"`);
+    await client.query(`SET search_path TO "${schema}"`);
+    const root = new URL("../prisma/migrations/", import.meta.url);
+    const current = "20261130040000_entity_ids";
+    const folders = (await readdir(root, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory() && entry.name < current)
+      .map((entry) => entry.name).sort();
+    for (const folder of folders) {
+      await client.query(await readFile(new URL(`${folder}/migration.sql`, root), "utf8"));
+    }
+
+    await client.query(`
+      INSERT INTO external_tasks (source, external_id, title) VALUES
+        ('google', 'same', 'Synced task'), ('gmail', 'same', 'Follow-up');
+      INSERT INTO therapy_completions (day, session_id, exercise_id) VALUES
+        ('2026-11-23', 'am', 'glute'), ('2026-11-23', 'mid', 'glute');
+    `);
+    await client.query(await readFile(new URL(`${current}/migration.sql`, root), "utf8"));
+
+    const tasks = (await client.query("SELECT id, source, title FROM external_tasks ORDER BY source")).rows;
+    assert.equal(new Set(tasks.map((row) => row.id)).size, 2);
+    assert.ok(tasks.every((row) => row.id > 0));
+    assert.deepEqual(tasks.map((row) => row.title), ["Follow-up", "Synced task"]);
+    const assignments = (await client.query(
+      "SELECT id, session_id, exercise_id, points FROM therapy_session_exercises ORDER BY id",
+    )).rows;
+    assert.equal(new Set(assignments.map((row) => row.id)).size, 23);
+    assert.ok(assignments.every((row) => row.id > 0 && row.points === 10));
+    const completions = (await client.query(
+      "SELECT id, day::text, session_id, exercise_id FROM therapy_completions ORDER BY session_id",
+    )).rows;
+    assert.equal(new Set(completions.map((row) => row.id)).size, 2);
+    assert.ok(completions.every((row) => row.id > 0 && row.day === "2026-11-23" && row.exercise_id === "glute"));
+    assert.deepEqual(completions.map((row) => row.session_id), ["am", "mid"]);
+
+    await assert.rejects(client.query(
+      "INSERT INTO external_tasks (source, external_id, title) VALUES ('google', 'same', 'Duplicate')",
+    ), /external_tasks_source_external_id_key/);
+    await assert.rejects(client.query(
+      "INSERT INTO therapy_session_exercises (session_id, exercise_id, position, points) VALUES ('am', 'glute', 99, 10)",
+    ), /therapy_session_exercises_session_id_exercise_id_key/);
+    await assert.rejects(client.query(
+      "INSERT INTO therapy_completions (day, session_id, exercise_id) VALUES ('2026-11-23', 'am', 'glute')",
+    ), /therapy_completions_day_session_id_exercise_id_key/);
+    await assert.rejects(client.query(
+      "INSERT INTO therapy_completions (day, session_id, exercise_id) VALUES ('2026-11-24', 'am', 'side')",
+    ), /therapy_completions_session_id_exercise_id_fkey/);
+    const task = (await client.query(
+      "INSERT INTO external_tasks (source, external_id, title) VALUES ('google', 'new', 'New') RETURNING id",
+    )).rows[0];
+    const assignment = (await client.query(
+      "INSERT INTO therapy_session_exercises (session_id, exercise_id, position, points) VALUES ('am', 'side', 99, 10) RETURNING id",
+    )).rows[0];
+    const completion = (await client.query(
+      "INSERT INTO therapy_completions (day, session_id, exercise_id) VALUES ('2026-11-24', 'am', 'side') RETURNING id",
+    )).rows[0];
+    assert.ok(!tasks.some((row) => row.id === task.id));
+    assert.ok(!assignments.some((row) => row.id === assignment.id));
+    assert.ok(!completions.some((row) => row.id === completion.id));
+  } finally {
+    await client.query("ROLLBACK");
+    await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await client.end();
+  }
+});

@@ -27,6 +27,7 @@ model GoogleConnection {
 }
 
 model ExternalTask {
+  id          Int       @id @default(autoincrement())
   source      String
   externalId  String    @map("external_id")
   taskListId  String?   @map("task_list_id")
@@ -39,7 +40,7 @@ model ExternalTask {
   emailUrl    String?   @map("email_url")
   updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  @@id([source, externalId])
+  @@unique([source, externalId])
   @@index([dueDate], map: "external_tasks_due_date_idx", where: { isDeleted: false })
   @@map("external_tasks")
 }
@@ -80,6 +81,7 @@ model TherapySession {
 }
 
 model TherapySessionExercise {
+  id          Int                 @id @default(autoincrement())
   sessionId   String              @map("session_id")
   exerciseId  String              @map("exercise_id")
   position    Int
@@ -88,18 +90,19 @@ model TherapySessionExercise {
   exercise    TherapyExercise     @relation(fields: [exerciseId], references: [id])
   completions TherapyCompletion[]
 
-  @@id([sessionId, exerciseId])
+  @@unique([sessionId, exerciseId])
   @@unique([sessionId, position])
   @@map("therapy_session_exercises")
 }
 
 model TherapyCompletion {
+  id         Int                    @id @default(autoincrement())
   day        DateTime               @db.Date
   sessionId  String                 @map("session_id")
   exerciseId String                 @map("exercise_id")
   assignment TherapySessionExercise @relation(fields: [sessionId, exerciseId], references: [sessionId, exerciseId])
 
-  @@id([day, sessionId, exerciseId])
+  @@unique([day, sessionId, exerciseId])
   @@map("therapy_completions")
 }
 
