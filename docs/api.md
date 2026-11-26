@@ -65,6 +65,9 @@ These endpoints require a signed-in session. Quest objects contain the stored fi
 
 Creation accepts `{"title":"...", "description":"...", "kind":"side", "tier":"Common", "points":10}`. A patch accepts any non-empty subset of those fields. `kind` is `side`, `main`, or `boss`; `tier` is `Common`, `Rare`, `Epic`, or `Legendary`; points must be a positive whole number. The planner form limits points to 100,000. These routes use the same quest operations as planner actions.
 
+Quest, achievement, and template routes are mounted from the gamification
+resource; points and rewards are mounted from the points resource.
+
 ## Routines and therapy
 
 These endpoints require a signed-in session. Dates use `YYYY-MM-DD`.

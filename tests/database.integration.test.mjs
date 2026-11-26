@@ -51,6 +51,11 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const database = await vite.ssrLoadModule("/server/db/client.ts");
       db = database.getDatabase();
       const date = "2026-11-21";
+      const getPlannerSnapshot = async (selectedDate) => page.getPlannerSnapshot(
+        selectedDate,
+        await routines.listRoutineCompletions(),
+        await externalTasks.getExternalTasks(selectedDate),
+      );
       const routineId = async (list, weekday, title) => String((await db.routineTask.findFirstOrThrow({
         where: weekday === null
           ? { list, title, groups: { none: {} } }
@@ -76,7 +81,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       await journals.saveJournal(date, journal);
       assert.equal((await db.journal.findUniqueOrThrow({ where: { day: database.databaseDate(date) } })).id, savedJournal.id);
       await routines.setRoutineCompletion(date, daily2, true);
-      const snapshot = await page.getPlannerSnapshot(date);
+      const snapshot = await getPlannerSnapshot(date);
       assert.deepEqual(new Set(snapshot.checks[date]), new Set([daily0, daily1, daily2]));
       assert.ok(snapshot.journalDates.includes(date));
       assert.equal(snapshot.journal, journal);
@@ -101,7 +106,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       });
       assert.equal(journalWrite.status, 200);
       assert.deepEqual(await journalWrite.json(), { date, content: updatedJournal });
-      assert.equal((await page.getPlannerSnapshot(date)).journal, updatedJournal);
+      assert.equal((await getPlannerSnapshot(date)).journal, updatedJournal);
       const newJournalUrl = "http://localhost/api/journals/2026-11-20";
       const createdJournal = await app.request(newJournalUrl, {
         method: "PUT", headers: journalHeaders, body: JSON.stringify({ content: "A new entry" }),
@@ -109,7 +114,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal(createdJournal.status, 200);
       assert.deepEqual(await (await app.request(newJournalUrl, { headers: journalHeaders })).json(),
         { date: "2026-11-20", content: "A new entry" });
-      assert.equal((await page.getPlannerSnapshot("2026-11-20")).journal, "A new entry");
+      assert.equal((await getPlannerSnapshot("2026-11-20")).journal, "A new entry");
       assert.equal((await points.getPointsSummary(date)).todayPoints, 30);
 
       const redemptions = await Promise.all(
@@ -189,17 +194,17 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         ok: false, error: "That reward is not available.",
       });
       assert.equal((await submit({ intent: "save_journal", date: extraDate, journal })).ok, true);
-      assert.equal((await page.getPlannerSnapshot(extraDate)).journal, journal);
+      assert.equal((await getPlannerSnapshot(extraDate)).journal, journal);
       for (const fields of [{}, { journal: new File(["entry"], "journal.txt") }]) {
         assert.equal((await submit({ intent: "save_journal", date: extraDate, ...fields })).ok, false);
-        assert.equal((await page.getPlannerSnapshot(extraDate)).journal, journal);
+        assert.equal((await getPlannerSnapshot(extraDate)).journal, journal);
       }
       assert.equal((await submit({
         intent: "toggle_builtin", date: extraDate, taskId: new File(["1"], "task.txt"), completed: "true",
       })).ok, false);
       assert.equal((await submit({ intent: "save_journal", date: extraDate, journal: "" })).ok, true);
-      assert.equal((await page.getPlannerSnapshot(extraDate)).journal, "");
-      assert.ok(!(await page.getPlannerSnapshot(extraDate)).journalDates.includes(extraDate));
+      assert.equal((await getPlannerSnapshot(extraDate)).journal, "");
+      assert.ok(!(await getPlannerSnapshot(extraDate)).journalDates.includes(extraDate));
 
       const gamification = await vite.ssrLoadModule("/server/gamification/service.ts");
       const utils = await vite.ssrLoadModule("/shared/planner/utils.ts");
@@ -348,13 +353,13 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.deepEqual(await (await questRequest(crudUrl, "GET")).json(), { date: crudDate, content: "" });
       assert.equal((await questRequest(crudUrl, "PUT", { content: "CRUD example" })).status, 200);
       assert.deepEqual(await (await questRequest(crudUrl, "GET")).json(), { date: crudDate, content: "CRUD example" });
-      assert.equal((await page.getPlannerSnapshot(crudDate)).journal, "CRUD example");
+      assert.equal((await getPlannerSnapshot(crudDate)).journal, "CRUD example");
       const deletedJournal = await questRequest(crudUrl, "DELETE");
       assert.equal(deletedJournal.status, 204);
       assert.equal(await deletedJournal.text(), "");
       assert.equal((await questRequest(crudUrl, "GET")).status, 404);
       assert.equal((await questRequest(crudUrl, "DELETE")).status, 404);
-      assert.ok(!(await page.getPlannerSnapshot(crudDate)).journalDates.includes(crudDate));
+      assert.ok(!(await getPlannerSnapshot(crudDate)).journalDates.includes(crudDate));
       assert.ok(!(await (await questRequest("http://localhost/api/journals", "GET")).json()).some((item) => item.date === crudDate));
       assert.equal((await points.getPointsSummary(crudDate)).balance, balanceBeforeJournal);
       const createdResponse = await questRequest(questUrl, "POST", {

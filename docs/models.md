@@ -31,14 +31,15 @@ In development, Vite serves the browser app and proxies `/api` and `/auth` to th
 | [`src/layouts/planner-layout.tsx`](../src/layouts/planner-layout.tsx), [`src/pages/`](../src/pages/) | Shared planner shell and thin route-level views. |
 | [`src/features/`](../src/features/) | Domain-specific UI, hooks, and services organized by feature. |
 | [`src/assets/`](../src/assets/) | Global styles and browser images. |
-| [`server/index.ts`](../server/index.ts), [`server/app.ts`](../server/app.ts) | HTTP entry point, middleware, auth and API routes. |
-| [`server/planner/`](../server/planner/) | Combined page assembly and legacy action dispatch; external tasks, Google connection persistence, and therapy await extraction. |
+| [`server/index.ts`](../server/index.ts), [`server/app.ts`](../server/app.ts) | HTTP entry point, middleware installation, router mounting, authentication, and static serving. |
+| [`server/planner/`](../server/planner/) | Combined page assembly and thin legacy action dispatch. |
+| [`server/books/`](../server/books/) | Book library, metadata, bookmarks, saved references, and book API routes. |
+| [`server/gamification/`](../server/gamification/) | Quest and achievement operations and routes. |
+| [`server/points/`](../server/points/) | Points ledger, reward redemption, and points/reward routes. |
 | [`server/journals/`](../server/journals/) | Journal CRUD routes and database operations. |
 | [`server/routines/`](../server/routines/) | Routine routes, definitions, assignment rules, completions, and kind changes. |
 | [`server/http.ts`](../server/http.ts) | Shared sign-in, no-store, and server-error handling for API routes. |
-| [`server/auth/`](../server/auth/), [`server/google/`](../server/google/) | Session and OAuth handling; Google Tasks, Gmail, and Calendar integration. |
-| [`server/points/`](../server/points/), [`server/gamification/`](../server/gamification/) | Points ledger, rewards, quests, achievements, and XP. |
-| [`server/books/`](../server/books/) | Library files, metadata, bookmarks, and saved references. |
+| [`server/auth/`](../server/auth/), [`server/google/`](../server/google/) | Session and OAuth handling; Google Tasks, Gmail, Calendar integration, and calendar routes. |
 | [`server/db/`](../server/db/) | Prisma client and database helpers. |
 | [`shared/planner/`](../shared/planner/) | Types, task and reward definitions, validation, and utilities used by client and server. |
 | [`prisma/schema.prisma`](../prisma/schema.prisma), [`prisma/migrations/`](../prisma/migrations/) | Persistent schema and committed database migrations. |

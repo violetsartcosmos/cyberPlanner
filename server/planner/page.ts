@@ -11,12 +11,13 @@ import { listRoutineCompletions } from "../routines/service";
 
 type RoutineCompletion = { day: Date; taskId: number };
 
-export async function getPlannerSnapshot(date: string, completions?: RoutineCompletion[], plannerTasks?: ExternalTask[]) {
-  const [checks, journals, tasks] = await Promise.all([
-    completions ?? listRoutineCompletions(),
-    listJournals(),
-    plannerTasks ?? getExternalTasks(date),
-  ]);
+export async function getPlannerSnapshot(
+  date: string,
+  completions: RoutineCompletion[],
+  plannerTasks: ExternalTask[],
+) {
+  const checks = completions;
+  const journals = await listJournals();
   const checksByDate: Record<string, string[]> = {};
   for (const check of checks) {
     const key = dateString(check.day);
@@ -26,7 +27,7 @@ export async function getPlannerSnapshot(date: string, completions?: RoutineComp
     checks: checksByDate,
     journalDates: journals.filter((journal) => journal.content.trim()).map((journal) => dateString(journal.day)),
     journal: journals.find((journal) => dateString(journal.day) === date)?.content ?? "",
-    tasks,
+    tasks: plannerTasks,
   };
 }
 
