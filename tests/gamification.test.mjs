@@ -177,3 +177,23 @@ test("quest log shows unaccepted templates in their seeded tracks", () => {
   assert.match(html, /Life quest/);
   assert.doesNotMatch(html, /Already accepted/);
 });
+
+test("quest log routine forms target the planner action, not template acceptance", () => {
+  const router = createMemoryRouter([{
+    path: "/",
+    children: [{
+      path: "quest-log",
+      element: React.createElement(QuestLog, {
+        routines: [{ id: "3", list: "morning", title: "Water", kind: "side", points: 10 }],
+        routineGroups: [],
+        templates: [{ id: "one", track: "cyber", kind: "boss", title: "Cyber boss", points: 150 }],
+        acceptedTemplateIds: [],
+        selected: "2026-11-23",
+      }),
+    }],
+  }], { initialEntries: ["/quest-log?date=2026-11-23"] });
+  const html = renderToStaticMarkup(React.createElement(NotificationProvider, null, React.createElement(RouterProvider, { router })));
+  assert.match(html, /<form[^>]*action="\/"[^>]*><input[^>]*name="intent" value="update_routine_kind"/);
+  assert.match(html, /<form[^>]*action="\/quest-log\/templates\/one\/accept"/);
+  assert.doesNotMatch(html, /name="intent" value="accept_template"|name="templateId"/);
+});

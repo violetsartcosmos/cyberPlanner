@@ -4,10 +4,10 @@ import { useFetcher } from "react-router";
 import type { QuestTemplate } from "../../../../shared/planner/gamification";
 import type { RoutineGroup, RoutineKind, RoutineTask } from "../../../../shared/planner/routines";
 import { routineKinds, routinePoints } from "../../../../shared/planner/routines";
-import type { PlannerActionResult } from "../../../../shared/planner/types";
+import type { PlannerActionResult, QuestActionResult } from "../../../../shared/planner/types";
 import { useActionNotifications } from "@/components/notifications";
 
-type FetcherType = ReturnType<typeof useFetcher<PlannerActionResult>>;
+type FetcherType = ReturnType<typeof useFetcher<PlannerActionResult | QuestActionResult>>;
 
 const kindSections = [
   { kind: "side", title: "Side Quests", detail: "Quick daily or weekly tasks" },
@@ -44,7 +44,7 @@ export function QuestLog({
   acceptedTemplateIds: string[];
   selected: string;
 }) {
-  const fetcher = useFetcher<PlannerActionResult>();
+  const fetcher = useFetcher<PlannerActionResult | QuestActionResult>();
   useActionNotifications(fetcher);
   const busy = fetcher.state !== "idle";
 
@@ -96,9 +96,7 @@ export function QuestLog({
               {template.description && <p>{template.description}</p>}
             </div>
             <div className="quest-actions">
-              <fetcher.Form method="post">
-                <input type="hidden" name="intent" value="accept_template" />
-                <input type="hidden" name="templateId" value={template.id} />
+              <fetcher.Form method="post" action={`/quest-log/templates/${encodeURIComponent(template.id)}/accept`}>
                 <button className="btn btn-primary btn-sm" disabled={busy}>Accept</button>
               </fetcher.Form>
             </div>
@@ -160,7 +158,7 @@ function RoutineCard({
         <span className="text-label">{label} · {routine.points} PTS</span>
         <h3>{routine.title}</h3>
       </div>
-      <fetcher.Form method="post" className="quest-actions">
+      <fetcher.Form method="post" action="/" className="quest-actions">
         <input type="hidden" name="intent" value="update_routine_kind" />
         <input type="hidden" name="taskId" value={routine.id} />
         <select className="form-select form-select-sm" name="kind" value={kind} onChange={handleKindChange} aria-label={`Type for ${routine.title}`}>

@@ -1,6 +1,13 @@
 import type { Achievement, Quest, QuestTemplate } from "./gamification";
 import type { RoutineGroup, RoutineTask } from "./routines";
 
+/** HTTP status and notification returned by quest form actions. */
+export type QuestActionResult = {
+  status: number;
+  message?: string;
+  error?: string;
+};
+
 export type PlannerActionResult = {
   ok: boolean;
   message?: string;

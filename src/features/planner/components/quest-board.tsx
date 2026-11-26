@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { Link, useFetcher } from "react-router";
 import { tiers, type Quest } from "../../../../shared/planner/gamification";
-import type { PlannerActionResult } from "../../../../shared/planner/types";
+import type { QuestActionResult } from "../../../../shared/planner/types";
 import witchyAction from "@/assets/images/witchyaction.png";
 import { useActionNotifications } from "@/components/notifications";
 
@@ -13,7 +13,7 @@ const groups = [
 ] as const;
 
 export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: string }) {
-  const fetcher = useFetcher<PlannerActionResult>();
+  const fetcher = useFetcher<QuestActionResult>();
   useActionNotifications(fetcher);
   const [kind, setKind] = useState<(typeof groups)[number]["kind"]>("main");
   const [points, setPoints] = useState(50);
@@ -63,14 +63,12 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
         <article className="quest-card" key={quest.id}>
           <div><span className="text-label">{quest.tier} · {quest.points} PTS / XP</span><h3>{quest.title}</h3>{quest.description && <p>{quest.description}</p>}</div>
           <div className="quest-actions">
-            {quest.completedAt ? <span className="quest-complete">COMPLETED</span> : <fetcher.Form method="post">
-              <input type="hidden" name="intent" value="complete_quest" /><input type="hidden" name="id" value={quest.id} />
+            {quest.completedAt ? <span className="quest-complete">COMPLETED</span> : <fetcher.Form method="post" action={`/quest-board/${encodeURIComponent(quest.id)}/complete`}>
               <button className="btn btn-primary btn-sm" disabled={fetcher.state !== "idle"}>Complete</button>
             </fetcher.Form>}
             <details className="quest-edit">
               <summary className="btn btn-outline-secondary btn-sm">Edit</summary>
-              <fetcher.Form method="post" className="gamification-form">
-                <input type="hidden" name="intent" value="update_quest" /><input type="hidden" name="id" value={quest.id} />
+              <fetcher.Form method="patch" action={`/quest-board/${encodeURIComponent(quest.id)}`} className="gamification-form">
                 <label>Quest title<input className="form-control" name="title" required maxLength={100} defaultValue={quest.title} /></label>
                 <label>Description (optional)<textarea className="form-control" name="description" maxLength={500} defaultValue={quest.description} /></label>
                 <div className="row g-2">
@@ -81,8 +79,7 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
                 <button className="btn btn-primary btn-sm" disabled={fetcher.state !== "idle"}>Save quest</button>
               </fetcher.Form>
             </details>
-            <fetcher.Form method="post" onSubmit={confirmQuestDelete(quest.title)}>
-              <input type="hidden" name="intent" value="delete_quest" /><input type="hidden" name="id" value={quest.id} />
+            <fetcher.Form method="delete" action={`/quest-board/${encodeURIComponent(quest.id)}`} onSubmit={confirmQuestDelete(quest.title)}>
               <button className="btn btn-outline-secondary btn-sm" disabled={fetcher.state !== "idle"}>Delete</button>
             </fetcher.Form>
           </div>
@@ -111,8 +108,7 @@ export function QuestBoard({ quests, selected }: { quests: Quest[]; selected: st
           <p className="text-label accent">YOUR NEXT ADVENTURE</p>
           <h2>Create a quest</h2>
           <p>Set your own point value to match the effort. Completed quests award points and lifetime XP once.</p>
-          <fetcher.Form method="post" className="gamification-form">
-            <input type="hidden" name="intent" value="create_quest" />
+          <fetcher.Form method="post" action="/quest-board" className="gamification-form">
             <label>Quest title<input className="form-control" name="title" required maxLength={100} /></label>
             <label>Description (optional)<textarea className="form-control" name="description" maxLength={500} /></label>
             <div className="row g-2">

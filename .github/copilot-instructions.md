@@ -6,6 +6,18 @@
 - Keep essential business rules, such as awarding points only once, intact.
 - Put one-off logic in the relevant route or action instead of creating reusable helpers for it.
 - Avoid unnecessary fallbacks, defensive wrappers, and redundant error handling.
+- Excessive defensive programming means adding speculative guards around
+  trusted application contracts: repeated header checks, runtime object-type
+  checks, cancellation checks, and catch-and-rethrow layers.
+- In React Router actions, check the HTTP result once and return the API's
+  documented error. Let request failures and cancellation propagate to React
+  Router; use the existing route error boundary instead of local catch layers.
+- Use resource URLs and HTTP methods for CRUD: POST to the collection, PATCH
+  and DELETE to the same item URL. Do not add /create, /update, or /delete
+  suffixes or hidden intent strings. React Router's item action may select the
+  operation by request.method; do not add shared submission wrappers.
+- Return HTTP statuses from new resource form actions rather than custom
+  ok booleans. Keep authentication and business-rule validation.
 - Use purpose-first JSDoc comments for function definitions added or changed.
   Explain what the function does in plain language, then document each input
   with `@param` and its output with `@returns`. Do not repeat TypeScript types.

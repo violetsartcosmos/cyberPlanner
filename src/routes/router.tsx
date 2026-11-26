@@ -1,5 +1,8 @@
 import { createBrowserRouter, Link, useRouteError } from "react-router";
 import { plannerAction, plannerLoader } from "../features/planner/services/planner-route";
+import {
+  acceptQuestTemplateAction, completeQuestAction, createQuestAction, questResourceAction,
+} from "../features/planner/services/quest-actions";
 import PlannerLayout from "../layouts/planner-layout";
 import BooksPage from "../pages/books";
 import CalendarPage from "../pages/calendar";
@@ -47,8 +50,11 @@ export const router = createBrowserRouter([{
     { index: true, Component: DashboardPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "calendar", Component: CalendarPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "quests", Component: CalendarPage, action: plannerAction, ErrorBoundary: PageError },
-    { path: "quest-board", Component: QuestBoardPage, action: plannerAction, ErrorBoundary: PageError },
-    { path: "quest-log", Component: QuestLogPage, action: plannerAction, ErrorBoundary: PageError },
+    { path: "quest-board", Component: QuestBoardPage, action: createQuestAction, ErrorBoundary: PageError },
+    { path: "quest-board/:id", action: questResourceAction, ErrorBoundary: PageError },
+    { path: "quest-board/:id/complete", action: completeQuestAction, ErrorBoundary: PageError },
+    { path: "quest-log", Component: QuestLogPage, ErrorBoundary: PageError },
+    { path: "quest-log/templates/:templateId/accept", action: acceptQuestTemplateAction, ErrorBoundary: PageError },
     { path: "journal", Component: JournalPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "books", Component: BooksPage, action: plannerAction, ErrorBoundary: PageError },
     { path: "rewards", Component: RewardsPage, action: plannerAction, ErrorBoundary: PageError },
