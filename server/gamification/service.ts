@@ -1,7 +1,7 @@
 import type { Prisma } from "../generated/prisma/client";
 import { dateString, getDatabase, serializableTransaction } from "../db/client";
 import { awardTaskPoints } from "../points/service";
-import { loadRoutines, routineId } from "../planner/routines";
+import { loadRoutines, routineId } from "../routines/definitions";
 import { streaks } from "../../shared/planner/profile";
 import { dateKey, dayProgress, parseDate } from "../../shared/planner/utils";
 

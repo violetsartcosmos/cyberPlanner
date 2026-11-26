@@ -1,10 +1,6 @@
-import { databaseDate, dateString, getDatabase, serializableTransaction } from "../db/client";
+import { databaseDate, dateString, getDatabase } from "../db/client";
 import { awardTaskPoints } from "../points/service";
 import type { ExternalTask } from "../../shared/planner/types";
-import { dateKey } from "../../shared/planner/utils";
-import { routinePoints, type RoutineKind } from "../../shared/planner/routines";
-import { refreshAchievements } from "../gamification/service";
-import { findRoutine } from "./routines";
 
 export type { ExternalTask } from "../../shared/planner/types";
 export type ExternalTaskSource = ExternalTask["source"];
@@ -36,8 +32,6 @@ function externalTask(row: StoredExternalTask): ExternalTask {
   };
 }
 
-type RoutineCompletion = { day: Date; taskId: number };
-
 export async function getPlannerTasks(date: string) {
   const rows = await getDatabase().externalTask.findMany({
       where: {
@@ -47,91 +41,6 @@ export async function getPlannerTasks(date: string) {
       orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { title: "asc" }],
   });
   return rows.map(externalTask);
-}
-
-export async function getPlannerSnapshot(date: string, completions?: RoutineCompletion[], plannerTasks?: ExternalTask[]) {
-  const [checks, journals, tasks] = await Promise.all([
-    completions ?? getDatabase().routineTaskCompletion.findMany({ orderBy: [{ day: "asc" }, { taskId: "asc" }] }),
-    getDatabase().journal.findMany(),
-    plannerTasks ?? getPlannerTasks(date),
-  ]);
-  const checksByDate: Record<string, string[]> = {};
-  for (const check of checks) {
-    const key = dateString(check.day);
-    (checksByDate[key] ??= []).push(String(check.taskId));
-  }
-  return {
-    checks: checksByDate,
-    journalDates: journals.filter((journal) => journal.content.trim()).map((journal) => dateString(journal.day)),
-    journal: journals.find((journal) => dateString(journal.day) === date)?.content ?? "",
-    tasks,
-  };
-}
-
-export async function savePlannerJournal(date: string, journal: string) {
-  const day = databaseDate(date);
-  await getDatabase().journal.upsert({
-    where: { day },
-    create: { day, content: journal },
-    update: { content: journal },
-  });
-}
-
-// Read one journal by its unique date; null means that date has no saved row.
-export async function getJournal(date: string) {
-  const journal = await getDatabase().journal.findUnique({
-    where: { day: databaseDate(date) },
-    select: { content: true },
-  });
-  return journal;
-}
-
-// Return the checked routine IDs for one day in the string form used by the API.
-export async function getRoutineCompletions(date: string) {
-  const checks = await getDatabase().routineTaskCompletion.findMany({
-    where: { day: databaseDate(date) }, orderBy: { taskId: "asc" }, select: { taskId: true },
-  });
-  return checks.map((check) => String(check.taskId));
-}
-
-export async function setBuiltinTaskCompletion(
-  date: string,
-  taskId: string,
-  completed: boolean,
-) {
-  const day = databaseDate(date);
-  return serializableTransaction(async (client) => {
-    const routine = await findRoutine(client, date, taskId);
-    if (!routine) throw new Error("That planner task is invalid.");
-    if (completed) {
-      await client.routineTaskCompletion.upsert({
-        where: { day_taskId: { day, taskId: routine.id } },
-        create: { day, taskId: routine.id },
-        update: {},
-      });
-    } else {
-      await client.routineTaskCompletion.deleteMany({ where: { day, taskId: routine.id } });
-    }
-    const checks = (await client.routineTaskCompletion.findMany({
-      where: { day }, orderBy: { taskId: "asc" }, select: { taskId: true },
-    })).map((check) => String(check.taskId));
-    if (completed) {
-      await awardTaskPoints(client, `builtin:${date}:${taskId}`, date, routine.points);
-    }
-    const earnedAchievements = await refreshAchievements(client, dateKey(new Date()));
-    return { checks, earnedAchievements };
-  });
-}
-
-export async function updateRoutineKind(
-  id: number,
-  kind: RoutineKind,
-) {
-  const result = await getDatabase().routineTask.updateMany({
-    where: { id },
-    data: { kind, points: routinePoints[kind] },
-  });
-  return result.count === 1;
 }
 
 export async function getExternalTask(

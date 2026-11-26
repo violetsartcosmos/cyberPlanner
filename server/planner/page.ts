@@ -1,10 +1,34 @@
 import { dateKey, isValidDateKey } from "../../shared/planner/utils";
-import type { PlannerPage } from "../../shared/planner/types";
+import type { ExternalTask, PlannerPage } from "../../shared/planner/types";
 import { getMissingConfiguration, getSignedInEmail } from "../auth/service";
 import { getPointsSummary } from "../points/service";
-import { getPlannerSnapshot, getPlannerTasks } from "./service";
+import { getPlannerTasks } from "./service";
 import { getGamification } from "../gamification/service";
 import { getTherapyPlan } from "./therapy";
+import { dateString } from "../db/client";
+import { listJournals } from "../journals/service";
+import { listRoutineCompletions } from "../routines/service";
+
+type RoutineCompletion = { day: Date; taskId: number };
+
+export async function getPlannerSnapshot(date: string, completions?: RoutineCompletion[], plannerTasks?: ExternalTask[]) {
+  const [checks, journals, tasks] = await Promise.all([
+    completions ?? listRoutineCompletions(),
+    listJournals(),
+    plannerTasks ?? getPlannerTasks(date),
+  ]);
+  const checksByDate: Record<string, string[]> = {};
+  for (const check of checks) {
+    const key = dateString(check.day);
+    (checksByDate[key] ??= []).push(String(check.taskId));
+  }
+  return {
+    checks: checksByDate,
+    journalDates: journals.filter((journal) => journal.content.trim()).map((journal) => dateString(journal.day)),
+    journal: journals.find((journal) => dateString(journal.day) === date)?.content ?? "",
+    tasks,
+  };
+}
 
 export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const url = new URL(request.url);

@@ -16,7 +16,8 @@ Book requests that take a `path` require a non-empty path of at most 2,048 chara
 
 `GET /api/planner` returns all earned task keys by default. Set `taskKeys=visible` to return only keys for the selected date's built-in tasks and its visible synced tasks.
 
-The UI still loads its combined page through `GET /api/planner`. Journal saves,
+The shared UI shell still loads its combined page through `GET /api/planner`.
+The journal page reads its entries directly from the journal endpoints. Journal saves,
 routine kind changes, and routine, therapy, and external-task completions now
 use the resource endpoints below. Other UI actions still use `POST /api/planner`,
 which remains supported for existing clients. Both APIs use the same services
@@ -35,10 +36,18 @@ These endpoints require a signed-in session. Dates use `YYYY-MM-DD`.
 
 | Method and path | Description |
 | --- | --- |
+| `GET /api/journals` | Lists saved entry dates, newest first, as `[{"date":"YYYY-MM-DD"}]`, including empty entries. |
+| `POST /api/journals` | Creates an entry using `{"date":"YYYY-MM-DD","content":"..."}` and returns the saved date and content with `201`; an existing date returns `409`. Omitted content uses the database's empty-string default. |
 | `GET /api/journals/{date}` | Returns `{"date":"YYYY-MM-DD","content":"..."}`; returns `404` if no journal has been saved for that date. |
 | `PUT /api/journals/{date}` | Creates or replaces the entry using `{"content":"..."}` and returns the saved date and content. Content can be empty. |
+| `DELETE /api/journals/{date}` | Deletes the entry and returns `204` with no body; returns `404` if missing. |
 
-These endpoints share journal data with `/api/planner`.
+These endpoints share journal data with `/api/planner`. Deleting a journal does
+not alter points. The planner's existing `journalDates` still lists only
+non-empty entries; the journal browser lists every saved entry.
+
+For the readable React/Node CRUD walkthrough and remaining work, see the
+[planner refactor plan](planner-refactor-plan.md).
 
 ## Quests
 

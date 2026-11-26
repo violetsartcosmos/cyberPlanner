@@ -1,26 +1,25 @@
-import { Hono, type Context, type MiddlewareHandler } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { csrf } from "hono/csrf";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { redirect } from "react-router";
 import { beginGoogleAuthorization, completeGoogleAuthorization, endSession } from "./auth/service";
 import { handlePlannerAction } from "./planner/dispatch";
 import { getPlannerPage } from "./planner/page";
-import { getSignedInEmail } from "./auth/service";
 import { getCalendarData, validCalendarRange } from "./google/calendar";
 import { audiobookDirectory, bookResponse, libraryDirectory, listBooks } from "./books/library";
 import { addBookmark, attachBookIds, getChapters, getProgress, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveProgress, saveWikipedia } from "./books/data";
 import type { LibraryName } from "./books/library";
 import { isWikipediaDetails, type WikipediaDetails } from "../shared/planner/books";
 import { isValidDateKey } from "../shared/planner/utils";
-import { getJournal, getPlannerTasks, getRoutineCompletions, savePlannerJournal, setBuiltinTaskCompletion, updateRoutineKind } from "./planner/service";
+import { getPlannerTasks } from "./planner/service";
 import { updateExternalCompletion } from "./planner/actions";
 import { acceptTemplate, completeQuest, createQuest, deleteQuest, getQuest, listAchievements, listQuests, listQuestTemplates, saveAchievement, updateQuest, type AchievementInput, type QuestInput } from "./gamification/service";
-import { getDatabase } from "./db/client";
-import { loadRoutines, routineId } from "./planner/routines";
 import { getTherapyPlan, setTherapyCompletion } from "./planner/therapy";
-import { routineKinds } from "../shared/planner/routines";
 import { getPointsSummary, redeemReward } from "./points/service";
 import { rewards } from "../shared/planner/definitions";
+import { noStore, reportServerError, requireSignIn } from "./http";
+import { journalRoutes } from "./journals/routes";
+import { routineRoutes } from "./routines/routes";
 
 type BookLibrary = { name: LibraryName; root: string };
 type CalendarQuery = { start: string; end: string };
@@ -45,20 +44,6 @@ function librarySelection(value: unknown): BookLibrary | null {
   return null;
 }
 
-/** Prevents API responses from being cached unless a route sets a stricter policy. */
-const noStore: MiddlewareHandler<AppEnvironment> = async (context, next) => {
-  await next();
-  if (!context.res.headers.has("Cache-Control")) context.header("Cache-Control", "no-store");
-};
-
-/** Rejects requests without an active session for the configured account. */
-const requireSignIn: MiddlewareHandler<AppEnvironment> = async (context, next) => {
-  if (!(await getSignedInEmail(context.req.raw))) {
-    return context.json({ error: "Sign in with your configured Google account first." }, 401);
-  }
-  await next();
-};
-
 /** Validates shared book query parameters and exposes their typed values. */
 const requireBookQuery: MiddlewareHandler<AppEnvironment> = async (context, next) => {
   const library = librarySelection(context.req.query("library"));
@@ -80,17 +65,6 @@ const requireCalendarQuery: MiddlewareHandler<AppEnvironment> = async (context, 
   context.set("calendarQuery", { start, end });
   await next();
 };
-
-/** Logs a server-side failure and returns its route-specific error message. */
-function reportServerError(
-  context: Context<AppEnvironment>,
-  error: unknown,
-  logMessage: string,
-  responseMessage = logMessage,
-) {
-  console.error(logMessage, error);
-  return context.json({ error: responseMessage }, 500);
-}
 
 /** Confirms that uploaded cover bytes match one of the supported image formats. */
 function hasImageSignature(bytes: Uint8Array, type: string): boolean {
@@ -293,31 +267,8 @@ app.post("/api/books/rename", noStore, requireSignIn, async (context) => {
 // and services. `noStore` prevents caching; `requireSignIn` checks the session.
 // The /api/* CSRF middleware above also applies to requests that change data.
 
-// GET reads the journal for a date; an unsaved date returns 404.
-app.get("/api/journals/:date", noStore, requireSignIn, async (context) => {
-  const date = context.req.param("date");
-  if (!isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
-  try {
-    const journal = await getJournal(date);
-    if (!journal) return context.json({ error: "Journal not found." }, 404);
-    return context.json({ date, content: journal.content });
-  } catch (error) {
-    return reportServerError(context, error, "Could not load journal.");
-  }
-});
-
-// PUT creates the journal or replaces its content for that date.
-app.put("/api/journals/:date", noStore, requireSignIn, async (context) => {
-  const date = context.req.param("date");
-  if (!isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
-  const { content } = await context.req.json<{ content: string }>();
-  try {
-    await savePlannerJournal(date, content);
-    return context.json({ date, content });
-  } catch (error) {
-    return reportServerError(context, error, "Could not save journal.");
-  }
-});
+app.route("/api/journals", journalRoutes);
+app.route("/api/routines", routineRoutes);
 
 // GET lists quests that have not been soft-deleted.
 app.get("/api/quests", noStore, requireSignIn, async (context) => {
@@ -409,64 +360,6 @@ app.post("/api/quest-templates/:id/accept", noStore, requireSignIn, async (conte
       return context.json({ error: error.message }, 409);
     }
     return reportServerError(context, error, "Could not accept quest.");
-  }
-});
-
-// GET returns routine definitions and their weekday groups.
-app.get("/api/routines", noStore, requireSignIn, async (context) => {
-  try {
-    return context.json(await loadRoutines(getDatabase()));
-  } catch (error) {
-    return reportServerError(context, error, "Could not load routines.");
-  }
-});
-
-// GET returns the IDs checked on the date in the query string.
-app.get("/api/routines/completions", noStore, requireSignIn, async (context) => {
-  const date = context.req.query("date");
-  if (!date || !isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
-  try {
-    return context.json({ date, taskIds: await getRoutineCompletions(date) });
-  } catch (error) {
-    return reportServerError(context, error, "Could not load routine completions.");
-  }
-});
-
-// PATCH changes the kind; the service sets the matching point value.
-app.patch("/api/routines/:id", noStore, requireSignIn, async (context) => {
-  const id = routineId(context.req.param("id"));
-  if (id === null) return context.json({ error: "That routine is invalid." }, 400);
-  const input = await context.req.json<{ kind: string }>();
-  const kind = routineKinds.find((item) => item === input.kind);
-  if (!kind) return context.json({ error: "That routine type is invalid." }, 400);
-  try {
-    if (!(await updateRoutineKind(id, kind))) {
-      return context.json({ error: "That routine no longer exists." }, 404);
-    }
-    return context.json({ id, kind });
-  } catch (error) {
-    return reportServerError(context, error, "Could not update routine.");
-  }
-});
-
-// PUT sets a dated check to true or false. The service validates the weekday,
-// awards points at most once, and refreshes achievements in its transaction.
-app.put("/api/routines/:id/completions/:date", noStore, requireSignIn, async (context) => {
-  const id = context.req.param("id");
-  const date = context.req.param("date");
-  if (routineId(id) === null || !isValidDateKey(date)) {
-    return context.json({ error: "That planner task is invalid." }, 400);
-  }
-  const { completed } = await context.req.json<{ completed: boolean }>();
-  if (completed !== true && completed !== false) return context.json({ error: "That task state is invalid." }, 400);
-  try {
-    return context.json({ date, taskId: id, completed,
-      ...await setBuiltinTaskCompletion(date, id, completed) });
-  } catch (error) {
-    if (error instanceof Error && error.message === "That planner task is invalid.") {
-      return context.json({ error: error.message }, 404);
-    }
-    return reportServerError(context, error, "Could not update routine completion.");
   }
 });
 

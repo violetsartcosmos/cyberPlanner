@@ -2,13 +2,12 @@ import { isValidDateKey } from "../../shared/planner/utils";
 import { routineKinds, routinePoints } from "../../shared/planner/routines";
 import {
   getExternalTask,
-  savePlannerJournal,
-  setBuiltinTaskCompletion,
   setExternalTaskCompletion,
-  updateRoutineKind,
   type ExternalTaskSource,
 } from "./service";
-import { routineId } from "./routines";
+import { routineId } from "../routines/definitions";
+import { setRoutineCompletion, updateRoutineKind } from "../routines/service";
+import { saveJournal } from "../journals/service";
 import { setGoogleTaskCompleted } from "../google/service";
 import type { ActionHandler } from "./dispatch";
 import { setTherapyCompletion } from "./therapy";
@@ -51,7 +50,7 @@ export const plannerFormActions = {
     if (completed !== "true" && completed !== "false") {
       return { ok: false, error: "That task state is invalid." };
     }
-    const { earnedAchievements } = await setBuiltinTaskCompletion(date, taskId, completed === "true");
+    const { earnedAchievements } = await setRoutineCompletion(date, taskId, completed === "true");
     return { ok: true, earnedAchievements };
   },
 
@@ -88,7 +87,7 @@ export const plannerFormActions = {
     const date = form.get("date") as string;
     const journal = form.get("journal") as string;
     if (!isValidDateKey(date)) return { ok: false, error: "That planner date is invalid." };
-    await savePlannerJournal(date, journal);
+    await saveJournal(date, journal);
     return { ok: true, message: "Journal saved." };
   },
 } satisfies Record<string, ActionHandler>;

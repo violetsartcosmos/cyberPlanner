@@ -12,6 +12,12 @@ On the calendar, switch between day, week, and month, select a date, or use **To
 
 Open **Journal** from the sidebar or calendar to write for the selected date. Use the date picker or entry list to browse entries, and type `/` for blocks such as headings and checklists. Changes save automatically; the status shows when a save is pending or fails. Retry a failed save before leaving, or explicitly discard the unsaved changes. The calendar marks dates with entries. An abrupt browser or device closure can lose changes that have not finished saving.
 
+Choose **Create entry** to save an empty entry, or start typing to create it
+through autosave. The journal browser includes empty saved entries; the
+calendar marks only dates with non-empty content. **Delete entry** asks for
+confirmation and permanently removes the selected entry without changing
+points. Wait for pending edits to save before deleting.
+
 Google sync and weekly protocol are on the calendar page. Google Calendar requires the additional API and permissions described in the [setup guide](setup.md).
 
 ## Physical therapy

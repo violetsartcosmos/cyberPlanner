@@ -17,7 +17,7 @@ learning and validating the Python code.
 | --- | --- | --- |
 | `app/main.py` | Creates the FastAPI app, connects the routers, and exposes a process health check. | `server/app.ts` and `server/index.ts` |
 | `app/database.py` | Loads configuration and opens/closes a PostgreSQL connection for a request. | `server/db/client.ts`, which uses Prisma rather than psycopg |
-| `app/tasks.py` | Lists built-in routines by numeric ID and records a check and its point award. | `server/planner/routines.ts`, `server/planner/service.ts`, and `server/points/service.ts` |
+| `app/tasks.py` | Lists built-in routines by numeric ID and records a check and its point award. | `server/routines/definitions.ts`, `server/routines/service.ts`, and `server/points/service.ts` |
 | `app/points.py` | Reads the ledger and allows redemption of a predefined reward. | `server/points/service.ts`, `server/points/actions.ts`, and `shared/planner/definitions.ts` |
 | `app/__init__.py` | Marks `app` as a Python package. | No direct Node equivalent |
 | `pyproject.toml` | Declares the Python package and its dependencies. | `package.json` |

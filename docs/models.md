@@ -32,7 +32,10 @@ In development, Vite serves the browser app and proxies `/api` and `/auth` to th
 | [`src/features/`](../src/features/) | Domain-specific UI, hooks, and services organized by feature. |
 | [`src/assets/`](../src/assets/) | Global styles and browser images. |
 | [`server/index.ts`](../server/index.ts), [`server/app.ts`](../server/app.ts) | HTTP entry point, middleware, auth and API routes. |
-| [`server/planner/`](../server/planner/) | Planner page assembly, action dispatch, journals, and task state. |
+| [`server/planner/`](../server/planner/) | Combined page assembly and legacy action dispatch; external tasks, Google connection persistence, and therapy await extraction. |
+| [`server/journals/`](../server/journals/) | Journal CRUD routes and database operations. |
+| [`server/routines/`](../server/routines/) | Routine routes, definitions, assignment rules, completions, and kind changes. |
+| [`server/http.ts`](../server/http.ts) | Shared sign-in, no-store, and server-error handling for API routes. |
 | [`server/auth/`](../server/auth/), [`server/google/`](../server/google/) | Session and OAuth handling; Google Tasks, Gmail, and Calendar integration. |
 | [`server/points/`](../server/points/), [`server/gamification/`](../server/gamification/) | Points ledger, rewards, quests, achievements, and XP. |
 | [`server/books/`](../server/books/) | Library files, metadata, bookmarks, and saved references. |
@@ -48,7 +51,14 @@ The client uses browser APIs; server modules run in Node.js. The Vite configurat
 1. React Router's loader requests `/api/planner` for the selected date.
 2. The Hono route calls `getPlannerPage`, which checks configuration and the signed-in session.
 3. Planner, points, and gamification services assemble the response from PostgreSQL.
-4. User actions are posted to `/api/planner`, validated and dispatched to the relevant service. Calendar and book endpoints have their own routes.
+4. Journal CRUD, routine changes, and task completions use their resource
+   endpoints. Remaining actions are posted to `/api/planner` and dispatched to
+   the same underlying services. Calendar and book endpoints have their own routes.
+
+The journal page reads saved dates and entry content through its own GET
+endpoints, while the shared planner shell still uses the combined loader. See
+the [refactor plan](planner-refactor-plan.md) for the CRUD learning slice and
+remaining migrations.
 
 Google sign-in uses `/auth/google` and `/auth/callback`; the server stores an encrypted refresh token and uses it for Google API calls. Only the configured Google account can sign in.
 

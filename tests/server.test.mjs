@@ -46,6 +46,20 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.equal((await app.request("http://localhost/api/books/progress?path=test.epub")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/progress", { method: "PUT", headers: { Origin: "http://localhost" } })).status, 401);
     assert.equal((await app.request("http://localhost/api/journals/2026-11-21")).status, 401);
+    for (const [method, path] of [
+      ["GET", "/api/journals"],
+      ["POST", "/api/journals"],
+      ["DELETE", "/api/journals/2026-11-21"],
+      ["GET", "/api/routines/completions?date=2026-11-21"],
+      ["PATCH", "/api/routines/1"],
+      ["PUT", "/api/routines/1/completions/2026-11-21"],
+    ]) {
+      const response = await app.request(`http://localhost${path}`, { method, headers: { Origin: "http://localhost" } });
+      assert.equal(response.status, 401);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+    }
+    assert.equal((await app.request("http://localhost/api/journals/not/a/route")).status, 404);
+    assert.equal((await app.request("http://localhost/api/routines/not/a/route")).status, 404);
     assert.equal((await app.request("http://localhost/api/quests")).status, 401);
     assert.equal((await app.request("http://localhost/api/routines")).status, 401);
     assert.equal((await app.request("http://localhost/api/therapy/sessions?date=2026-11-21")).status, 401);
@@ -74,6 +88,25 @@ test("API routes preserve authentication and reject cross-origin submissions", a
       method: "PUT", headers: { ...journalHeaders, Origin: "http://attacker.example", "Content-Type": "text/plain" },
       body: JSON.stringify({ content: "test" }),
     })).status, 403);
+    for (const [method, path, body] of [
+      ["POST", "/api/journals", { date: "2026-11-21", content: "test" }],
+      ["DELETE", "/api/journals/2026-11-21"],
+      ["PATCH", "/api/routines/1", { kind: "main" }],
+      ["PUT", "/api/routines/1/completions/2026-11-21", { completed: true }],
+    ]) {
+      assert.equal((await app.request(`http://localhost${path}`, {
+        method, headers: { ...journalHeaders, Origin: "http://attacker.example", "Content-Type": "text/plain" },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      })).status, 403);
+    }
+    for (const [method, path, body] of [
+      ["POST", "/api/journals", { date: "2026-02-30", content: "test" }],
+      ["DELETE", "/api/journals/2026-02-30"],
+    ]) {
+      assert.equal((await app.request(`http://localhost${path}`, {
+        method, headers: journalHeaders, ...(body ? { body: JSON.stringify(body) } : {}),
+      })).status, 400);
+    }
     for (const [method, path, body] of [
       ["PATCH", "/api/quests/example", {}],
       ["PATCH", "/api/quests/example", { deleted: true }],
