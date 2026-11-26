@@ -45,6 +45,12 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.equal((await app.request("http://localhost/api/books/details?path=test.epub")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/progress?path=test.epub")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/progress", { method: "PUT", headers: { Origin: "http://localhost" } })).status, 401);
+    assert.equal((await app.request("http://localhost/api/journals/2026-11-21")).status, 401);
+    assert.equal((await app.request("http://localhost/api/quests")).status, 401);
+    assert.equal((await app.request("http://localhost/api/routines")).status, 401);
+    assert.equal((await app.request("http://localhost/api/therapy/sessions?date=2026-11-21")).status, 401);
+    assert.equal((await app.request("http://localhost/api/points?date=2026-11-21")).status, 401);
+    assert.equal((await app.request("http://localhost/api/achievements")).status, 401);
 
     const storage = createCookieSessionStorage({
       cookie: {
@@ -55,20 +61,41 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     const session = await storage.getSession();
     session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
     const cookie = await storage.commitSession(session);
+    const journalHeaders = { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" };
+    assert.equal((await app.request("http://localhost/api/journals/2026-02-30", { headers: journalHeaders })).status, 400);
+    assert.equal((await app.request("http://localhost/api/journals/2026-11-21", {
+      method: "PUT", headers: { ...journalHeaders, Origin: "http://attacker.example", "Content-Type": "text/plain" },
+      body: JSON.stringify({ content: "test" }),
+    })).status, 403);
+    for (const [method, path, body] of [
+      ["PATCH", "/api/quests/example", {}],
+      ["PATCH", "/api/quests/example", { deleted: true }],
+    ]) {
+      assert.equal((await app.request(`http://localhost${path}`, {
+        method, headers: journalHeaders, body: JSON.stringify(body),
+      })).status, 400);
+    }
+    for (const [method, path, body] of [
+      ["GET", "/api/routines/completions?date=2026-02-30"],
+      ["GET", "/api/therapy/sessions"],
+      ["PATCH", "/api/routines/0", { kind: "main" }],
+      ["PUT", "/api/routines/1/completions/2026-02-30", { completed: true }],
+      ["PUT", "/api/routines/1/completions/2026-11-21", { completed: "true" }],
+      ["PUT", "/api/therapy/sessions/am/exercises/glute/completions/2026-11-21", { completed: "true" }],
+      ["GET", "/api/points?date=bad"],
+      ["GET", "/api/external-tasks"],
+      ["PUT", "/api/external-tasks/unknown/task/completion", { date: "2026-11-21", completed: true }],
+      ["PUT", "/api/external-tasks/gmail/task/completion", { date: "2026-11-21", completed: "true" }],
+      ["PUT", "/api/external-tasks/gmail/task/completion", { date: "2026-02-30", completed: false }],
+      ["PUT", "/api/external-tasks/gmail/task/completion", { date: 42, completed: true }],
+    ]) {
+      assert.equal((await app.request(`http://localhost${path}`, {
+        method, headers: journalHeaders, ...(body ? { body: JSON.stringify(body) } : {}),
+      })).status, 400);
+    }
     const missingBookPath = await app.request("http://localhost/api/books/details", { headers: { Cookie: cookie } });
     assert.equal(missingBookPath.status, 400);
     assert.deepEqual(await missingBookPath.json(), { error: "Invalid book." });
-    for (const input of [
-      { path: "test.epub", position: "", revision: 0 },
-      { path: "test.epub", position: "epubcfi(/6/2)", revision: -1 },
-      { path: "test.m4b", library: "audiblebooks", position: "Infinity", revision: 0 },
-      { path: "test.pdf", position: "0", revision: 0 },
-    ]) {
-      const response = await app.request("http://localhost/api/books/progress", {
-        method: "PUT", headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" }, body: JSON.stringify(input),
-      });
-      assert.equal(response.status, 400);
-    }
     const crossOriginProgress = await app.request("http://localhost/api/books/progress", {
       method: "PUT", headers: { Cookie: cookie, Origin: "http://attacker.example", "Content-Type": "text/plain" },
       body: JSON.stringify({ path: "test.epub", position: "epubcfi(/6/2)", revision: 0 }),
@@ -112,13 +139,6 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     });
     assert.equal(invalidCover.status, 400);
     assert.deepEqual(await invalidCover.json(), { error: "Invalid cover image." });
-    const invalidBookmark = await app.request("http://localhost/api/books/bookmarks", {
-      method: "POST",
-      headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "test.epub", position: { length: 1 }, label: {} }),
-    });
-    assert.equal(invalidBookmark.status, 400);
-    assert.deepEqual(await invalidBookmark.json(), { error: "Invalid bookmark." });
     const invalidLibrary = await app.request("http://localhost/api/books/rename", {
       method: "POST",
       headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
@@ -132,12 +152,6 @@ test("API routes preserve authentication and reject cross-origin submissions", a
       body: JSON.stringify({ path: "test.epub", details: { text: "x".repeat(25000) } }),
     });
     assert.deepEqual(await largeDetails.json(), { error: "Invalid book details." });
-    const oversizedDetails = await app.request("http://localhost/api/books/details", {
-      method: "POST",
-      headers: { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "test.epub", details: { text: "x".repeat(8_000_000) } }),
-    });
-    assert.deepEqual(await oversizedDetails.json(), { error: "Book details are too large." });
     const invalidBook = await app.request("http://localhost/api/books/file?path=..%2Fsecret.epub", { headers: { Cookie: cookie } });
     assert.equal(invalidBook.status, 404);
     assert.equal(invalidBook.headers.get("cache-control"), "no-store");

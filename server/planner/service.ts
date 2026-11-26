@@ -77,6 +77,23 @@ export async function savePlannerJournal(date: string, journal: string) {
   });
 }
 
+// Read one journal by its unique date; null means that date has no saved row.
+export async function getJournal(date: string) {
+  const journal = await getDatabase().journal.findUnique({
+    where: { day: databaseDate(date) },
+    select: { content: true },
+  });
+  return journal;
+}
+
+// Return the checked routine IDs for one day in the string form used by the API.
+export async function getRoutineCompletions(date: string) {
+  const checks = await getDatabase().routineTaskCompletion.findMany({
+    where: { day: databaseDate(date) }, orderBy: { taskId: "asc" }, select: { taskId: true },
+  });
+  return checks.map((check) => String(check.taskId));
+}
+
 export async function setBuiltinTaskCompletion(
   date: string,
   taskId: string,

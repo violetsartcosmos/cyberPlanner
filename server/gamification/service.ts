@@ -1,11 +1,11 @@
 import type { Prisma } from "../generated/prisma/client";
 import { dateString, getDatabase, serializableTransaction } from "../db/client";
 import { awardTaskPoints } from "../points/service";
-import { loadRoutines } from "../planner/routines";
+import { loadRoutines, routineId } from "../planner/routines";
 import { streaks } from "../../shared/planner/profile";
 import { dateKey, dayProgress, parseDate } from "../../shared/planner/utils";
 
-type AchievementInput = {
+export type AchievementInput = {
   title: string;
   description: string;
   category: string;
@@ -13,8 +13,16 @@ type AchievementInput = {
   xp: number;
   target: number;
   tracking: "points" | "streak";
-  taskId: string | null;
-  reward: string;
+  taskId?: string | null;
+  reward?: string;
+};
+
+export type QuestInput = {
+  title: string;
+  description: string;
+  kind: string;
+  tier: string;
+  points: number;
 };
 
 type RoutineCompletion = { day: Date; taskId: number };
@@ -140,26 +148,68 @@ export async function getGamification(today: string) {
 export async function saveAchievement(id: string | null, input: AchievementInput) {
   if (id) throw new Error("Existing achievements cannot be edited.");
   return serializableTransaction(async (client) => {
-    await client.achievement.create({ data: {
-      ...input, milestoneInterval: input.tracking === "streak" ? input.target : null,
+    const tracking = input.tracking.trim();
+    const taskId = tracking === "streak" ? input.taskId?.trim() ?? null : null;
+    if (tracking === "streak") {
+      const id = taskId && routineId(taskId);
+      if (!id || !(await client.routineTask.findFirst({ where: { id, list: { in: ["morning", "night"] } } }))) {
+        throw new Error("Choose a valid routine task.");
+      }
+    }
+    const achievement = await client.achievement.create({ data: {
+      title: input.title.trim(), description: input.description.trim(),
+      category: input.category.trim(), tier: input.tier.trim(),
+      xp: input.xp, target: input.target, tracking,
+      taskId, reward: (input.reward ?? "").trim(),
+      milestoneInterval: tracking === "streak" ? input.target : null,
     } });
-    return refreshAchievements(client, dateKey(new Date()));
+    // A new achievement may already be earned. Refresh and reread it so the
+    // response includes its current progress and awarded XP.
+    const earnedAchievements = await refreshAchievements(client, dateKey(new Date()));
+    const saved = await client.achievement.findUniqueOrThrow({ where: { id: achievement.id } });
+    return { achievement: saved, earnedAchievements };
   });
 }
 
-export async function createQuest(input: {
-  title: string; description: string; kind: string; tier: string; points: number;
-}) {
-  await getDatabase().quest.create({ data: input });
+// These reads supply individual resource endpoints without assembling the
+// larger planner page. Deleted quests and achievements stay hidden.
+export async function listQuests() {
+  return getDatabase().quest.findMany({ where: { deleted: false }, orderBy: { createdAt: "desc" } });
 }
 
-export async function updateQuest(id: string, input: {
-  title: string; description: string; kind: string; tier: string; points: number;
-}) {
+export async function listAchievements() {
+  return getDatabase().achievement.findMany({ where: { deleted: false }, orderBy: { createdAt: "asc" } });
+}
+
+export async function listQuestTemplates() {
+  return getDatabase().questTemplate.findMany({ orderBy: [{ track: "asc" }, { position: "asc" }] });
+}
+
+export async function getQuest(id: string) {
+  return getDatabase().quest.findFirst({ where: { id, deleted: false } });
+}
+
+export async function createQuest(input: QuestInput) {
+  return getDatabase().quest.create({ data: {
+    title: input.title.trim(), description: input.description.trim(), kind: input.kind.trim(),
+    tier: input.tier.trim(), points: input.points,
+  } });
+}
+
+// A partial input updates only the fields supplied by PATCH. Check the quest
+// and update it in one serializable transaction so deleted quests cannot be edited.
+export async function updateQuest(id: string, input: Partial<QuestInput>) {
+  const changes: Partial<QuestInput> = {};
+  if (input.title !== undefined) changes.title = input.title.trim();
+  if (input.description !== undefined) changes.description = input.description.trim();
+  if (input.kind !== undefined) changes.kind = input.kind.trim();
+  if (input.tier !== undefined) changes.tier = input.tier.trim();
+  if (input.points !== undefined) changes.points = input.points;
+  if (!Object.keys(changes).length) throw new Error("Provide at least one quest field.");
   return serializableTransaction(async (client) => {
     const quest = await client.quest.findUnique({ where: { id } });
     if (!quest || quest.deleted) throw new Error("That quest no longer exists.");
-    await client.quest.update({ where: { id }, data: input });
+    return client.quest.update({ where: { id }, data: changes });
   });
 }
 

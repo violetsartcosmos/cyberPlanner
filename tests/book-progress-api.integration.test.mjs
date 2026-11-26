@@ -55,6 +55,8 @@ test("authenticated progress API atomically rejects competing saves", async () =
     });
     const initial = await app.request("http://localhost/api/books/progress?path=Test.epub", { headers });
     assert.deepEqual(await initial.json(), { position: null, revision: 0 });
+    assert.equal((await request("", 0)).status, 400);
+    assert.equal((await request("epubcfi(/6/2)", -1)).status, 400);
     const results = await Promise.all([request("epubcfi(/6/2)", 0), request("epubcfi(/6/4)", 0)]);
     assert.deepEqual(results.map((result) => result.status).sort(), [200, 409]);
     const successful = await results.find((result) => result.status === 200).json();
@@ -63,9 +65,31 @@ test("authenticated progress API atomically rejects competing saves", async () =
     assert.equal(successful.revision, 1);
     assert.equal((await request("epubcfi(/6/8)", 1)).status, 200);
     assert.equal((await app.request("http://localhost/api/books/progress?path=missing.epub", { headers })).status, 404);
+
+    const details = {
+      url: "https://en.wikipedia.org/wiki/Test", description: "Test", image: {
+        url: "https://upload.wikimedia.org/example.png", page: "https://commons.wikimedia.org/wiki/File:Test.png",
+        title: "Test", author: "Test", license: "CC BY",
+      },
+    };
+    const post = (path, body) => app.request(`http://localhost${path}`, {
+      method: "POST", headers, body: JSON.stringify(body),
+    });
+    const coverBytes = Buffer.alloc(6_000_100);
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(coverBytes);
+    const cover = { data: coverBytes.toString("base64"), type: "image/png" };
+    assert.equal((await post("/api/books/details", { path: "Test.epub", details, cover })).status, 200);
+    const savedDetails = await app.request("http://localhost/api/books/details?path=Test.epub", { headers });
+    assert.equal((await savedDetails.json()).image.cached, true);
+    const savedCover = await app.request("http://localhost/api/books/cover?path=Test.epub", { headers });
+    assert.deepEqual(Buffer.from(await savedCover.arrayBuffer()), coverBytes);
+    const bookmark = await post("/api/books/bookmarks", { path: "Test.epub", position: "epubcfi(/6/2)", label: " Page " });
+    assert.equal((await bookmark.json()).label, "Page");
+    const renamed = await post("/api/books/rename", { path: "Test.epub", title: "Renamed" });
+    assert.equal((await renamed.json()).path, "Renamed.epub");
   } finally {
     if (db) {
-      await db.book.deleteMany({ where: { library: "ebooks", path: "Test.epub" } });
+      await db.book.deleteMany({ where: { library: "ebooks", path: { in: ["Test.epub", "Renamed.epub"] } } });
       await db.$disconnect();
     }
   }

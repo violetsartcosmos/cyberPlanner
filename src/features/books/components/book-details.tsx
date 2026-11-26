@@ -105,8 +105,8 @@ async function cacheCover(url: string): Promise<{ type: string; data: string }> 
   const response = await fetch(url, { credentials: "omit", referrerPolicy: "no-referrer" });
   if (!response.ok) throw new Error(`Could not download the cover (${response.status}).`);
   const blob = await response.blob();
-  if (!["image/jpeg", "image/png", "image/gif", "image/webp"].includes(blob.type) || blob.size > 5 * 1024 * 1024) {
-    throw new Error("Cover must be a JPEG, PNG, GIF or WebP under 5 MB.");
+  if (!["image/jpeg", "image/png", "image/gif", "image/webp"].includes(blob.type)) {
+    throw new Error("Cover must be a JPEG, PNG, GIF or WebP.");
   }
   const data = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

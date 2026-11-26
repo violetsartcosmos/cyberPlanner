@@ -10,7 +10,17 @@ import { getCalendarData, validCalendarRange } from "./google/calendar";
 import { audiobookDirectory, bookResponse, libraryDirectory, listBooks } from "./books/library";
 import { addBookmark, attachBookIds, getChapters, getProgress, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveProgress, saveWikipedia } from "./books/data";
 import type { LibraryName } from "./books/library";
-import { isWikipediaDetails, validBookPosition, type WikipediaDetails } from "../shared/planner/books";
+import { isWikipediaDetails, type WikipediaDetails } from "../shared/planner/books";
+import { isValidDateKey } from "../shared/planner/utils";
+import { getJournal, getPlannerTasks, getRoutineCompletions, savePlannerJournal, setBuiltinTaskCompletion, updateRoutineKind } from "./planner/service";
+import { updateExternalCompletion } from "./planner/actions";
+import { acceptTemplate, completeQuest, createQuest, deleteQuest, getQuest, listAchievements, listQuests, listQuestTemplates, saveAchievement, updateQuest, type AchievementInput, type QuestInput } from "./gamification/service";
+import { getDatabase } from "./db/client";
+import { loadRoutines, routineId } from "./planner/routines";
+import { getTherapyPlan, setTherapyCompletion } from "./planner/therapy";
+import { routineKinds } from "../shared/planner/routines";
+import { getPointsSummary, redeemReward } from "./points/service";
+import { rewards } from "../shared/planner/definitions";
 
 type BookLibrary = { name: LibraryName; root: string };
 type CalendarQuery = { start: string; end: string };
@@ -22,27 +32,6 @@ type AppEnvironment = {
     calendarQuery: CalendarQuery;
   };
 };
-type ParsedInput<T> = { input: T } | { error: string };
-type CoverRequest = { data: string; type: string };
-type BookDetailsRequest = {
-  path: string;
-  details: WikipediaDetails;
-  library?: LibraryName;
-  cover?: CoverRequest | null;
-};
-type ProgressRequest = { path: string; position: string; revision: number; library?: LibraryName };
-type BookmarkRequest = { path: string; position: string; label: string; library?: LibraryName };
-type RenameRequest = { path: string; title: string; library?: LibraryName };
-type BookDetailsInput = {
-  path: string;
-  details: WikipediaDetails;
-  library: BookLibrary;
-  cover: Uint8Array | null;
-  coverType: string | null;
-};
-type ProgressInput = { path: string; position: string; revision: number; library: BookLibrary };
-type BookmarkInput = { path: string; position: string; label: string; library: BookLibrary };
-type RenameInput = { path: string; title: string; library: BookLibrary };
 const INVALID_LIBRARY = "Invalid library.";
 
 export const app = new Hono<AppEnvironment>();
@@ -112,139 +101,6 @@ function reportServerError(
   return context.json({ error: responseMessage }, 500);
 }
 
-/** Narrows parsed JSON to a non-array object whose fields can be validated. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function isNonEmptyString(value: unknown, maxLength = Infinity, trim = false): value is string {
-  return isString(value) && (trim ? value.trim().length > 0 : value.length > 0) && value.length <= maxLength;
-}
-
-function isProgressRevision(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value < 2147483647;
-}
-
-function isCoverRequest(value: unknown): value is CoverRequest {
-  return isRecord(value) && isString(value.data) && isString(value.type) &&
-    /^[A-Za-z0-9+/]*={0,2}$/.test(value.data) && value.data.length <= 7_000_000;
-}
-
-/** Reads bounded JSON and turns a runtime-validated request into its typed form. */
-async function parseJsonRequest<T>(
-  context: Context<AppEnvironment>,
-  maxLength: number,
-  invalidMessage: string,
-  tooLargeMessage: string,
-  parse: (value: unknown) => ParsedInput<T>,
-): Promise<ParsedInput<T>> {
-  const body = await context.req.text();
-  if (body.length > maxLength) return { error: tooLargeMessage };
-  let value: unknown;
-  try {
-    value = JSON.parse(body);
-  } catch {
-    return { error: invalidMessage };
-  }
-  return parse(value);
-}
-
-function parseBookDetailsInput(value: unknown): ParsedInput<BookDetailsInput> {
-  if (isRecord(value) && isNonEmptyString(value.path) && isWikipediaDetails(value.details)) {
-    const library = librarySelection(value.library);
-    if (library) {
-      if (value.cover == null || isCoverRequest(value.cover)) {
-        const request: BookDetailsRequest = {
-          path: value.path,
-          details: value.details,
-          library: library.name,
-          ...(value.cover === undefined ? {} : { cover: value.cover }),
-        };
-        let cover: Uint8Array | null = null;
-        let coverType: string | null = null;
-        if (request.cover != null) {
-          const candidate = Buffer.from(request.cover.data, "base64");
-          if (hasImageSignature(candidate, request.cover.type) &&
-              candidate.length <= 5 * 1024 * 1024 && value.details.image) {
-            cover = candidate;
-            coverType = request.cover.type;
-          } else {
-            return { error: "Invalid cover image." };
-          }
-        }
-        if (value.details.image && cover === null) {
-          return { error: "The cover could not be saved for offline use." };
-        }
-        return { input: { path: request.path, details: request.details, library, cover, coverType } };
-      }
-      return { error: "Invalid cover image." };
-    }
-    return { error: INVALID_LIBRARY };
-  }
-  return { error: "Invalid book details." };
-}
-
-function parseProgressInput(value: unknown): ParsedInput<ProgressInput> {
-  if (isRecord(value) && isNonEmptyString(value.path, 2048) &&
-      isProgressRevision(value.revision) && value.position !== undefined) {
-    const library = librarySelection(value.library);
-    if (library) {
-      const format = value.path.toLowerCase().endsWith(".epub") ? "epub" :
-        value.path.toLowerCase().endsWith(".m4b") ? "m4b" : "pdf";
-      if (validBookPosition(format, value.position)) {
-        const request: ProgressRequest = {
-          path: value.path,
-          position: value.position,
-          revision: value.revision,
-          library: library.name,
-        };
-        return { input: { path: request.path, position: request.position, revision: request.revision, library } };
-      }
-      return { error: "Invalid book position." };
-    }
-    return { error: INVALID_LIBRARY };
-  }
-  return { error: "Invalid progress." };
-}
-
-function parseBookmarkInput(value: unknown): ParsedInput<BookmarkInput> {
-  if (isRecord(value) && isString(value.path) && isNonEmptyString(value.position, 2048) &&
-      isNonEmptyString(value.label, 200, true)) {
-    const library = librarySelection(value.library);
-    if (library) {
-      const request: BookmarkRequest = {
-        path: value.path,
-        position: value.position,
-        label: value.label,
-        library: library.name,
-      };
-      return { input: { path: request.path, position: request.position, label: request.label.trim(), library } };
-    }
-    return { error: INVALID_LIBRARY };
-  }
-  return { error: "Invalid bookmark." };
-}
-
-function parseRenameInput(value: unknown): ParsedInput<RenameInput> {
-  if (isRecord(value) && isString(value.path) && isString(value.title)) {
-    const library = librarySelection(value.library);
-    if (library) {
-      const request: RenameRequest = {
-        path: value.path,
-        title: value.title,
-        library: library.name,
-      };
-      return { input: { path: request.path, title: request.title, library } };
-    }
-    return { error: INVALID_LIBRARY };
-  }
-  return { error: "Invalid filename." };
-}
-
 /** Confirms that uploaded cover bytes match one of the supported image formats. */
 function hasImageSignature(bytes: Uint8Array, type: string): boolean {
   switch (type) {
@@ -301,9 +157,23 @@ app.get("/api/books/details", noStore, requireSignIn, requireBookQuery, async (c
 
 // Saves validated Wikipedia details and an optional cached cover image.
 app.post("/api/books/details", noStore, requireSignIn, async (context) => {
-  const result = await parseJsonRequest(context, 8_000_000, "Invalid book details.", "Book details are too large.", parseBookDetailsInput);
-  if ("error" in result) return context.json({ error: result.error }, 400);
-  const { path, details, library, cover, coverType } = result.input;
+  const { path, details, library: name, cover: image } = await context.req.json<{
+    path: string; details: WikipediaDetails; library?: LibraryName; cover?: { data: string; type: string } | null;
+  }>();
+  if (!path || !isWikipediaDetails(details)) return context.json({ error: "Invalid book details." }, 400);
+  const library = librarySelection(name);
+  if (!library) return context.json({ error: INVALID_LIBRARY }, 400);
+  let cover: Uint8Array | null = null;
+  let coverType: string | null = null;
+  if (image) {
+    const bytes = Buffer.from(image.data, "base64");
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(image.data) || !hasImageSignature(bytes, image.type) || !details.image) {
+      return context.json({ error: "Invalid cover image." }, 400);
+    }
+    cover = bytes;
+    coverType = image.type;
+  }
+  if (details.image && !cover) return context.json({ error: "The cover could not be saved for offline use." }, 400);
   try {
     await saveWikipedia(library.root, library.name, path, details, cover, coverType);
     return context.json({ ok: true });
@@ -354,9 +224,14 @@ app.get("/api/books/progress", noStore, requireSignIn, requireBookQuery, async (
 
 // Saves a validated reading position using revision-based conflict detection.
 app.put("/api/books/progress", noStore, requireSignIn, async (context) => {
-  const result = await parseJsonRequest(context, 10_000, "Invalid progress.", "Invalid progress.", parseProgressInput);
-  if ("error" in result) return context.json({ error: result.error }, 400);
-  const { path, position, revision, library } = result.input;
+  const { path, position, revision, library: name } = await context.req.json<{
+    path: string; position: string; revision: number; library?: LibraryName;
+  }>();
+  const library = librarySelection(name);
+  if (!library) return context.json({ error: INVALID_LIBRARY }, 400);
+  if (!path || path.length > 2048 || !Number.isInteger(revision) || revision < 0 || revision >= 2147483647) {
+    return context.json({ error: "Invalid progress." }, 400);
+  }
   try {
     const saved = await saveProgress(library.root, library.name, path, position, revision);
     return saved.conflict ? context.json(saved.progress, 409) : context.json(saved.progress);
@@ -369,11 +244,16 @@ app.put("/api/books/progress", noStore, requireSignIn, async (context) => {
 
 // Adds a validated bookmark to a selected book.
 app.post("/api/books/bookmarks", noStore, requireSignIn, async (context) => {
-  const result = await parseJsonRequest(context, 5_000, "Invalid bookmark.", "Invalid bookmark.", parseBookmarkInput);
-  if ("error" in result) return context.json({ error: result.error }, 400);
-  const { path, position, label, library } = result.input;
+  const { path, position, label, library: name } = await context.req.json<{
+    path: string; position: string; label: string; library?: LibraryName;
+  }>();
+  const library = librarySelection(name);
+  if (!library) return context.json({ error: INVALID_LIBRARY }, 400);
+  if (!position || position.length > 2048 || !label.trim() || label.length > 200) {
+    return context.json({ error: "Invalid bookmark." }, 400);
+  }
   try {
-    return context.json(await addBookmark(library.root, library.name, path, position, label));
+    return context.json(await addBookmark(library.root, library.name, path, position, label.trim()));
   } catch (error) {
     return reportServerError(context, error, "Could not save bookmark.");
   }
@@ -405,15 +285,321 @@ app.get("/api/books/chapters", noStore, requireSignIn, requireBookQuery, async (
 
 // Renames a book while preserving its saved planner data.
 app.post("/api/books/rename", noStore, requireSignIn, async (context) => {
-  const result = await parseJsonRequest(context, 5_000, "Invalid filename.", "Invalid filename.", parseRenameInput);
-  if ("error" in result) return context.json({ error: result.error }, 400);
-  const { path, title, library } = result.input;
+  const { path, title, library: name } = await context.req.json<{ path: string; title: string; library?: LibraryName }>();
+  const library = librarySelection(name);
+  if (!library) return context.json({ error: INVALID_LIBRARY }, 400);
   try {
     return context.json(await renameBook(library.root, library.name, path, title));
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "EEXIST") return context.json({ error: "A file with that name already exists." }, 409);
     if (error instanceof Error && /^(Enter a valid filename|The new filename already has saved book data|To change only capitalization)/.test(error.message)) return context.json({ error: error.message }, 400);
     return reportServerError(context, error, "Could not rename book.");
+  }
+});
+
+// Resource routes below are separate from /api/planner, but use the same data
+// and services. `noStore` prevents caching; `requireSignIn` checks the session.
+// The /api/* CSRF middleware above also applies to requests that change data.
+
+// GET reads the journal for a date; an unsaved date returns 404.
+app.get("/api/journals/:date", noStore, requireSignIn, async (context) => {
+  const date = context.req.param("date");
+  if (!isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
+  try {
+    const journal = await getJournal(date);
+    if (!journal) return context.json({ error: "Journal not found." }, 404);
+    return context.json({ date, content: journal.content });
+  } catch (error) {
+    return reportServerError(context, error, "Could not load journal.");
+  }
+});
+
+// PUT creates the journal or replaces its content for that date.
+app.put("/api/journals/:date", noStore, requireSignIn, async (context) => {
+  const date = context.req.param("date");
+  if (!isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
+  const { content } = await context.req.json<{ content: string }>();
+  try {
+    await savePlannerJournal(date, content);
+    return context.json({ date, content });
+  } catch (error) {
+    return reportServerError(context, error, "Could not save journal.");
+  }
+});
+
+// GET lists quests that have not been soft-deleted.
+app.get("/api/quests", noStore, requireSignIn, async (context) => {
+  try {
+    return context.json(await listQuests());
+  } catch (error) {
+    return reportServerError(context, error, "Could not load quests.");
+  }
+});
+
+// GET finds one active quest by ID; a missing or deleted quest returns 404.
+app.get("/api/quests/:id", noStore, requireSignIn, async (context) => {
+  try {
+    const quest = await getQuest(context.req.param("id"));
+    if (!quest) return context.json({ error: "That quest no longer exists." }, 404);
+    return context.json(quest);
+  } catch (error) {
+    return reportServerError(context, error, "Could not load quest.");
+  }
+});
+
+// POST validates a complete quest, creates it, and returns it with status 201.
+app.post("/api/quests", noStore, requireSignIn, async (context) => {
+  const input = await context.req.json<QuestInput>();
+  try {
+    return context.json(await createQuest(input), 201);
+  } catch (error) {
+    return reportServerError(context, error, "Could not create quest.");
+  }
+});
+
+// PATCH changes only the supplied fields; fields not sent remain unchanged.
+app.patch("/api/quests/:id", noStore, requireSignIn, async (context) => {
+  const input = await context.req.json<Partial<QuestInput>>();
+  try {
+    return context.json(await updateQuest(context.req.param("id"), input));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Provide at least one quest field.") {
+      return context.json({ error: error.message }, 400);
+    }
+    if (error instanceof Error && error.message === "That quest no longer exists.") {
+      return context.json({ error: error.message }, 404);
+    }
+    return reportServerError(context, error, "Could not update quest.");
+  }
+});
+
+// DELETE hides the quest rather than removing its history or earned points.
+// Status 204 means the delete succeeded and there is no response body.
+app.delete("/api/quests/:id", noStore, requireSignIn, async (context) => {
+  try {
+    await deleteQuest(context.req.param("id"));
+    return context.body(null, 204);
+  } catch (error) {
+    if (error instanceof Error && error.message === "That quest no longer exists.") {
+      return context.json({ error: error.message }, 404);
+    }
+    return reportServerError(context, error, "Could not delete quest.");
+  }
+});
+
+// Completing a quest is an action, not a generic field update: the service
+// records completion and awards points together. Repeating it returns 409.
+app.post("/api/quests/:id/complete", noStore, requireSignIn, async (context) => {
+  try {
+    await completeQuest(context.req.param("id"));
+    return context.json({ ok: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "That quest no longer exists.") {
+      return context.json({ error: error.message }, 404);
+    }
+    if (error instanceof Error && error.message === "That quest is already complete.") {
+      return context.json({ error: error.message }, 409);
+    }
+    return reportServerError(context, error, "Could not complete quest.");
+  }
+});
+
+// Accepting a template creates a quest; an already accepted template returns 409.
+app.post("/api/quest-templates/:id/accept", noStore, requireSignIn, async (context) => {
+  try {
+    await acceptTemplate(context.req.param("id"));
+    return context.json({ ok: true }, 201);
+  } catch (error) {
+    if (error instanceof Error && error.message === "That quest template no longer exists.") {
+      return context.json({ error: error.message }, 404);
+    }
+    if (error instanceof Error && error.message === "That quest is already in your quest list.") {
+      return context.json({ error: error.message }, 409);
+    }
+    return reportServerError(context, error, "Could not accept quest.");
+  }
+});
+
+// GET returns routine definitions and their weekday groups.
+app.get("/api/routines", noStore, requireSignIn, async (context) => {
+  try {
+    return context.json(await loadRoutines(getDatabase()));
+  } catch (error) {
+    return reportServerError(context, error, "Could not load routines.");
+  }
+});
+
+// GET returns the IDs checked on the date in the query string.
+app.get("/api/routines/completions", noStore, requireSignIn, async (context) => {
+  const date = context.req.query("date");
+  if (!date || !isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
+  try {
+    return context.json({ date, taskIds: await getRoutineCompletions(date) });
+  } catch (error) {
+    return reportServerError(context, error, "Could not load routine completions.");
+  }
+});
+
+// PATCH changes the kind; the service sets the matching point value.
+app.patch("/api/routines/:id", noStore, requireSignIn, async (context) => {
+  const id = routineId(context.req.param("id"));
+  if (id === null) return context.json({ error: "That routine is invalid." }, 400);
+  const input = await context.req.json<{ kind: string }>();
+  const kind = routineKinds.find((item) => item === input.kind);
+  if (!kind) return context.json({ error: "That routine type is invalid." }, 400);
+  try {
+    if (!(await updateRoutineKind(id, kind))) {
+      return context.json({ error: "That routine no longer exists." }, 404);
+    }
+    return context.json({ id, kind });
+  } catch (error) {
+    return reportServerError(context, error, "Could not update routine.");
+  }
+});
+
+// PUT sets a dated check to true or false. The service validates the weekday,
+// awards points at most once, and refreshes achievements in its transaction.
+app.put("/api/routines/:id/completions/:date", noStore, requireSignIn, async (context) => {
+  const id = context.req.param("id");
+  const date = context.req.param("date");
+  if (routineId(id) === null || !isValidDateKey(date)) {
+    return context.json({ error: "That planner task is invalid." }, 400);
+  }
+  const { completed } = await context.req.json<{ completed: boolean }>();
+  if (completed !== true && completed !== false) return context.json({ error: "That task state is invalid." }, 400);
+  try {
+    return context.json({ date, taskId: id, completed,
+      ...await setBuiltinTaskCompletion(date, id, completed) });
+  } catch (error) {
+    if (error instanceof Error && error.message === "That planner task is invalid.") {
+      return context.json({ error: error.message }, 404);
+    }
+    return reportServerError(context, error, "Could not update routine completion.");
+  }
+});
+
+// GET returns sessions, exercise details, and completion states for one date.
+app.get("/api/therapy/sessions", noStore, requireSignIn, async (context) => {
+  const date = context.req.query("date");
+  if (!date || !isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
+  try {
+    return context.json(await getTherapyPlan(date));
+  } catch (error) {
+    return reportServerError(context, error, "Could not load therapy sessions.");
+  }
+});
+
+// PUT sets an exercise check. The service verifies the session assignment and
+// manages points and achievements; unchecking does not reverse earned points.
+app.put("/api/therapy/sessions/:sessionId/exercises/:exerciseId/completions/:date", noStore, requireSignIn, async (context) => {
+  const { sessionId, exerciseId, date } = context.req.param();
+  if (!isValidDateKey(date) || !/^[a-z0-9_-]+$/.test(sessionId) || !/^[a-z0-9_-]+$/.test(exerciseId)) {
+    return context.json({ error: "That physical therapy exercise or state is invalid." }, 400);
+  }
+  const { completed } = await context.req.json<{ completed: boolean }>();
+  if (completed !== true && completed !== false) return context.json({ error: "That task state is invalid." }, 400);
+  try {
+    return context.json({ date, sessionId, exerciseId, completed,
+      ...await setTherapyCompletion(date, sessionId, exerciseId, completed) });
+  } catch (error) {
+    if (error instanceof Error && error.message === "That physical therapy exercise is invalid.") {
+      return context.json({ error: error.message }, 404);
+    }
+    return reportServerError(context, error, "Could not update therapy completion.");
+  }
+});
+
+// GET reads stored achievements without recalculating their progress.
+app.get("/api/achievements", noStore, requireSignIn, async (context) => {
+  try {
+    return context.json(await listAchievements());
+  } catch (error) {
+    return reportServerError(context, error, "Could not load achievements.");
+  }
+});
+
+// POST validates and creates an achievement, then returns its refreshed state.
+app.post("/api/achievements", noStore, requireSignIn, async (context) => {
+  const input = await context.req.json<AchievementInput>();
+  try {
+    return context.json(await saveAchievement(null, input), 201);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Choose a valid routine task.") {
+      return context.json({ error: error.message }, 400);
+    }
+    return reportServerError(context, error, "Could not create achievement.");
+  }
+});
+
+// GET lists available quest definitions; accepting one uses the action above.
+app.get("/api/quest-templates", noStore, requireSignIn, async (context) => {
+  try {
+    return context.json(await listQuestTemplates());
+  } catch (error) {
+    return reportServerError(context, error, "Could not load quest templates.");
+  }
+});
+
+// GET lists active synced tasks due on the selected date or with no due date.
+app.get("/api/external-tasks", noStore, requireSignIn, async (context) => {
+  const date = context.req.query("date");
+  if (!date || !isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
+  try {
+    return context.json(await getPlannerTasks(date));
+  } catch (error) {
+    return reportServerError(context, error, "Could not load synced tasks.");
+  }
+});
+
+// PUT updates a Gmail or Google task. Google tasks are updated remotely first;
+// the shared action then records the local state and any point award.
+app.put("/api/external-tasks/:source/:id/completion", noStore, requireSignIn, async (context) => {
+  const { source, id } = context.req.param();
+  const { date, completed } = await context.req.json<{ date: string; completed: boolean }>();
+  if ((source !== "google" && source !== "gmail") || !id || !isValidDateKey(date) ||
+      (completed !== true && completed !== false)) {
+    return context.json({ error: "That synced task is invalid." }, 400);
+  }
+  try {
+    if (!(await updateExternalCompletion(source, id, completed, date))) {
+      return context.json({ error: "That synced task no longer exists." }, 404);
+    }
+    return context.json({ source, id, date, completed });
+  } catch (error) {
+    if (error instanceof Error && error.message === "That synced task no longer exists.") {
+      return context.json({ error: error.message }, 404);
+    }
+    return reportServerError(context, error, "Could not update synced task.");
+  }
+});
+
+// GET summarizes the ledger balance, the selected day's earnings, and history.
+app.get("/api/points", noStore, requireSignIn, async (context) => {
+  const date = context.req.query("date");
+  if (!date || !isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
+  try {
+    return context.json(await getPointsSummary(date));
+  } catch (error) {
+    return reportServerError(context, error, "Could not load points.");
+  }
+});
+
+// GET exposes the server's predefined rewards and prices.
+app.get("/api/rewards", noStore, requireSignIn, (context) => context.json(rewards));
+
+// POST spends points using the server's price, not a price sent by the client.
+// The service checks the balance and records the spend in one transaction.
+app.post("/api/rewards/:id/redemptions", noStore, requireSignIn, async (context) => {
+  const reward = rewards.find((item) => item.id === context.req.param("id"));
+  if (!reward) return context.json({ error: "That reward is not available." }, 404);
+  try {
+    const result = await redeemReward({ id: reward.id, name: reward.title, cost: reward.cost });
+    if (!result.redeemed) {
+      return context.json({ error: `You need ${reward.cost - result.balance} more points for ${reward.title}.` }, 409);
+    }
+    return context.json({ rewardId: reward.id, balance: result.balance }, 201);
+  } catch (error) {
+    return reportServerError(context, error, "Could not redeem reward.");
   }
 });
 

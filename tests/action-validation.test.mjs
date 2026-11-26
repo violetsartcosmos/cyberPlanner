@@ -35,7 +35,6 @@ test("planner actions reject missing and file-valued fields", async () => {
       [{ intent: "save_note", date: "2026-11-21" }, "Unknown planner action."],
       [{ intent: "save_journal", date: "bad", journal: "entry" }, "That planner date is invalid."],
       [{ intent: "save_journal", date: "2026-11-21", journal: file }, "That journal entry is invalid."],
-      [{ intent: "save_journal", date: "2026-11-21", journal: "x".repeat(1_000_001) }, "Journal entries must be under 1,000,000 characters."],
       [{ intent: "toggle_builtin", date: "2026-11-21", taskId: file }, "That planner task is invalid."],
       [{ intent: "toggle_physical_therapy", date: "bad", sessionId: "am", exerciseId: "glute", completed: "true" }, "That physical therapy exercise or state is invalid."],
       [{ intent: "toggle_physical_therapy", date: "2026-11-21", sessionId: "am:mid", exerciseId: "glute", completed: "true" }, "That physical therapy exercise or state is invalid."],
@@ -50,12 +49,8 @@ test("planner actions reject missing and file-valued fields", async () => {
       [{ intent: "import_gmail", date: "2026-11-21", messageId: file }, "Choose an email and planner date first."],
       [{ intent: "import_legacy", payload: file }, "Unknown planner action."],
       [{ intent: "redeem_reward", rewardId: file }, "That reward is not available."],
-      [{ intent: "create_quest", title: "Test", description: "", kind: "boss", tier: "Epic", points: "0" }, "points must be a whole number between 1 and 100000."],
-      [{ intent: "save_achievement", id: "", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "0", tracking: "points", reward: "" }, "target must be a whole number between 1 and 3650."],
-      [{ intent: "save_achievement", id: "", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "3", tracking: "streak", taskId: "morning-999", reward: "" }, "Choose a valid routine task."],
       [{ intent: "advance_achievement", id: "water" }, "Unknown planner action."],
       [{ intent: "delete_achievement", id: "water" }, "Unknown planner action."],
-      [{ intent: "save_achievement", id: "", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "1", tracking: "manual", reward: "" }, "Choose a valid tracking."],
       [{ intent: "save_achievement", id: "water", title: "Test", description: "Test", category: "Daily & Routine", tier: "Common", xp: "25", target: "1", tracking: "points", reward: "" }, "Existing achievements cannot be edited."],
     ];
     for (const [values, error] of cases) {

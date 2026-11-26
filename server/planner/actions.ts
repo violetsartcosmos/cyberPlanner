@@ -6,6 +6,7 @@ import {
   setBuiltinTaskCompletion,
   setExternalTaskCompletion,
   updateRoutineKind,
+  type ExternalTaskSource,
 } from "./service";
 import { findRoutine, routineId } from "./routines";
 import { setGoogleTaskCompleted } from "../google/service";
@@ -15,6 +16,20 @@ import { setTherapyCompletion } from "./therapy";
 
 async function isBuiltinTask(date: string, taskId: string) {
   return (await findRoutine(getDatabase(), date, taskId)) !== null;
+}
+
+// Shared by the planner form and the resource API. Google tasks are updated
+// remotely first; Gmail follow-ups only need the local update. The local
+// service records the completion and any award together. False means not found.
+export async function updateExternalCompletion(source: ExternalTaskSource, externalId: string, completed: boolean, date: string) {
+  const task = await getExternalTask(source, externalId);
+  if (!task) return false;
+  if (source === "google") {
+    if (!task.taskListId) throw new Error("The Google Task is missing its task-list ID.");
+    await setGoogleTaskCompleted(task.taskListId, externalId, completed);
+  }
+  await setExternalTaskCompletion(task, completed, date);
+  return true;
 }
 
 export const plannerFormActions = {
@@ -72,14 +87,9 @@ export const plannerFormActions = {
         (completed !== "true" && completed !== "false")) {
       return { ok: false, error: "That synced task is invalid." };
     }
-    const task = await getExternalTask(source, externalId);
-    if (!task) return { ok: false, error: "That synced task no longer exists." };
-    const isCompleted = completed === "true";
-    if (source === "google") {
-      if (!task.taskListId) throw new Error("The Google Task is missing its task-list ID.");
-      await setGoogleTaskCompleted(task.taskListId, externalId, isCompleted);
+    if (!(await updateExternalCompletion(source, externalId, completed === "true", date))) {
+      return { ok: false, error: "That synced task no longer exists." };
     }
-    await setExternalTaskCompletion(task, isCompleted, date);
     return { ok: true };
   },
 
@@ -88,7 +98,6 @@ export const plannerFormActions = {
     const journal = form.get("journal");
     if (typeof date !== "string" || !isValidDateKey(date)) return { ok: false, error: "That planner date is invalid." };
     if (typeof journal !== "string") return { ok: false, error: "That journal entry is invalid." };
-    if (journal.length > 1_000_000) return { ok: false, error: "Journal entries must be under 1,000,000 characters." };
     await savePlannerJournal(date, journal);
     return { ok: true, message: "Journal saved." };
   },

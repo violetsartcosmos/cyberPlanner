@@ -76,6 +76,36 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.deepEqual(new Set(snapshot.checks[date]), new Set([daily0, daily1, daily2]));
       assert.ok(snapshot.journalDates.includes(date));
       assert.equal(snapshot.journal, journal);
+      const { app } = await vite.ssrLoadModule("/server/app.ts");
+      const sessionStorage = createCookieSessionStorage({
+        cookie: {
+          name: "cyberplanner_session", httpOnly: true, path: "/", sameSite: "lax",
+          secure: false, secrets: [process.env.SESSION_SECRET],
+        },
+      });
+      const apiSession = await sessionStorage.getSession();
+      apiSession.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
+      const apiCookie = await sessionStorage.commitSession(apiSession);
+      const journalHeaders = { Cookie: apiCookie, Origin: "http://localhost", "Content-Type": "application/json" };
+      const journalUrl = `http://localhost/api/journals/${date}`;
+      assert.deepEqual(await (await app.request(journalUrl, { headers: journalHeaders })).json(), { date, content: journal });
+      const missingJournal = await app.request("http://localhost/api/journals/2026-11-20", { headers: journalHeaders });
+      assert.equal(missingJournal.status, 404);
+      const updatedJournal = JSON.stringify([{ type: "paragraph", content: "Updated" }]);
+      const journalWrite = await app.request(journalUrl, {
+        method: "PUT", headers: journalHeaders, body: JSON.stringify({ content: updatedJournal }),
+      });
+      assert.equal(journalWrite.status, 200);
+      assert.deepEqual(await journalWrite.json(), { date, content: updatedJournal });
+      assert.equal((await planner.getPlannerSnapshot(date)).journal, updatedJournal);
+      const newJournalUrl = "http://localhost/api/journals/2026-11-20";
+      const createdJournal = await app.request(newJournalUrl, {
+        method: "PUT", headers: journalHeaders, body: JSON.stringify({ content: "A new entry" }),
+      });
+      assert.equal(createdJournal.status, 200);
+      assert.deepEqual(await (await app.request(newJournalUrl, { headers: journalHeaders })).json(),
+        { date: "2026-11-20", content: "A new entry" });
+      assert.equal((await planner.getPlannerSnapshot("2026-11-20")).journal, "A new entry");
       assert.equal((await points.getPointsSummary(date)).todayPoints, 30);
 
       const redemptions = await Promise.all(
@@ -283,6 +313,141 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal(loaded.therapy.earnedPoints, 20);
       assert.equal(loaded.therapy.therapySessions[1].exercises.find((exercise) => exercise.id === "glute").completed, true);
       assert.equal(loaded.todayPoints, 20);
+
+      const questUrl = "http://localhost/api/quests";
+      const questRequest = (url, method, body) => app.request(url, {
+        method, headers: journalHeaders, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      const createdResponse = await questRequest(questUrl, "POST", {
+        title: " API quest ", description: "Details", kind: "side", tier: "Common", points: 25, completedAt: "2020-01-01",
+      });
+      assert.equal(createdResponse.status, 201);
+      const created = await createdResponse.json();
+      assert.equal(created.completedAt, null);
+      const questItemUrl = `${questUrl}/${created.id}`;
+      assert.equal((await (await questRequest(questItemUrl, "GET")).json()).title, "API quest");
+      assert.ok((await (await questRequest(questUrl, "GET")).json()).some((item) => item.id === created.id));
+      const patched = await questRequest(questItemUrl, "PATCH", { title: " Changed ", description: "", points: 35, deleted: true });
+      assert.equal(patched.status, 200);
+      const patchedQuest = await patched.json();
+      assert.equal(patchedQuest.title, "Changed");
+      assert.equal(patchedQuest.description, "");
+      assert.equal(patchedQuest.kind, "side");
+      assert.equal(patchedQuest.points, 35);
+      assert.equal((await questRequest(`${questItemUrl}/complete`, "POST")).status, 200);
+      assert.equal((await questRequest(`${questItemUrl}/complete`, "POST")).status, 409);
+      assert.equal((await db.pointLedger.findFirstOrThrow({ where: { taskKey: `quest:${created.id}` } })).amount, 35);
+      assert.equal((await questRequest(questItemUrl, "DELETE")).status, 204);
+      assert.equal((await questRequest(questItemUrl, "GET")).status, 404);
+      assert.equal((await questRequest(questItemUrl, "PATCH", { title: "Again" })).status, 404);
+      assert.equal(await db.pointLedger.count({ where: { taskKey: `quest:${created.id}` } }), 1);
+      const anotherTemplate = initial.questTemplates.find((item) => item.id !== templateId);
+      const acceptUrl = `http://localhost/api/quest-templates/${anotherTemplate.id}/accept`;
+      assert.equal((await questRequest(acceptUrl, "POST")).status, 201);
+      assert.equal((await questRequest(acceptUrl, "POST")).status, 409);
+
+      const routineList = await questRequest("http://localhost/api/routines", "GET");
+      assert.equal(routineList.status, 200);
+      assert.ok((await routineList.json()).routines.some((item) => String(item.id) === morning2));
+      const resourceDate = "2026-08-12";
+      const routineCompletionUrl = `http://localhost/api/routines/${morning2}/completions/${resourceDate}`;
+      const completionQuery = `http://localhost/api/routines/completions?date=${resourceDate}`;
+      assert.deepEqual((await (await questRequest(completionQuery, "GET")).json()).taskIds, []);
+      assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: true, points: 9999 })).status, 200);
+      assert.deepEqual((await (await questRequest(completionQuery, "GET")).json()).taskIds, [morning2]);
+      assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: false })).status, 200);
+      assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: true })).status, 200);
+      assert.equal(await db.pointLedger.count({ where: { taskKey: `builtin:${resourceDate}:${morning2}` } }), 1);
+      assert.equal((await questRequest("http://localhost/api/routines/2147483647", "PATCH", { kind: "side" })).status, 404);
+      assert.equal((await questRequest(`http://localhost/api/routines/${morning2}`, "PATCH", { kind: "side", points: 9999 })).status, 200);
+      assert.equal((await db.routineTask.findUniqueOrThrow({ where: { id: Number(morning2) } })).points, 10);
+
+      const therapyUrl = `http://localhost/api/therapy/sessions/am/exercises/glute/completions/${resourceDate}`;
+      assert.equal((await questRequest(therapyUrl, "PUT", { completed: true, points: 9999 })).status, 200);
+      assert.equal((await questRequest(therapyUrl, "PUT", { completed: false })).status, 200);
+      assert.equal((await questRequest(therapyUrl, "PUT", { completed: true })).status, 200);
+      assert.equal(await db.pointLedger.count({ where: { taskKey: `pt:${resourceDate}:am:glute` } }), 1);
+      assert.equal((await db.pointLedger.findFirstOrThrow({ where: { taskKey: `pt:${resourceDate}:am:glute` } })).amount, 10);
+      const resourcePlan = await (await questRequest(`http://localhost/api/therapy/sessions?date=${resourceDate}`, "GET")).json();
+      assert.equal(resourcePlan.therapySessions[0].exercises.find((exercise) => exercise.id === "glute").completed, true);
+      assert.equal((await questRequest(`http://localhost/api/therapy/sessions/am/exercises/missing/completions/${resourceDate}`, "PUT", { completed: true })).status, 404);
+
+      const achievementResponse = await questRequest("http://localhost/api/achievements", "GET");
+      assert.equal(achievementResponse.status, 200);
+      assert.ok((await achievementResponse.json()).some((item) => item.id === milestone.id));
+      const newAchievement = await questRequest("http://localhost/api/achievements", "POST", {
+        title: "API achievement", description: "Earn points", category: "Daily & Routine",
+        tier: "Common", xp: 10, target: 1, tracking: "points", awardedXp: 9999,
+      });
+      assert.equal(newAchievement.status, 201);
+      const newAchievementBody = await newAchievement.json();
+      assert.ok(newAchievementBody.achievement.id);
+      assert.ok(newAchievementBody.achievement.earnedAt);
+      assert.equal(newAchievementBody.achievement.awardedXp, 10);
+      assert.equal(newAchievementBody.achievement.reward, "");
+      assert.ok(newAchievementBody.earnedAchievements.includes("API achievement"));
+      assert.ok((await db.achievement.findUniqueOrThrow({ where: { id: newAchievementBody.achievement.id } })).earnedAt);
+      const templatesResponse = await questRequest("http://localhost/api/quest-templates", "GET");
+      assert.equal((await templatesResponse.json()).length, initial.questTemplates.length);
+      const taskResponse = await questRequest(`http://localhost/api/external-tasks?date=${date}`, "GET");
+      assert.ok((await taskResponse.json()).some((item) => item.source === "gmail" && item.externalId === "message"));
+      const externalUrl = "http://localhost/api/external-tasks/gmail/message/completion";
+      assert.equal((await questRequest(externalUrl, "PUT", { date, completed: true })).status, 200);
+      assert.equal((await questRequest(externalUrl, "PUT", { date, completed: false })).status, 200);
+      assert.equal((await questRequest(externalUrl, "PUT", { date, completed: true })).status, 200);
+      assert.equal(await db.pointLedger.count({ where: { taskKey: "external:gmail:message" } }), 1);
+      assert.equal((await questRequest("http://localhost/api/external-tasks/gmail/missing/completion", "PUT", { date, completed: true })).status, 404);
+      const pointsResponse = await questRequest(`http://localhost/api/points?date=${date}`, "GET");
+      assert.deepEqual(await pointsResponse.json(), await points.getPointsSummary(date));
+      const rewardsResponse = await questRequest("http://localhost/api/rewards", "GET");
+      const rewardList = await rewardsResponse.json();
+      const currentBalance = (await points.getPointsSummary(date)).balance;
+      const affordable = rewardList.find((reward) => reward.cost <= currentBalance);
+      const expensive = rewardList.find((reward) => reward.cost > currentBalance);
+      assert.ok(affordable && expensive);
+      assert.equal((await questRequest(`http://localhost/api/rewards/${expensive.id}/redemptions`, "POST")).status, 409);
+      const redemption = await questRequest(`http://localhost/api/rewards/${affordable.id}/redemptions`, "POST");
+      assert.equal(redemption.status, 201);
+      assert.equal((await redemption.json()).balance, currentBalance - affordable.cost);
+      assert.equal((await questRequest("http://localhost/api/rewards/missing/redemptions", "POST")).status, 404);
+
+      const longJournal = "x".repeat(1_000_001);
+      const longJournalDate = "2026-07-01";
+      assert.equal((await questRequest(`http://localhost/api/journals/${longJournalDate}`, "PUT", { content: longJournal })).status, 200);
+      assert.equal((await planner.getJournal(longJournalDate)).content, longJournal);
+      assert.equal((await submit({ intent: "save_journal", date: longJournalDate, journal: longJournal })).ok, true);
+      assert.equal((await planner.getJournal(longJournalDate)).content, longJournal);
+      assert.equal((await questRequest(`http://localhost/api/journals/${longJournalDate}`, "PUT", { content: 123 })).status, 500);
+      assert.equal((await planner.getJournal(longJournalDate)).content, longJournal);
+
+      assert.equal((await submit({
+        intent: "create_quest", title: " Form quest ", description: "", kind: "side", tier: "Common", points: " 25 ",
+      })).ok, true);
+      assert.equal((await db.quest.findFirstOrThrow({ where: { title: "Form quest" } })).points, 25);
+      assert.equal((await submit({
+        intent: "save_achievement", id: "", title: "Form achievement", description: "Earn points",
+        category: "Daily & Routine", tier: "Common", xp: " 25 ", target: "3", tracking: "points", reward: "",
+      })).ok, true);
+      assert.equal((await db.achievement.findFirstOrThrow({ where: { title: "Form achievement" } })).xp, 25);
+
+      const largeQuest = await questRequest(questUrl, "POST", {
+        title: "Large quest", description: "", kind: "side", tier: "Common", points: 100001,
+      });
+      assert.equal(largeQuest.status, 201);
+      assert.equal((await largeQuest.json()).points, 100001);
+      const streakInput = {
+        title: "API streak", description: "A routine streak", category: "Daily & Routine", tier: "Common",
+        xp: 100001, target: 3651, tracking: "streak", taskId: morning0,
+      };
+      const apiStreak = await questRequest("http://localhost/api/achievements", "POST", streakInput);
+      assert.equal(apiStreak.status, 201);
+      assert.equal((await apiStreak.json()).achievement.taskId, morning0);
+      assert.equal((await questRequest("http://localhost/api/achievements", "POST", { ...streakInput, taskId: daily0 })).status, 400);
+      assert.equal((await questRequest("http://localhost/api/achievements", "POST", { ...streakInput, taskId: "999999999" })).status, 400);
+      assert.equal((await questRequest(questUrl, "POST", {
+        title: "Invalid quest", description: "", kind: "side", tier: "Common", points: 0,
+      })).status, 500);
+      assert.equal(await db.quest.count({ where: { title: "Invalid quest" } }), 0);
 
       await assert.rejects(client.query(
         "INSERT INTO point_ledger (amount, entry_type, task_key) VALUES (0, 'earn', 'invalid')",

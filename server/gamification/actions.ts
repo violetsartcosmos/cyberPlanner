@@ -1,85 +1,53 @@
-import { achievementCategories, questKinds, tiers } from "../../shared/planner/gamification";
-import { getDatabase } from "../db/client";
 import type { ActionHandler } from "../planner/dispatch";
-import { loadRoutines } from "../planner/routines";
 import {
-  acceptTemplate, completeQuest, createQuest, deleteQuest, saveAchievement, updateQuest,
+  acceptTemplate, completeQuest, createQuest, deleteQuest, saveAchievement, updateQuest, type QuestInput,
 } from "./service";
 
-function text(form: FormData, name: string, max: number, required = true) {
-  const value = form.get(name);
-  if (typeof value !== "string" || value.trim().length > max || (required && !value.trim())) {
-    throw new Error(`Enter a valid ${name} (up to ${max} characters).`);
-  }
-  return value.trim();
-}
-
-function positiveNumber(form: FormData, name: string, max: number) {
-  const value = text(form, name, 10);
-  if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > max) {
-    throw new Error(`${name} must be a whole number between 1 and ${max}.`);
-  }
-  return Number(value);
-}
-
-function choice(form: FormData, name: string, options: readonly string[]) {
-  const value = text(form, name, 100);
-  if (!options.includes(value)) throw new Error(`Choose a valid ${name}.`);
-  return value;
+// Form fields are text, so numeric fields are converted before saving.
+function questFormValues(form: FormData): QuestInput {
+  return {
+    title: form.get("title") as string,
+    description: form.get("description") as string,
+    kind: form.get("kind") as string,
+    tier: form.get("tier") as string,
+    points: Number(form.get("points")),
+  };
 }
 
 export const gamificationActions = {
   async save_achievement(form) {
-    const id = text(form, "id", 100, false);
-    const title = text(form, "title", 100);
-    const description = text(form, "description", 500);
-    const category = choice(form, "category", achievementCategories);
-    const tier = choice(form, "tier", tiers);
-    const xp = positiveNumber(form, "xp", 100_000);
-    const target = positiveNumber(form, "target", 3_650);
-    const tracking = choice(form, "tracking", ["points", "streak"]);
-    if (tracking !== "points" && tracking !== "streak") throw new Error("Choose a valid tracking method.");
-    const taskId = tracking === "streak" ? text(form, "taskId", 100) : null;
-    const routineIds = (await loadRoutines(getDatabase())).routines
-      .filter((routine) => routine.list !== "daily")
-      .map((routine) => String(routine.id));
-    if (taskId !== null && !routineIds.includes(taskId)) throw new Error("Choose a valid routine task.");
-    const reward = text(form, "reward", 200, false);
-    const earnedAchievements = await saveAchievement(id || null, {
-      title, description, category, tier, xp, target, tracking, taskId, reward,
+    const tracking = form.get("tracking") as "points" | "streak";
+    const { earnedAchievements } = await saveAchievement(form.get("id") as string, {
+      title: form.get("title") as string,
+      description: form.get("description") as string,
+      category: form.get("category") as string,
+      tier: form.get("tier") as string,
+      xp: Number(form.get("xp")),
+      target: Number(form.get("target")),
+      tracking,
+      taskId: form.get("taskId") as string | null,
+      reward: form.get("reward") as string,
     });
     return { ok: true, message: "Achievement saved.", earnedAchievements };
   },
   async create_quest(form) {
-    await createQuest({
-      title: text(form, "title", 100),
-      description: text(form, "description", 500, false),
-      kind: choice(form, "kind", questKinds),
-      tier: choice(form, "tier", tiers),
-      points: positiveNumber(form, "points", 100_000),
-    });
+    await createQuest(questFormValues(form));
     return { ok: true, message: "Quest created." };
   },
   async update_quest(form) {
-    await updateQuest(text(form, "id", 100), {
-      title: text(form, "title", 100),
-      description: text(form, "description", 500, false),
-      kind: choice(form, "kind", questKinds),
-      tier: choice(form, "tier", tiers),
-      points: positiveNumber(form, "points", 100_000),
-    });
+    await updateQuest(form.get("id") as string, questFormValues(form));
     return { ok: true, message: "Quest updated." };
   },
   async accept_template(form) {
-    await acceptTemplate(text(form, "templateId", 100));
+    await acceptTemplate(form.get("templateId") as string);
     return { ok: true, message: "Quest accepted. It now appears on Create Quest." };
   },
   async complete_quest(form) {
-    await completeQuest(text(form, "id", 100));
+    await completeQuest(form.get("id") as string);
     return { ok: true, message: "Quest complete! Points and XP earned." };
   },
   async delete_quest(form) {
-    await deleteQuest(text(form, "id", 100));
+    await deleteQuest(form.get("id") as string);
     return { ok: true, message: "Quest deleted. Earned points and XP are kept." };
   },
 } satisfies Record<string, ActionHandler>;
