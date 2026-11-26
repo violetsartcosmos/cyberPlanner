@@ -6,7 +6,6 @@ import type { PartialBlock } from "@blocknote/core";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { parseDate } from "../../shared/planner/utils";
-import type { PlannerActionResult } from "../../shared/planner/types";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import { useNotification } from "@/components/notifications";
 
@@ -53,14 +52,19 @@ function JournalEntry({ selected, journal }: { selected: string; journal: string
     const timer = window.setTimeout(async () => {
       setSaving(true);
       try {
-        const body = new FormData();
-        body.set("intent", "save_journal");
-        body.set("date", selected);
-        body.set("journal", draft);
-        const response = await fetch("/api/planner", { method: "POST", body });
-        if (!response.ok) throw new Error(`Could not save the journal (${response.status}).`);
-        const result: PlannerActionResult = await response.json();
-        if (!result.ok) throw new Error(result.error || "Could not save the journal.");
+        const response = await fetch(`/api/journals/${encodeURIComponent(selected)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: draft }),
+        });
+        if (!response.ok) {
+          let message = `Could not save the journal (${response.status}).`;
+          if (response.headers.get("Content-Type")?.includes("application/json")) {
+            const result = await response.json() as { error?: string };
+            message = result.error ?? message;
+          }
+          throw new Error(message);
+        }
         setSaved(draft);
         revalidator.revalidate();
       } catch (reason) {

@@ -62,6 +62,13 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
     const cookie = await storage.commitSession(session);
     const journalHeaders = { Cookie: cookie, Origin: "http://localhost", "Content-Type": "application/json" };
+    for (const query of ["path=test.epub", `path=test.epub&id=${"x".repeat(101)}`]) {
+      const invalidBookmark = await app.request(`http://localhost/api/books/bookmarks?${query}`, {
+        method: "DELETE", headers: journalHeaders,
+      });
+      assert.equal(invalidBookmark.status, 400);
+      assert.deepEqual(await invalidBookmark.json(), { error: "Invalid bookmark." });
+    }
     assert.equal((await app.request("http://localhost/api/journals/2026-02-30", { headers: journalHeaders })).status, 400);
     assert.equal((await app.request("http://localhost/api/journals/2026-11-21", {
       method: "PUT", headers: { ...journalHeaders, Origin: "http://attacker.example", "Content-Type": "text/plain" },

@@ -28,7 +28,6 @@ type AppEnvironment = {
   Variables: {
     bookLibrary: BookLibrary;
     bookPath: string;
-    bookmarkId: string;
     calendarQuery: CalendarQuery;
   };
 };
@@ -68,14 +67,6 @@ const requireBookQuery: MiddlewareHandler<AppEnvironment> = async (context, next
   if (!path || path.length > 2048) return context.json({ error: "Invalid book." }, 400);
   context.set("bookLibrary", library);
   context.set("bookPath", path);
-  await next();
-};
-
-/** Validates and exposes the bookmark ID required by the delete route. */
-const requireBookmarkId: MiddlewareHandler<AppEnvironment> = async (context, next) => {
-  const id = context.req.query("id");
-  if (!id || id.length > 100) return context.json({ error: "Invalid bookmark." }, 400);
-  context.set("bookmarkId", id);
   await next();
 };
 
@@ -260,10 +251,11 @@ app.post("/api/books/bookmarks", noStore, requireSignIn, async (context) => {
 });
 
 // Removes a bookmark from a selected book.
-app.delete("/api/books/bookmarks", noStore, requireSignIn, requireBookQuery, requireBookmarkId, async (context) => {
+app.delete("/api/books/bookmarks", noStore, requireSignIn, requireBookQuery, async (context) => {
   const library = context.get("bookLibrary");
   const path = context.get("bookPath");
-  const id = context.get("bookmarkId");
+  const id = context.req.query("id");
+  if (!id || id.length > 100) return context.json({ error: "Invalid bookmark." }, 400);
   try {
     await removeBookmark(library.root, library.name, path, id);
     return context.json({ ok: true });

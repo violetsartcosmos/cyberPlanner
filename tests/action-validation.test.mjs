@@ -3,7 +3,7 @@ import test from "node:test";
 import { createCookieSessionStorage } from "react-router";
 import { createServer } from "vite";
 
-test("planner actions reject missing and file-valued fields", async () => {
+test("planner actions reject invalid dates, states, and unsupported actions", async () => {
   process.env.SESSION_SECRET = "temporary-action-test-session-secret";
   process.env.GOOGLE_ALLOWED_EMAIL = "actions@example.test";
   const vite = await createServer({
@@ -34,13 +34,10 @@ test("planner actions reject missing and file-valued fields", async () => {
       [{ intent: file }, "Unknown planner action."],
       [{ intent: "save_note", date: "2026-11-21" }, "Unknown planner action."],
       [{ intent: "save_journal", date: "bad", journal: "entry" }, "That planner date is invalid."],
-      [{ intent: "save_journal", date: "2026-11-21", journal: file }, "That journal entry is invalid."],
-      [{ intent: "toggle_builtin", date: "2026-11-21", taskId: file }, "That planner task is invalid."],
+      [{ intent: "toggle_builtin", date: "2026-11-21", taskId: "1", completed: "yes" }, "That task state is invalid."],
       [{ intent: "toggle_physical_therapy", date: "bad", sessionId: "am", exerciseId: "glute", completed: "true" }, "That physical therapy exercise or state is invalid."],
-      [{ intent: "toggle_physical_therapy", date: "2026-11-21", sessionId: "am:mid", exerciseId: "glute", completed: "true" }, "That physical therapy exercise or state is invalid."],
-      [{ intent: "toggle_physical_therapy", date: "2026-11-21", sessionId: "am", exerciseId: file, completed: "true" }, "That physical therapy exercise or state is invalid."],
       [{ intent: "toggle_physical_therapy", date: "2026-11-21", sessionId: "am", exerciseId: "glute", completed: "yes" }, "That physical therapy exercise or state is invalid."],
-      [{ intent: "toggle_external", date: "2026-11-21", source: "gmail", externalId: file, completed: "true" }, "That synced task is invalid."],
+      [{ intent: "toggle_external", date: "2026-11-21", source: "gmail", externalId: "message", completed: "yes" }, "That synced task is invalid."],
       [{ intent: "sync_google_tasks", date: "bad" }, "That planner date is invalid."],
       [{ intent: "save_calendar_event", calendarId: "cal", eventId: "event", etag: "", title: "Test", start: "2026-11-22", end: "2026-11-23", allDay: "true", startTimeZone: "", endTimeZone: "" }, "Enter a calendar, title, and valid event details."],
       [{ intent: "save_calendar_event", calendarId: "cal", eventId: "", etag: "", title: "Test", start: "2026-11-22", end: "2026-11-22", allDay: "true", startTimeZone: "", endTimeZone: "" }, "The event end must be after its valid start."],

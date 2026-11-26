@@ -160,10 +160,12 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
       const cookie = await storage.commitSession(session);
       async function submit(values, signedIn = true) {
+        const body = new FormData();
+        for (const [key, value] of Object.entries(values)) body.set(key, value);
         return actions.handlePlannerAction(new Request("http://localhost/", {
           method: "POST",
           headers: signedIn ? { Cookie: cookie } : {},
-          body: new URLSearchParams(values),
+          body,
         }));
       }
       assert.equal((await submit({ intent: "save_journal" }, false)).ok, false);
@@ -173,7 +175,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.deepEqual(await submit({ intent: "save_journal", date: "bad", journal: "x" }), {
         ok: false, error: "That planner date is invalid.",
       });
-      assert.deepEqual(await submit({ intent: "toggle_builtin", date: extraDate, taskId: "bad" }), {
+      assert.deepEqual(await submit({ intent: "toggle_builtin", date: extraDate, taskId: "bad", completed: "true" }), {
         ok: false, error: "That planner task is invalid.",
       });
       assert.deepEqual(await submit({ intent: "search_gmail", query: " " }), {
@@ -184,6 +186,13 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       });
       assert.equal((await submit({ intent: "save_journal", date: extraDate, journal })).ok, true);
       assert.equal((await planner.getPlannerSnapshot(extraDate)).journal, journal);
+      for (const fields of [{}, { journal: new File(["entry"], "journal.txt") }]) {
+        assert.equal((await submit({ intent: "save_journal", date: extraDate, ...fields })).ok, false);
+        assert.equal((await planner.getPlannerSnapshot(extraDate)).journal, journal);
+      }
+      assert.equal((await submit({
+        intent: "toggle_builtin", date: extraDate, taskId: new File(["1"], "task.txt"), completed: "true",
+      })).ok, false);
       assert.equal((await submit({ intent: "save_journal", date: extraDate, journal: "" })).ok, true);
       assert.equal((await planner.getPlannerSnapshot(extraDate)).journal, "");
       assert.ok(!(await planner.getPlannerSnapshot(extraDate)).journalDates.includes(extraDate));
@@ -357,6 +366,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.deepEqual((await (await questRequest(completionQuery, "GET")).json()).taskIds, [morning2]);
       assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: false })).status, 200);
       assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: true })).status, 200);
+      assert.equal((await submit({ intent: "toggle_builtin", date: resourceDate, taskId: morning2, completed: "true" })).ok, true);
       assert.equal(await db.pointLedger.count({ where: { taskKey: `builtin:${resourceDate}:${morning2}` } }), 1);
       assert.equal((await questRequest("http://localhost/api/routines/2147483647", "PATCH", { kind: "side" })).status, 404);
       assert.equal((await questRequest(`http://localhost/api/routines/${morning2}`, "PATCH", { kind: "side", points: 9999 })).status, 200);
@@ -366,6 +376,9 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal((await questRequest(therapyUrl, "PUT", { completed: true, points: 9999 })).status, 200);
       assert.equal((await questRequest(therapyUrl, "PUT", { completed: false })).status, 200);
       assert.equal((await questRequest(therapyUrl, "PUT", { completed: true })).status, 200);
+      assert.equal((await submit({
+        intent: "toggle_physical_therapy", date: resourceDate, sessionId: "am", exerciseId: "glute", completed: "true",
+      })).ok, true);
       assert.equal(await db.pointLedger.count({ where: { taskKey: `pt:${resourceDate}:am:glute` } }), 1);
       assert.equal((await db.pointLedger.findFirstOrThrow({ where: { taskKey: `pt:${resourceDate}:am:glute` } })).amount, 10);
       const resourcePlan = await (await questRequest(`http://localhost/api/therapy/sessions?date=${resourceDate}`, "GET")).json();
@@ -393,6 +406,9 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.ok((await taskResponse.json()).some((item) => item.source === "gmail" && item.externalId === "message"));
       const externalUrl = "http://localhost/api/external-tasks/gmail/message/completion";
       assert.equal((await questRequest(externalUrl, "PUT", { date, completed: true })).status, 200);
+      assert.equal((await submit({
+        intent: "toggle_external", source: "gmail", externalId: "message", date, completed: "true",
+      })).ok, true);
       assert.equal((await questRequest(externalUrl, "PUT", { date, completed: false })).status, 200);
       assert.equal((await questRequest(externalUrl, "PUT", { date, completed: true })).status, 200);
       assert.equal(await db.pointLedger.count({ where: { taskKey: "external:gmail:message" } }), 1);

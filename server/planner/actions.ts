@@ -1,5 +1,5 @@
 import { isValidDateKey } from "../../shared/planner/utils";
-import { routineKinds, routinePoints, type RoutineKind } from "../../shared/planner/routines";
+import { routineKinds, routinePoints } from "../../shared/planner/routines";
 import {
   getExternalTask,
   savePlannerJournal,
@@ -8,15 +8,10 @@ import {
   updateRoutineKind,
   type ExternalTaskSource,
 } from "./service";
-import { findRoutine, routineId } from "./routines";
+import { routineId } from "./routines";
 import { setGoogleTaskCompleted } from "../google/service";
-import { getDatabase } from "../db/client";
 import type { ActionHandler } from "./dispatch";
 import { setTherapyCompletion } from "./therapy";
-
-async function isBuiltinTask(date: string, taskId: string) {
-  return (await findRoutine(getDatabase(), date, taskId)) !== null;
-}
 
 // Shared by the planner form and the resource API. Google tasks are updated
 // remotely first; Gmail follow-ups only need the local update. The local
@@ -34,13 +29,11 @@ export async function updateExternalCompletion(source: ExternalTaskSource, exter
 
 export const plannerFormActions = {
   async toggle_physical_therapy(form) {
-    const date = form.get("date");
-    const sessionId = form.get("sessionId");
-    const exerciseId = form.get("exerciseId");
+    const date = form.get("date") as string;
+    const sessionId = form.get("sessionId") as string;
+    const exerciseId = form.get("exerciseId") as string;
     const completed = form.get("completed");
-    if (typeof date !== "string" || !isValidDateKey(date) ||
-        typeof sessionId !== "string" || !/^[a-z0-9_-]+$/.test(sessionId) ||
-        typeof exerciseId !== "string" || !/^[a-z0-9_-]+$/.test(exerciseId) ||
+    if (!isValidDateKey(date) ||
         (completed !== "true" && completed !== "false")) {
       return { ok: false, error: "That physical therapy exercise or state is invalid." };
     }
@@ -49,10 +42,9 @@ export const plannerFormActions = {
   },
 
   async toggle_builtin(form) {
-    const date = form.get("date");
-    const taskId = form.get("taskId");
-    if (typeof date !== "string" || !isValidDateKey(date) ||
-        typeof taskId !== "string" || !(await isBuiltinTask(date, taskId))) {
+    const date = form.get("date") as string;
+    const taskId = form.get("taskId") as string;
+    if (!isValidDateKey(date)) {
       return { ok: false, error: "That planner task is invalid." };
     }
     const completed = form.get("completed");
@@ -64,26 +56,25 @@ export const plannerFormActions = {
   },
 
   async update_routine_kind(form) {
-    const rawId = form.get("taskId");
-    const id = typeof rawId === "string" ? routineId(rawId) : null;
-    const kind = form.get("kind");
+    const id = routineId(form.get("taskId") as string);
+    const kind = routineKinds.find((item) => item === form.get("kind"));
     if (id === null) return { ok: false, error: "That routine is invalid." };
-    if (typeof kind !== "string" || !routineKinds.some((item) => item === kind)) {
+    if (!kind) {
       return { ok: false, error: "That routine type is invalid." };
     }
-    const updated = await updateRoutineKind(id, kind as RoutineKind);
+    const updated = await updateRoutineKind(id, kind);
     if (!updated) return { ok: false, error: "That routine no longer exists." };
-    return { ok: true, message: `Moved to ${kind} (${routinePoints[kind as RoutineKind]} pts).` };
+    return { ok: true, message: `Moved to ${kind} (${routinePoints[kind]} pts).` };
   },
 
   async toggle_external(form) {
-    const date = form.get("date");
+    const date = form.get("date") as string;
     const source = form.get("source");
-    const externalId = form.get("externalId");
+    const externalId = form.get("externalId") as string;
     const completed = form.get("completed");
-    if (typeof date !== "string" || !isValidDateKey(date) ||
+    if (!isValidDateKey(date) ||
         (source !== "google" && source !== "gmail") ||
-        typeof externalId !== "string" || !externalId ||
+        !externalId ||
         (completed !== "true" && completed !== "false")) {
       return { ok: false, error: "That synced task is invalid." };
     }
@@ -94,10 +85,9 @@ export const plannerFormActions = {
   },
 
   async save_journal(form) {
-    const date = form.get("date");
-    const journal = form.get("journal");
-    if (typeof date !== "string" || !isValidDateKey(date)) return { ok: false, error: "That planner date is invalid." };
-    if (typeof journal !== "string") return { ok: false, error: "That journal entry is invalid." };
+    const date = form.get("date") as string;
+    const journal = form.get("journal") as string;
+    if (!isValidDateKey(date)) return { ok: false, error: "That planner date is invalid." };
     await savePlannerJournal(date, journal);
     return { ok: true, message: "Journal saved." };
   },

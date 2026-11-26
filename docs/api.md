@@ -16,6 +16,17 @@ Book requests that take a `path` require a non-empty path of at most 2,048 chara
 
 `GET /api/planner` returns all earned task keys by default. Set `taskKeys=visible` to return only keys for the selected date's built-in tasks and its visible synced tasks.
 
+The UI still loads its combined page through `GET /api/planner`. Journal saves,
+routine kind changes, and routine, therapy, and external-task completions now
+use the resource endpoints below. Other UI actions still use `POST /api/planner`,
+which remains supported for existing clients. Both APIs use the same services
+and database; switching between them does not award points again.
+
+Planner form fields are text. Date and completion-state checks remain at the
+request boundary; task assignments and one-time awards are checked in the
+services. Routine kinds are checked against the server's point-value mapping.
+Stored-field constraints are left to Prisma and the database.
+
 For a signed-in user, the response also includes `therapy.therapySessions` with exercise definitions, point values, and completion states for the selected date, plus `therapy.earnedPoints` from the points ledger. Submit the `toggle_physical_therapy` planner action with form fields `date` (`YYYY-MM-DD`), `sessionId`, `exerciseId`, and `completed` (`true` or `false`). The server validates the session assignment and determines the point value; an award occurs at most once for that date, session, and exercise. Unchecking does not reverse an award.
 
 ## Journals
