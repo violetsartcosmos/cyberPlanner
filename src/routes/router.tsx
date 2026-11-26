@@ -1,5 +1,6 @@
 import { createBrowserRouter, Link, useRouteError } from "react-router";
 import { plannerLoader } from "../features/planner/services/planner-route";
+import { questLogLoader } from "../features/planner/services/quest-log-route";
 import {
   acceptQuestTemplateAction, completeQuestAction, createQuestAction, questResourceAction,
 } from "../features/planner/services/quest-actions";
@@ -79,7 +80,7 @@ export const router = createBrowserRouter([{
     { path: "quest-board", Component: QuestBoardPage, action: createQuestAction, ErrorBoundary: PageError },
     { path: "quest-board/:id", action: questResourceAction, ErrorBoundary: PageError },
     { path: "quest-board/:id/complete", action: completeQuestAction, ErrorBoundary: PageError },
-    { path: "quest-log", Component: QuestLogPage, ErrorBoundary: PageError },
+    { path: "quest-log", Component: QuestLogPage, loader: questLogLoader, ErrorBoundary: PageError },
     { path: "quest-log/templates/:templateId/accept", action: acceptQuestTemplateAction, ErrorBoundary: PageError },
     { path: "routines/:id", action: updateRoutineAction, ErrorBoundary: PageError },
     { path: "routines/:id/completions/:date", action: routineCompletionAction, ErrorBoundary: PageError },

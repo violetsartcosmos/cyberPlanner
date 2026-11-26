@@ -7,6 +7,7 @@ import { refreshAchievements } from "../server/gamification/service.ts";
 import { Achievements } from "../src/features/planner/components/achievements.tsx";
 import { QuestLog } from "../src/features/planner/components/quest-log.tsx";
 import { plannerLoader } from "../src/features/planner/services/planner-route.ts";
+import { questLogLoader } from "../src/features/planner/services/quest-log-route.ts";
 import { NotificationProvider } from "../src/components/notifications.tsx";
 
 function fixture(achievements, days = [], points = 0) {
@@ -46,6 +47,29 @@ test("the planner loader accepts responses without a therapy plan", async (t) =>
   };
   t.mock.method(globalThis, "fetch", async () => Response.json(page));
   assert.deepEqual(await plannerLoader({ request: new Request("http://localhost/physical-therapy") }), page);
+});
+
+test("the quest-log loader reads routines, templates, and acceptance history", async (t) => {
+  const requestedUrls = [];
+  t.mock.method(globalThis, "fetch", async (input) => {
+    requestedUrls.push(input);
+    if (input === "/api/routines") {
+      return Response.json({ routines: [], routineGroups: [] });
+    }
+    if (input === "/api/quest-templates") {
+      return Response.json([]);
+    }
+    return Response.json({ templateIds: ["accepted-template"] });
+  });
+  assert.deepEqual(
+    await questLogLoader({ request: new Request("http://localhost/quest-log?date=2026-11-23") }),
+    { routines: [], routineGroups: [], templates: [], acceptedTemplateIds: ["accepted-template"] },
+  );
+  assert.deepEqual(requestedUrls.sort(), [
+    "/api/quest-templates",
+    "/api/quest-templates/accepted",
+    "/api/routines",
+  ]);
 });
 
 test("points milestones use lifetime earned points and award XP only once", async () => {

@@ -301,7 +301,9 @@ combined planner request merely because the shared layout is convenient.
 - [x] Journal: use one dated route loader for the browser and selected entry;
   remove journal reads from the UI planner request.
 - [ ] Quest log: load routines plus templates and historical acceptance with
-  page-owned reads; remove those fields from the UI planner request.
+  page-owned reads; remove those fields from the UI planner request. The
+  quest-log route now owns all three reads, but routines remain in the shared
+  snapshot until dashboard and calendar migrate.
 - [ ] Profile: add purpose-built completion history and XP/streak summaries;
   do not make the profile recalculate unrelated quests or calendar state.
 - [ ] Main calendar and dashboard: own their routines, completions, synced
@@ -383,6 +385,10 @@ Milestone 5 therapy-read slice is implemented. Next bounded task: extract the
 session/configuration shell, then migrate quest-log reads. The journal
 fetcher-read now uses its page route loader, and journal fields are no longer
 loaded by the UI planner request.
+The quest-log route now owns reads for routines, templates, and historical
+template acceptance; the combined planner snapshot no longer returns templates
+or acceptance history. Routines remain in that snapshot for the dashboard and
+calendar until their page-owned read migration.
 Preserve selected-date navigation and keep achievement refresh behavior on
 planner reads until equivalent write/streak coverage exists. Do not run write
 tests against the normal app database.

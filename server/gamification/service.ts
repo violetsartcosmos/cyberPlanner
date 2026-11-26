@@ -116,11 +116,9 @@ export async function getGamification(today: string) {
   return serializableTransaction(async (client) => {
     const completions = await client.routineTaskCompletion.findMany({ orderBy: [{ day: "asc" }, { taskId: "asc" }] });
     const newlyEarned = await refreshAchievements(client, today, completions);
-    const [achievements, quests, acceptedQuests, questTemplates, taskXp, achievementXp, { routines, routineGroups }] = await Promise.all([
+    const [achievements, quests, taskXp, achievementXp, { routines, routineGroups }] = await Promise.all([
       client.achievement.findMany({ where: { deleted: false }, orderBy: { createdAt: "asc" } }),
       client.quest.findMany({ where: { deleted: false }, orderBy: { createdAt: "desc" } }),
-      client.quest.findMany({ where: { templateId: { not: null } }, select: { templateId: true } }),
-      client.questTemplate.findMany({ orderBy: [{ track: "asc" }, { position: "asc" }] }),
       client.pointLedger.aggregate({ where: { entryType: "earn" }, _sum: { amount: true } }),
       client.achievement.aggregate({ _sum: { awardedXp: true } }),
       loadRoutines(client),
@@ -134,8 +132,6 @@ export async function getGamification(today: string) {
         ...quest,
         completedAt: completedAt?.toISOString() ?? null,
       })),
-      questTemplates,
-      acceptedTemplateIds: acceptedQuests.flatMap(({ templateId }) => templateId === null ? [] : [templateId]),
       totalXp: (taskXp._sum.amount ?? 0) + (achievementXp._sum.awardedXp ?? 0),
       newlyEarned,
       completions,
@@ -181,8 +177,24 @@ export async function listAchievements() {
   return getDatabase().achievement.findMany({ where: { deleted: false }, orderBy: { createdAt: "asc" } });
 }
 
+/**
+ * Lists available quest templates in their display order.
+ * @returns Quest templates grouped by track and position.
+ */
 export async function listQuestTemplates() {
   return getDatabase().questTemplate.findMany({ orderBy: [{ track: "asc" }, { position: "asc" }] });
+}
+
+/**
+ * Lists template IDs already accepted by the signed-in user.
+ * @returns Accepted quest-template IDs for quest-log filtering.
+ */
+export async function listAcceptedTemplateIds() {
+  const quests = await getDatabase().quest.findMany({
+    where: { templateId: { not: null } },
+    select: { templateId: true },
+  });
+  return quests.flatMap(({ templateId }) => templateId === null ? [] : [templateId]);
 }
 
 export async function getQuest(id: string) {

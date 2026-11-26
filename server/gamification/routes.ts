@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { noStore, reportServerError, requireSignIn } from "../http";
 import {
   acceptTemplate, completeQuest, createQuest, deleteQuest, getQuest, listAchievements, listQuests,
-  listQuestTemplates, saveAchievement, updateQuest, type AchievementInput, type QuestInput,
+  listAcceptedTemplateIds, listQuestTemplates, saveAchievement, updateQuest, type AchievementInput, type QuestInput,
 } from "./service";
 
 export const gamificationRoutes = new Hono();
@@ -116,5 +116,13 @@ gamificationRoutes.get("/quest-templates", noStore, requireSignIn, async (contex
     return context.json(await listQuestTemplates());
   } catch (error) {
     return reportServerError(context, error, "Could not load quest templates.");
+  }
+});
+
+gamificationRoutes.get("/quest-templates/accepted", noStore, requireSignIn, async (context) => {
+  try {
+    return context.json({ templateIds: await listAcceptedTemplateIds() });
+  } catch (error) {
+    return reportServerError(context, error, "Could not load accepted quest templates.");
   }
 });

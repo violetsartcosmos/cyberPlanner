@@ -112,6 +112,7 @@ These endpoints require a signed-in session. Dates use `YYYY-MM-DD`.
 | `GET /api/achievements` | Lists non-deleted stored achievements. It does not recalculate progress. |
 | `POST /api/achievements` | Creates an achievement, refreshes progress, and returns the achievement and newly earned achievements. |
 | `GET /api/quest-templates` | Lists quest templates by track and position. |
+| `GET /api/quest-templates/accepted` | Lists template IDs already accepted by the signed-in user. |
 | `GET /api/external-tasks?date=...` | Lists active Google and Gmail tasks due on that date or without a due date. |
 | `PUT /api/external-tasks/{source}/{id}/completion` | Sets completion using `{"date":"YYYY-MM-DD","completed":true}`. Google tasks are also updated in Google. |
 | `GET /api/points?date=...` | Returns balance, points earned on the date, earned task keys, and recent redemptions. |
