@@ -3,8 +3,14 @@ import { isValidDateKey } from "../../shared/planner/utils";
 import { noStore, reportServerError, requireSignIn } from "../http";
 import { getTherapyPlan, setTherapyCompletion } from "./service";
 
+/** Groups the therapy-plan and exercise-completion endpoints served under /api/therapy. */
 export const therapyRoutes = new Hono();
 
+/**
+ * GET /api/therapy/sessions loads the exercises and progress shown on the therapy page.
+ * Input: date query parameter in YYYY-MM-DD format.
+ * Output: JSON containing therapy sessions, exercise completion states, and earned points.
+ */
 therapyRoutes.get("/sessions", noStore, requireSignIn, async (context) => {
   const date = context.req.query("date");
   if (!date || !isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
@@ -15,6 +21,11 @@ therapyRoutes.get("/sessions", noStore, requireSignIn, async (context) => {
   }
 });
 
+/**
+ * PUT saves an exercise check or uncheck and reports newly earned achievements.
+ * Input: session ID, exercise ID, and date in the URL; completed in the JSON body.
+ * Output: JSON containing date, sessionId, exerciseId, completed, and earnedAchievements.
+ */
 therapyRoutes.put("/sessions/:sessionId/exercises/:exerciseId/completions/:date", noStore, requireSignIn, async (context) => {
   const { sessionId, exerciseId, date } = context.req.param();
   if (!isValidDateKey(date) || !/^[a-z0-9_-]+$/.test(sessionId) || !/^[a-z0-9_-]+$/.test(exerciseId)) {

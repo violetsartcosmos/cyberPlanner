@@ -124,6 +124,14 @@ export async function setGoogleTaskCompleted(
   });
 }
 
+/**
+ * Updates a task's completion in Google when needed, then saves it in the planner and awards points.
+ * @param source - The task's provider: google or gmail.
+ * @param externalId - The task or email ID assigned by its provider.
+ * @param completed - Whether the task should be checked.
+ * @param date - Planner date for the point award, in YYYY-MM-DD format.
+ * @returns Whether the task was found and updated.
+ */
 export async function updateExternalCompletion(
   source: ExternalTaskSource,
   externalId: string,

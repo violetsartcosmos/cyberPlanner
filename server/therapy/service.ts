@@ -3,6 +3,11 @@ import { refreshAchievements } from "../gamification/service";
 import { awardTaskPoints } from "../points/service";
 import { dateKey } from "../../shared/planner/utils";
 
+/**
+ * Loads therapy sessions, their exercises and completed checks, and earned points for a date.
+ * @param date - Selected planner date in YYYY-MM-DD format.
+ * @returns Therapy sessions with exercise completion states and the date's earned points.
+ */
 export async function getTherapyPlan(date: string) {
   const db = getDatabase();
   const [therapySessions, completions, earned] = await db.$transaction([
@@ -32,6 +37,15 @@ export async function getTherapyPlan(date: string) {
   };
 }
 
+/**
+ * Checks or unchecks a session exercise and refreshes today's achievements.
+ * Each exercise earns points once per session and date; unchecking keeps those points.
+ * @param date - Exercise completion date in YYYY-MM-DD format.
+ * @param sessionId - The therapy session containing the exercise.
+ * @param exerciseId - The exercise to check or uncheck.
+ * @param completed - Whether the exercise should be checked.
+ * @returns An object containing the names of newly earned achievements.
+ */
 export async function setTherapyCompletion(date: string, sessionId: string, exerciseId: string, completed: boolean) {
   return serializableTransaction(async (client) => {
     const assignment = await client.therapySessionExercise.findUnique({

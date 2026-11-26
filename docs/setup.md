@@ -234,17 +234,22 @@ you chose for `cyberplanner_test`; nothing appears while you type.
 Adjust the username, port, or database name if yours differ.
 
 ```bash
+# Run in a temporary shell so the password variables disappear when the tests finish.
 (
+  # Ask for the test user's password without showing it while you type.
   read -r -s -p "Test PostgreSQL user password: " TEST_DB_PASSWORD
   echo
   if [[ -z "$TEST_DB_PASSWORD" ]]; then
     echo "No password entered; tests not started."
     exit 1
   fi
+  # Make password characters such as @ safe to include in the database connection URL.
   export TEST_DB_PASSWORD
   encoded=$(command node -e 'process.stdout.write(encodeURIComponent(process.env.TEST_DB_PASSWORD))') || exit 1
   export TEST_DATABASE_URL="postgresql://cyberplanner_test:${encoded}@localhost:5432/cyberplanner_test"
+  # Remove the separate password variables after building the connection URL.
   unset TEST_DB_PASSWORD encoded
+  # Create the test tables and run the database tests.
   command npm run test:database
 )
 ```
