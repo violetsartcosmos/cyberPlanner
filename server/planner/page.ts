@@ -2,9 +2,9 @@ import { dateKey, isValidDateKey } from "../../shared/planner/utils";
 import type { ExternalTask, PlannerPage } from "../../shared/planner/types";
 import { getMissingConfiguration, getSignedInEmail } from "../auth/service";
 import { getPointsSummary } from "../points/service";
-import { getPlannerTasks } from "./service";
+import { getExternalTasks } from "../external-tasks/service";
 import { getGamification } from "../gamification/service";
-import { getTherapyPlan } from "./therapy";
+import { getTherapyPlan } from "../therapy/service";
 import { dateString } from "../db/client";
 import { listJournals } from "../journals/service";
 import { listRoutineCompletions } from "../routines/service";
@@ -15,7 +15,7 @@ export async function getPlannerSnapshot(date: string, completions?: RoutineComp
   const [checks, journals, tasks] = await Promise.all([
     completions ?? listRoutineCompletions(),
     listJournals(),
-    plannerTasks ?? getPlannerTasks(date),
+    plannerTasks ?? getExternalTasks(date),
   ]);
   const checksByDate: Record<string, string[]> = {};
   for (const check of checks) {
@@ -46,7 +46,7 @@ export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const today = dateKey(new Date());
   const requestedDate = url.searchParams.get("date");
   const selected = requestedDate && isValidDateKey(requestedDate) ? requestedDate : today;
-  const tasks = getPlannerTasks(selected);
+  const tasks = getExternalTasks(selected);
   const pointsRequest = url.searchParams.get("taskKeys") === "visible"
     ? tasks.then((visible) => getPointsSummary(selected, visible))
     : getPointsSummary(selected);

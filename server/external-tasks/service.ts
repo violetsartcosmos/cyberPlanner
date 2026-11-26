@@ -32,43 +32,29 @@ function externalTask(row: StoredExternalTask): ExternalTask {
   };
 }
 
-export async function getPlannerTasks(date: string) {
+export async function getExternalTasks(date: string) {
   const rows = await getDatabase().externalTask.findMany({
-      where: {
-        isDeleted: false,
-        OR: [{ dueDate: databaseDate(date) }, { dueDate: null }],
-      },
-      orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { title: "asc" }],
+    where: { isDeleted: false, OR: [{ dueDate: databaseDate(date) }, { dueDate: null }] },
+    orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { title: "asc" }],
   });
   return rows.map(externalTask);
 }
 
-export async function getExternalTask(
-  source: ExternalTaskSource,
-  externalId: string,
-) {
+export async function getExternalTask(source: ExternalTaskSource, externalId: string) {
   const row = await getDatabase().externalTask.findFirst({
     where: { source, externalId, isDeleted: false },
   });
   return row ? externalTask(row) : null;
 }
 
-export async function setExternalTaskCompletion(
-  task: ExternalTask,
-  completed: boolean,
-  date: string,
-) {
+export async function setExternalTaskCompletion(task: ExternalTask, completed: boolean, date: string) {
   return getDatabase().$transaction(async (client) => {
     const result = await client.externalTask.updateMany({
       where: { source: task.source, externalId: task.externalId, isDeleted: false },
       data: { completed, completedAt: completed ? new Date() : null, updatedAt: new Date() },
     });
-    if (result.count !== 1) {
-      throw new Error("That synced task no longer exists.");
-    }
-    if (completed) {
-      await awardTaskPoints(client, `external:${task.source}:${task.externalId}`, date);
-    }
+    if (result.count !== 1) throw new Error("That synced task no longer exists.");
+    if (completed) await awardTaskPoints(client, `external:${task.source}:${task.externalId}`, date);
   });
 }
 
@@ -113,21 +99,4 @@ export async function createGmailTask(task: ExternalTask) {
     skipDuplicates: true,
   });
   return result.count === 1;
-}
-
-export async function getGoogleConnection() {
-  const connection = await getDatabase().googleConnection.findUnique({
-    where: { singleton: true },
-  });
-  return connection
-    ? { email: connection.email, encrypted_refresh_token: connection.encryptedRefreshToken }
-    : null;
-}
-
-export async function saveGoogleConnection(email: string, encryptedRefreshToken: string) {
-  await getDatabase().googleConnection.upsert({
-    where: { singleton: true },
-    create: { singleton: true, email, encryptedRefreshToken },
-    update: { email, encryptedRefreshToken, updatedAt: new Date() },
-  });
 }

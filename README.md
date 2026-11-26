@@ -89,4 +89,6 @@ The [architecture and models guide](docs/models.md) explains the layers, request
 
 For details on backups, reading, rewards, and calendar behavior, see the [user guide](docs/guide.md).
 For deployment and OAuth configuration, see the [setup guide](docs/setup.md).
+For a disposable test database and Bash test commands, see
+[test database setup](docs/setup.md#set-up-a-disposable-test-database).
 For endpoint behavior and request formats, see the [API reference](docs/api.md).

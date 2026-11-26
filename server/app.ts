@@ -11,15 +11,14 @@ import { addBookmark, attachBookIds, getChapters, getProgress, getSavedWikipedia
 import type { LibraryName } from "./books/library";
 import { isWikipediaDetails, type WikipediaDetails } from "../shared/planner/books";
 import { isValidDateKey } from "../shared/planner/utils";
-import { getPlannerTasks } from "./planner/service";
-import { updateExternalCompletion } from "./planner/actions";
 import { acceptTemplate, completeQuest, createQuest, deleteQuest, getQuest, listAchievements, listQuests, listQuestTemplates, saveAchievement, updateQuest, type AchievementInput, type QuestInput } from "./gamification/service";
-import { getTherapyPlan, setTherapyCompletion } from "./planner/therapy";
 import { getPointsSummary, redeemReward } from "./points/service";
 import { rewards } from "../shared/planner/definitions";
 import { noStore, reportServerError, requireSignIn } from "./http";
 import { journalRoutes } from "./journals/routes";
 import { routineRoutes } from "./routines/routes";
+import { therapyRoutes } from "./therapy/routes";
+import { externalTaskRoutes } from "./external-tasks/routes";
 
 type BookLibrary = { name: LibraryName; root: string };
 type CalendarQuery = { start: string; end: string };
@@ -269,6 +268,8 @@ app.post("/api/books/rename", noStore, requireSignIn, async (context) => {
 
 app.route("/api/journals", journalRoutes);
 app.route("/api/routines", routineRoutes);
+app.route("/api/therapy", therapyRoutes);
+app.route("/api/external-tasks", externalTaskRoutes);
 
 // GET lists quests that have not been soft-deleted.
 app.get("/api/quests", noStore, requireSignIn, async (context) => {
@@ -363,37 +364,6 @@ app.post("/api/quest-templates/:id/accept", noStore, requireSignIn, async (conte
   }
 });
 
-// GET returns sessions, exercise details, and completion states for one date.
-app.get("/api/therapy/sessions", noStore, requireSignIn, async (context) => {
-  const date = context.req.query("date");
-  if (!date || !isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
-  try {
-    return context.json(await getTherapyPlan(date));
-  } catch (error) {
-    return reportServerError(context, error, "Could not load therapy sessions.");
-  }
-});
-
-// PUT sets an exercise check. The service verifies the session assignment and
-// manages points and achievements; unchecking does not reverse earned points.
-app.put("/api/therapy/sessions/:sessionId/exercises/:exerciseId/completions/:date", noStore, requireSignIn, async (context) => {
-  const { sessionId, exerciseId, date } = context.req.param();
-  if (!isValidDateKey(date) || !/^[a-z0-9_-]+$/.test(sessionId) || !/^[a-z0-9_-]+$/.test(exerciseId)) {
-    return context.json({ error: "That physical therapy exercise or state is invalid." }, 400);
-  }
-  const { completed } = await context.req.json<{ completed: boolean }>();
-  if (completed !== true && completed !== false) return context.json({ error: "That task state is invalid." }, 400);
-  try {
-    return context.json({ date, sessionId, exerciseId, completed,
-      ...await setTherapyCompletion(date, sessionId, exerciseId, completed) });
-  } catch (error) {
-    if (error instanceof Error && error.message === "That physical therapy exercise is invalid.") {
-      return context.json({ error: error.message }, 404);
-    }
-    return reportServerError(context, error, "Could not update therapy completion.");
-  }
-});
-
 // GET reads stored achievements without recalculating their progress.
 app.get("/api/achievements", noStore, requireSignIn, async (context) => {
   try {
@@ -422,39 +392,6 @@ app.get("/api/quest-templates", noStore, requireSignIn, async (context) => {
     return context.json(await listQuestTemplates());
   } catch (error) {
     return reportServerError(context, error, "Could not load quest templates.");
-  }
-});
-
-// GET lists active synced tasks due on the selected date or with no due date.
-app.get("/api/external-tasks", noStore, requireSignIn, async (context) => {
-  const date = context.req.query("date");
-  if (!date || !isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
-  try {
-    return context.json(await getPlannerTasks(date));
-  } catch (error) {
-    return reportServerError(context, error, "Could not load synced tasks.");
-  }
-});
-
-// PUT updates a Gmail or Google task. Google tasks are updated remotely first;
-// the shared action then records the local state and any point award.
-app.put("/api/external-tasks/:source/:id/completion", noStore, requireSignIn, async (context) => {
-  const { source, id } = context.req.param();
-  const { date, completed } = await context.req.json<{ date: string; completed: boolean }>();
-  if ((source !== "google" && source !== "gmail") || !id || !isValidDateKey(date) ||
-      (completed !== true && completed !== false)) {
-    return context.json({ error: "That synced task is invalid." }, 400);
-  }
-  try {
-    if (!(await updateExternalCompletion(source, id, completed, date))) {
-      return context.json({ error: "That synced task no longer exists." }, 404);
-    }
-    return context.json({ source, id, date, completed });
-  } catch (error) {
-    if (error instanceof Error && error.message === "That synced task no longer exists.") {
-      return context.json({ error: error.message }, 404);
-    }
-    return reportServerError(context, error, "Could not update synced task.");
   }
 });
 

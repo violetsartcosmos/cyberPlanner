@@ -42,7 +42,8 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
     });
     let db;
     try {
-      const planner = await vite.ssrLoadModule("/server/planner/service.ts");
+      const externalTasks = await vite.ssrLoadModule("/server/external-tasks/service.ts");
+      const googleConnection = await vite.ssrLoadModule("/server/google/connection.ts");
       const journals = await vite.ssrLoadModule("/server/journals/service.ts");
       const routines = await vite.ssrLoadModule("/server/routines/service.ts");
       const page = await vite.ssrLoadModule("/server/planner/page.ts");
@@ -124,19 +125,19 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         title: "Google task", dueDate: date, completed: true,
         completedAt: "2026-11-21T14:00:00Z", emailFrom: null, emailUrl: null,
       };
-      await planner.upsertGoogleTasks([googleTask], date);
-      await planner.upsertGoogleTasks([googleTask], date);
-      await planner.upsertGoogleTasks([googleTask, {
+      await externalTasks.upsertGoogleTasks([googleTask], date);
+      await externalTasks.upsertGoogleTasks([googleTask], date);
+      await externalTasks.upsertGoogleTasks([googleTask, {
         ...googleTask, externalId: "google-task-two", title: "Another task",
       }], date);
-      assert.equal((await planner.getExternalTask("google", "google-task")).dueDate, date);
-      assert.equal((await planner.getExternalTask("google", "google-task-two")).completed, true);
+      assert.equal((await externalTasks.getExternalTask("google", "google-task")).dueDate, date);
+      assert.equal((await externalTasks.getExternalTask("google", "google-task-two")).completed, true);
       const earned = (await points.getPointsSummary(date, [googleTask])).earnedTaskKeys;
       assert.ok(earned.includes("external:google:google-task"));
       assert.ok(!earned.includes("external:google:google-task-two"));
       assert.equal((await points.getPointsSummary(date)).balance, 30);
-      await planner.setExternalTaskCompletion(googleTask, false, date);
-      await planner.setExternalTaskCompletion(googleTask, true, date);
+      await externalTasks.setExternalTaskCompletion(googleTask, false, date);
+      await externalTasks.setExternalTaskCompletion(googleTask, true, date);
       assert.equal((await points.getPointsSummary(date)).balance, 30);
 
       const gmailTask = {
@@ -144,10 +145,10 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         title: "Email", dueDate: date, completed: false,
         emailFrom: "sender", emailUrl: "https://example.test/message",
       };
-      assert.equal(await planner.createGmailTask(gmailTask), true);
-      assert.equal(await planner.createGmailTask(gmailTask), false);
-      await planner.saveGoogleConnection("user@example.test", "encrypted");
-      assert.deepEqual(await planner.getGoogleConnection(), {
+      assert.equal(await externalTasks.createGmailTask(gmailTask), true);
+      assert.equal(await externalTasks.createGmailTask(gmailTask), false);
+      await googleConnection.saveGoogleConnection("user@example.test", "encrypted");
+      assert.deepEqual(await googleConnection.getGoogleConnection(), {
         email: "user@example.test", encrypted_refresh_token: "encrypted",
       });
 
@@ -281,7 +282,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal((await submit({ intent: "accept_template", templateId })).ok, false);
       assert.equal((await submit(update)).ok, false);
 
-      const therapy = await vite.ssrLoadModule("/server/planner/therapy.ts");
+      const therapy = await vite.ssrLoadModule("/server/therapy/service.ts");
       const therapyDate = "2026-09-10";
       const nextTherapyDate = "2026-09-11";
       const emptyPlan = await therapy.getTherapyPlan(therapyDate);

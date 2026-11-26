@@ -267,7 +267,7 @@ test("API routes preserve authentication and reject cross-origin submissions", a
       const login = await fetch(`${origin}/auth/google`, { redirect: "manual" });
       assert.equal(login.status, 302);
       assert.equal(new URL(login.headers.get("location")).hostname, "accounts.google.com");
-      const backendPath = resolve("server/planner/service.ts").replaceAll("\\", "/");
+      const backendPath = resolve("server/external-tasks/service.ts").replaceAll("\\", "/");
       const backendModule = await fetch(`${origin}/@fs/${backendPath}`);
       assert.notEqual(backendModule.status, 200);
     } finally {

@@ -1,30 +1,11 @@
 import { isValidDateKey } from "../../shared/planner/utils";
 import { routineKinds, routinePoints } from "../../shared/planner/routines";
-import {
-  getExternalTask,
-  setExternalTaskCompletion,
-  type ExternalTaskSource,
-} from "./service";
 import { routineId } from "../routines/definitions";
 import { setRoutineCompletion, updateRoutineKind } from "../routines/service";
 import { saveJournal } from "../journals/service";
-import { setGoogleTaskCompleted } from "../google/service";
+import { updateExternalCompletion } from "../google/service";
 import type { ActionHandler } from "./dispatch";
-import { setTherapyCompletion } from "./therapy";
-
-// Shared by the planner form and the resource API. Google tasks are updated
-// remotely first; Gmail follow-ups only need the local update. The local
-// service records the completion and any award together. False means not found.
-export async function updateExternalCompletion(source: ExternalTaskSource, externalId: string, completed: boolean, date: string) {
-  const task = await getExternalTask(source, externalId);
-  if (!task) return false;
-  if (source === "google") {
-    if (!task.taskListId) throw new Error("The Google Task is missing its task-list ID.");
-    await setGoogleTaskCompleted(task.taskListId, externalId, completed);
-  }
-  await setExternalTaskCompletion(task, completed, date);
-  return true;
-}
+import { setTherapyCompletion } from "../therapy/service";
 
 export const plannerFormActions = {
   async toggle_physical_therapy(form) {

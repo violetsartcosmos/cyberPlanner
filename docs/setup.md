@@ -196,3 +196,90 @@ npx tsx server/index.ts
 The API listens on port `3000`. Leave that terminal open while using the app.
 
 For an existing Prisma-managed CyberPlanner database, back it up and run `npm run db:migrate` to apply pending migrations.
+
+## Set up a disposable test database
+
+`npm run test:database` requires a separate, **empty** PostgreSQL database.
+Never point `TEST_DATABASE_URL` at the database used by the app. The tests
+apply migrations and write test data; they leave tables behind after running.
+You do not need to start the app or sign in to Google for this suite.
+
+### Create a test user and database in pgAdmin
+
+PostgreSQL passwords belong to login roles (users), not individual databases.
+Creating a database does not set a password. A PostgreSQL user's password is
+also separate from pgAdmin's master password.
+
+1. Connect to your PostgreSQL server in pgAdmin using an account allowed to
+   create roles and databases.
+2. Under that server, right-click **Login/Group Roles** > **Create** >
+   **Login/Group Role**.
+3. On **General**, enter `cyberplanner_test` as the name.
+4. On **Definition**, choose a password and keep it private.
+5. On **Privileges**, enable **Can login**. Leave superuser, create-role, and
+   create-database privileges disabled. Click **Save**.
+6. Right-click **Databases** > **Create** > **Database**. Enter
+   `cyberplanner_test` as the name and select `cyberplanner_test` as
+   **Owner**. Click **Save**.
+
+If you already created the empty test database, right-click it >
+**Properties** > **General**, select the test user in **Owner**, and save.
+The test user must own the database so the suite can create tables and
+temporary schemas without superuser privileges.
+
+### Run the tests in Bash (including Git Bash on Windows)
+
+From the project directory, paste the following block. Enter the password
+you chose for `cyberplanner_test`; nothing appears while you type.
+Adjust the username, port, or database name if yours differ.
+
+```bash
+(
+  read -r -s -p "Test PostgreSQL user password: " TEST_DB_PASSWORD
+  echo
+  if [[ -z "$TEST_DB_PASSWORD" ]]; then
+    echo "No password entered; tests not started."
+    exit 1
+  fi
+  export TEST_DB_PASSWORD
+  encoded=$(command node -e 'process.stdout.write(encodeURIComponent(process.env.TEST_DB_PASSWORD))') || exit 1
+  export TEST_DATABASE_URL="postgresql://cyberplanner_test:${encoded}@localhost:5432/cyberplanner_test"
+  unset TEST_DB_PASSWORD encoded
+  command npm run test:database
+)
+```
+
+The script URL-encodes the password and supplies `TEST_DATABASE_URL` to the
+test process. Parentheses run it in a subshell, so these variables do not
+persist in your terminal afterward. It does not change the app's
+`DATABASE_URL` or your `.env`. Do not print or share the connection string.
+
+### Prepare for another run and troubleshoot failures
+
+The suite deliberately submits numeric journal content (`content: 123`) and a
+zero-point quest to verify rejection without corrupting saved data. These
+cases log `Could not save journal` and `Could not create quest` with Prisma
+errors, even on a successful run. They are expected negative-test output,
+not failed tests. Check the final summary: `pass 5` and `fail 0` indicate that
+all five tests passed. Other unexpected errors still need investigation.
+
+- Before each subsequent run, use pgAdmin to delete **only**
+  `cyberplanner_test`, then recreate that database with
+  `cyberplanner_test` as owner. This permanently removes its test data.
+  Keep the test user; do not delete the normal app database.
+- `client password must be a string`: the connection has no usable password.
+  Run the script again and enter the test user's password.
+- `stdout is not a tty`: Git Bash may have a `node` alias or function that
+  wraps it with `winpty`. Use the script's `command node` invocation to bypass
+  those wrappers when capturing the encoded password.
+- `password authentication failed`: verify the username and password.
+- `database ... does not exist`: verify the database name and selected server.
+- `permission denied`: verify that **Can login** is enabled and the test user
+  owns the test database.
+- `TEST_DATABASE_URL must point to an empty database`: recreate the disposable
+  test database before rerunning. Do not migrate it manually first; this suite
+  applies migrations itself.
+
+The separate `npm run test:book-data` suite instead expects a disposable
+database with migrations already applied. Do not confuse that prerequisite
+with the empty-database requirement of `npm run test:database`.

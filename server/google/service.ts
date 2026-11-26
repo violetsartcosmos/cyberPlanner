@@ -4,10 +4,13 @@ import {
 } from "../auth/service";
 import {
   createGmailTask,
-  getGoogleConnection,
   type ExternalTask,
   upsertGoogleTasks,
-} from "../planner/service";
+  getExternalTask,
+  setExternalTaskCompletion,
+  type ExternalTaskSource,
+} from "../external-tasks/service";
+import { getGoogleConnection } from "./connection";
 
 export { decryptRefreshToken };
 
@@ -119,6 +122,22 @@ export async function setGoogleTaskCompleted(
           completed: null,
         },
   });
+}
+
+export async function updateExternalCompletion(
+  source: ExternalTaskSource,
+  externalId: string,
+  completed: boolean,
+  date: string,
+) {
+  const task = await getExternalTask(source, externalId);
+  if (!task) return false;
+  if (source === "google") {
+    if (!task.taskListId) throw new Error("The Google Task is missing its task-list ID.");
+    await setGoogleTaskCompleted(task.taskListId, externalId, completed);
+  }
+  await setExternalTaskCompletion(task, completed, date);
+  return true;
 }
 
 export type GmailSearchResult = {

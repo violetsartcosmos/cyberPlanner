@@ -9,7 +9,7 @@ import { google } from "googleapis";
 import {
   getGoogleConnection,
   saveGoogleConnection,
-} from "../planner/service";
+} from "../google/connection";
 
 const requiredEnvironment = [
   "DATABASE_URL",
