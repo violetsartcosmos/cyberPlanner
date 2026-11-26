@@ -11,13 +11,16 @@ Book requests that take a `path` require a non-empty path of at most 2,048 chara
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/planner` | Loads planner data for the current request. |
+| `GET /api/planner` | Loads shared session, selected-date, balance, XP, quest, and redemption data. |
+| `GET /api/planner/calendar?date=...` | Loads routine history, selected-date synced tasks, points, and achievement progress for the dashboard or calendar. |
 | `POST /api/planner` | Validates and dispatches a planner action. |
 
-`GET /api/planner` returns all earned task keys by default. Set `taskKeys=visible` to return only keys for the selected date's built-in tasks and its visible synced tasks.
-The shared UI shell still loads its combined page through `GET /api/planner`.
-Therapy and journal pages own their dated resource reads, so `/api/planner`
-no longer returns therapy or journal data.
+`GET /api/planner` carries shared shell data and the remaining quest-board and
+rewards reads. Dashboard and calendar routes own their routine, completion,
+synced-task, point, and achievement reads through
+`GET /api/planner/calendar?date=...`; their journal markers use the separate
+`GET /api/journals/markers` resource. Therapy and journal pages own their
+dated reads, so `/api/planner` does not return their data.
 All UI form writes now use feature-owned React Router actions and resource endpoints.
 No UI forms dispatch hidden planner intents or write to `POST /api/planner`.
 The planner endpoints are temporary migration surfaces and will be removed once
@@ -109,7 +112,7 @@ These endpoints require a signed-in session. Dates use `YYYY-MM-DD`.
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/profile` | Returns routine completion history, current achievement progress, and lifetime XP for the profile page. |
+| `GET /api/profile` | Returns routine definitions and completion history, routine groups, achievement progress, lifetime XP, and milestones earned during the read. |
 | `GET /api/achievements` | Lists non-deleted stored achievements. It does not recalculate progress. |
 | `POST /api/achievements` | Creates an achievement, refreshes progress, and returns the achievement and newly earned achievements. |
 | `GET /api/quest-templates` | Lists quest templates by track and position. |

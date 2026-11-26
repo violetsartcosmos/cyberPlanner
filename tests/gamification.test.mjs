@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { refreshAchievements } from "../server/gamification/service.ts";
 import { Achievements } from "../src/features/planner/components/achievements.tsx";
 import { QuestLog } from "../src/features/planner/components/quest-log.tsx";
+import { plannerCalendarLoader } from "../src/features/planner/services/planner-calendar-route.ts";
 import { plannerLoader } from "../src/features/planner/services/planner-route.ts";
 import { questLogLoader } from "../src/features/planner/services/quest-log-route.ts";
 import { profileLoader } from "../src/features/planner/services/profile-route.ts";
@@ -28,26 +29,59 @@ function fixture(achievements, days = [], points = 0) {
   return { client, state };
 }
 
-test("the planner loader requests only visible task keys without losing the selected date", async (t) => {
+test("the planner shell loader preserves the selected date without task-read flags", async (t) => {
   let url;
   t.mock.method(globalThis, "fetch", async (input) => {
     url = input;
     return Response.json({ authenticated: false, missingConfiguration: [], authError: "" });
   });
   await plannerLoader({ request: new Request("http://localhost/profile?date=2026-11-21") });
-  const query = new URL(url, "http://localhost").searchParams;
-  assert.equal(query.get("date"), "2026-11-21");
-  assert.equal(query.get("taskKeys"), "visible");
+  assert.equal(url, "/api/planner?date=2026-11-21");
 });
 
-test("the planner loader accepts responses without a therapy plan", async (t) => {
+test("the planner shell loader accepts the reduced shared response", async (t) => {
   const page = {
-    authenticated: true, achievements: [], quests: [],
-    routines: [], routineGroups: [], questTemplates: [], acceptedTemplateIds: [],
+    authenticated: true, email: "planner@example.test", today: "2026-11-21",
+    selected: "2026-11-21", balance: 12, redemptions: [], quests: [],
     newlyEarned: [], totalXp: 0,
   };
   t.mock.method(globalThis, "fetch", async () => Response.json(page));
   assert.deepEqual(await plannerLoader({ request: new Request("http://localhost/physical-therapy") }), page);
+});
+
+test("the dashboard and calendar loader requests one selected-date page summary", async (t) => {
+  const requestedUrls = [];
+  const request = new Request("http://localhost/calendar?date=2026-11-21");
+  t.mock.method(globalThis, "fetch", async (input, options) => {
+    requestedUrls.push({ input, signal: options.signal });
+    return Response.json({
+      checks: { "2026-11-21": ["1"] }, routines: [], routineGroups: [],
+      achievements: [], totalXp: 125, newlyEarned: [], tasks: [],
+      earnedTaskKeys: [], todayPoints: 20,
+    });
+  });
+  const result = await plannerCalendarLoader({ request });
+  assert.equal(result.todayPoints, 20);
+  assert.deepEqual(requestedUrls, [{
+    input: "/api/planner/calendar?date=2026-11-21",
+    signal: request.signal,
+  }]);
+});
+
+test("the dashboard and calendar loader treats an unauthenticated read as unavailable", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response(null, { status: 401 }));
+  assert.equal(
+    await plannerCalendarLoader({ request: new Request("http://localhost/?date=2026-11-21") }),
+    null,
+  );
+});
+
+test("the dashboard and calendar loader propagates API errors", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => Response.json({ error: "Could not load calendar data." }, { status: 500 }));
+  await assert.rejects(
+    plannerCalendarLoader({ request: new Request("http://localhost/calendar?date=2026-11-21") }),
+    /Could not load calendar data/,
+  );
 });
 
 test("the quest-log loader reads routines, templates, and acceptance history", async (t) => {
@@ -77,11 +111,14 @@ test("the profile loader reads only profile-owned resources", async (t) => {
   let requestedUrl;
   t.mock.method(globalThis, "fetch", async (input) => {
     requestedUrl = input;
-    return Response.json({ checks: {}, routines: [], achievements: [], totalXp: 125 });
+    return Response.json({
+      checks: {}, routines: [], routineGroups: [], achievements: [],
+      totalXp: 125, newlyEarned: [],
+    });
   });
   assert.deepEqual(
     await profileLoader({ request: new Request("http://localhost/profile?date=2026-11-23") }),
-    { checks: {}, routines: [], achievements: [], totalXp: 125 },
+    { checks: {}, routines: [], routineGroups: [], achievements: [], totalXp: 125, newlyEarned: [] },
   );
   assert.equal(requestedUrl, "/api/profile");
 });

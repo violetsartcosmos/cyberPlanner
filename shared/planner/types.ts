@@ -95,14 +95,24 @@ export type TherapyPlan = {
   earnedPoints: number;
 };
 
-/** Profile resources used by the profile page. */
+/** Completion and achievement resources used by the profile and calendar pages. */
 export type ProfileSummary = {
   checks: Record<string, string[]>;
   routines: RoutineTask[];
+  routineGroups: RoutineGroup[];
   achievements: Achievement[];
   totalXp: number;
+  newlyEarned: string[];
 };
 
+/** Routine, completion, synced-task, and achievement reads for calendar pages. */
+export type PlannerCalendarData = ProfileSummary & {
+  tasks: ExternalTask[];
+  earnedTaskKeys: string[];
+  todayPoints: number;
+};
+
+/** Shared shell and sign-in state returned by the root planner loader. */
 export type PlannerPage =
   | {
       authenticated: false;
@@ -114,17 +124,10 @@ export type PlannerPage =
       email: string;
       today: string;
       selected: string;
-      checks: Record<string, string[]>;
-      tasks: ExternalTask[];
       balance: number;
-      todayPoints: number;
-      earnedTaskKeys: string[];
       totalXp: number;
       newlyEarned: string[];
-      achievements: Achievement[];
       quests: Quest[];
-      routines: RoutineTask[];
-      routineGroups: RoutineGroup[];
       redemptions: Array<{
         rewardId: string;
         rewardName: string;

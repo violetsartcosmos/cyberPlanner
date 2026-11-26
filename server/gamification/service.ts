@@ -168,6 +168,28 @@ export async function saveAchievement(id: string | null, input: AchievementInput
 }
 
 /**
+ * Refreshes achievements and calculates the XP total used by the shared shell.
+ * @param today - The date used to refresh date-dependent achievement progress.
+ * @returns The XP total and milestones earned during this read.
+ */
+export async function getPlannerHeaderSummary(today: string) {
+  return serializableTransaction(async (client) => {
+    const completions = await client.routineTaskCompletion.findMany({
+      orderBy: [{ day: "asc" }, { taskId: "asc" }],
+    });
+    const newlyEarned = await refreshAchievements(client, today, completions);
+    const [taskXp, achievementXp] = await Promise.all([
+      client.pointLedger.aggregate({ where: { entryType: "earn" }, _sum: { amount: true } }),
+      client.achievement.aggregate({ _sum: { awardedXp: true } }),
+    ]);
+    return {
+      totalXp: (taskXp._sum.amount ?? 0) + (achievementXp._sum.awardedXp ?? 0),
+      newlyEarned,
+    };
+  });
+}
+
+/**
  * Builds the profile's completion history, achievement progress, and XP total.
  * @param today - The date used to refresh date-dependent achievement progress.
  * @returns The profile resources without quests or selected-date task state.
@@ -177,8 +199,8 @@ export async function getProfileSummary(today: string) {
     const completions = await client.routineTaskCompletion.findMany({
       orderBy: [{ day: "asc" }, { taskId: "asc" }],
     });
-    await refreshAchievements(client, today, completions);
-    const [achievements, taskXp, achievementXp, { routines }] = await Promise.all([
+    const newlyEarned = await refreshAchievements(client, today, completions);
+    const [achievements, taskXp, achievementXp, { routines, routineGroups }] = await Promise.all([
       client.achievement.findMany({ where: { deleted: false }, orderBy: { createdAt: "asc" } }),
       client.pointLedger.aggregate({ where: { entryType: "earn" }, _sum: { amount: true } }),
       client.achievement.aggregate({ _sum: { awardedXp: true } }),
@@ -192,11 +214,13 @@ export async function getProfileSummary(today: string) {
     return {
       checks,
       routines,
+      routineGroups,
       achievements: achievements.map(({ earnedAt, ...achievement }) => ({
         ...achievement,
         earnedAt: earnedAt?.toISOString() ?? null,
       })),
       totalXp: (taskXp._sum.amount ?? 0) + (achievementXp._sum.awardedXp ?? 0),
+      newlyEarned,
     };
   });
 }

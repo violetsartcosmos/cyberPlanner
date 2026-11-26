@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { Outlet, useLoaderData, useLocation } from "react-router";
+import { Outlet, useLoaderData, useLocation, useRouteLoaderData } from "react-router";
 import {
   navigationSections,
   PlannerNavigation,
@@ -8,9 +8,10 @@ import {
 import { DailyAffirmation } from "@/features/planner/components/dashboard-widgets";
 import { SignInPanel } from "@/features/auth/components/sign-in-panel";
 import { usePlannerController } from "@/features/planner/hooks/use-planner-controller";
+import { plannerCalendarLoader } from "@/features/planner/services/planner-calendar-route";
 import { plannerLoader } from "@/features/planner/services/planner-route";
 import type { AuthenticatedPlannerPage } from "@/features/planner/types/planner-outlet-context";
-import witchyAction from "@/assets/images/witchyaction.png";
+import type { PlannerCalendarData } from "../../shared/planner/types";
 import { dayProgress } from "../../shared/planner/utils";
 import { routineGroupFor, routineWeekday } from "../../shared/planner/routines";
 import { useNotification } from "@/components/notifications";
@@ -37,38 +38,35 @@ export default function PlannerLayout() {
   return <AuthenticatedPlannerLayout page={page} />;
 }
 
+/**
+ * Renders shared navigation and shell data around the active planner route.
+ * @param props - The authenticated shell data.
+ * @returns The authenticated planner application layout.
+ */
 function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }) {
   const location = useLocation();
+  const calendarPage = useRouteLoaderData<typeof plannerCalendarLoader>("planner-calendar");
   const [menuOpen, setMenuOpen] = useState(false);
   const {
     date,
     selected,
     today,
     weekday,
-    checked,
     outletContext,
-    celebration,
-    setCelebration,
-    toggleFetcher,
   } = usePlannerController(page);
   const section = location.pathname === "/" ? "" : location.pathname.slice(1);
   const isDashboard = section === "";
   const isRewards = section === "rewards";
-  const { total, completed, percent } = dayProgress(date, checked, page.routines);
+  const dashboardPage = isDashboard ? calendarPage : null;
+  if (isDashboard && !dashboardPage) {
+    throw new Error("Could not load dashboard task data.");
+  }
   const pageHeadingSection = section === "quests" ? "calendar" : section;
-  useNotification(toggleFetcher.state === "idle" ? toggleFetcher.data?.error : "");
-  useNotification(toggleFetcher.state === "idle" && toggleFetcher.data?.earnedAchievements?.length
-    ? `Achievement milestone earned: ${toggleFetcher.data.earnedAchievements.join(", ")}!` : "", "notice");
   useNotification(page.newlyEarned.length
     ? `Achievement milestone earned: ${page.newlyEarned.join(", ")}!` : "", "notice");
 
   return (
     <div className={`app-shell authenticated-shell ${menuOpen ? "menu-expanded" : ""}`}>
-      {isDashboard && celebration > 0 && (
-        <div className="task-celebration" key={celebration} aria-hidden="true">
-          <img src={witchyAction} alt="" />
-        </div>
-      )}
       <PlannerNavigation
         selected={selected}
         section={section}
@@ -93,7 +91,7 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
               )}
             </div>
           )}
-          {isDashboard && <>
+          {isDashboard && dashboardPage && <>
             <div className="intro">
               <div>
                 <p className="text-label accent">
@@ -108,28 +106,13 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
               </div>
             </div>
             <section className="mobile-welcome">
-              <div>
-                <p className="text-label">YOUR LIFE, YOUR QUEST</p>
-                <h1>
-                  {selected === today
-                    ? "Today"
-                    : date.toLocaleDateString("en-US", { weekday: "long" })}
-                </h1>
-                <p>{routineGroupFor(page.routineGroups, routineWeekday(weekday))?.message ?? ""}</p>
-              </div>
-              <div className="mobile-momentum">
-                <strong>{percent}%</strong>
-                <span>COMPLETE</span>
-              </div>
-              <div className="mobile-summary">
-                <span>
-                  <b>{completed}</b> / {total} tasks complete
-                </span>
-                <span>
-                  <Sparkles aria-hidden="true" size={12} /> {page.todayPoints} PTS
-                  EARNED
-                </span>
-              </div>
+              <DashboardWelcome
+                page={dashboardPage}
+                selected={selected}
+                today={today}
+                date={date}
+                weekday={weekday}
+              />
             </section>
           </>}
           <div className="header-utilities">
@@ -164,5 +147,53 @@ function AuthenticatedPlannerLayout({ page }: { page: AuthenticatedPlannerPage }
         </footer>
       </main>
     </div>
+  );
+}
+
+/**
+ * Displays the selected-day mobile summary using dashboard-owned resources.
+ * @param props - The selected date, current date, weekday and calendar data.
+ * @returns The mobile welcome and progress summary.
+ */
+function DashboardWelcome({
+  page,
+  selected,
+  today,
+  date,
+  weekday,
+}: {
+  page: PlannerCalendarData;
+  selected: string;
+  today: string;
+  date: Date;
+  weekday: number;
+}) {
+  const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday));
+  const { total, completed, percent } = dayProgress(date, page.checks[selected] ?? [], page.routines);
+  return (
+    <>
+      <div>
+        <p className="text-label">YOUR LIFE, YOUR QUEST</p>
+        <h1>
+          {selected === today
+            ? "Today"
+            : date.toLocaleDateString("en-US", { weekday: "long" })}
+        </h1>
+        <p>{quest?.message ?? ""}</p>
+      </div>
+      <div className="mobile-momentum">
+        <strong>{percent}%</strong>
+        <span>COMPLETE</span>
+      </div>
+      <div className="mobile-summary">
+        <span>
+          <b>{completed}</b> / {total} tasks complete
+        </span>
+        <span>
+          <Sparkles aria-hidden="true" size={12} /> {page.todayPoints} PTS
+          EARNED
+        </span>
+      </div>
+    </>
   );
 }

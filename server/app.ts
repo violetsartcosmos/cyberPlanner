@@ -14,6 +14,7 @@ import { journalRoutes } from "./journals/routes";
 import { routineRoutes } from "./routines/routes";
 import { therapyRoutes } from "./therapy/routes";
 import { externalTaskRoutes } from "./external-tasks/routes";
+import { plannerRoutes } from "./planner/routes";
 
 export const app = new Hono();
 
@@ -32,6 +33,7 @@ app.route("/api/books", bookRoutes);
 app.route("/api", gamificationRoutes);
 app.route("/api", pointsRoutes);
 app.route("/api", googleRoutes);
+app.route("/api", plannerRoutes);
 
 // Loads planner data for the current request.
 app.get("/api/planner", noStore, async (context) => {

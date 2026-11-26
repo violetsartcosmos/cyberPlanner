@@ -300,15 +300,14 @@ combined planner request merely because the shared layout is convenient.
   selected-date navigation, and omit therapy from the UI planner request.
 - [X] Journal: use one dated route loader for the browser and selected entry;
   remove journal reads from the UI planner request.
-- [ ] Quest log: load routines plus templates and historical acceptance with
+- [X] Quest log: load routines plus templates and historical acceptance with
   page-owned reads; remove those fields from the UI planner request. The
-  quest-log route now owns all three reads, but routines remain in the shared
-  snapshot until dashboard and calendar migrate.
+  quest-log route owns all three reads.
 - [X] Profile: add purpose-built completion history and XP/streak summaries;
   do not make the profile recalculate unrelated quests or calendar state.
-- [ ] Main calendar and dashboard: own their routines, completions, synced
+- [X] Main calendar and dashboard: own their routines, completions, synced
   tasks, points, journal-date markers and achievement preview reads.
-- [ ] Use page-specific React Router loaders/actions with shared session and
+- [X] Use page-specific React Router loaders/actions with shared session and
   selected-date navigation.
 - [ ] Add only missing read contracts: journal browser dates, completion
   history/ranges, historical template acceptance, profile XP/streak summaries,
@@ -322,17 +321,17 @@ combined planner request merely because the shared layout is convenient.
 
 **Review additions**
 
-- Extract session/configuration, selected-date, balance, and XP shell data
-  before the journal/quest/profile migrations. Anonymous configuration and
-  OAuth errors must continue to render the sign-in shell without triggering
-  authenticated resource loaders.
+- [X] Keep authentication, selected-date, balance and XP shell data at the
+  root while dashboard/calendar reads are owned by their nested page loader.
+  Anonymous configuration errors keep the sign-in shell; the calendar API
+  checks configuration and session before reading authenticated resources.
 - Keep the achievement-refresh behavior on reads until a purpose-built summary
   has tests proving that date-dependent streaks and newly earned milestones
   remain equivalent.
 - Define loader-level fixtures and tests for every page: selected date, API
   error, request cancellation, revalidation after that page's writes, and no
   request for unrelated page resources.
-- Do not add query flags such as `include...` or `without...` to hide resources
+- [X] Do not add query flags such as `include...` or `without...` to hide resources
   from `/api/planner`. Move the read, remove that field from the planner
   contract, and let tests enforce the smaller response.
 
@@ -340,8 +339,12 @@ Status: in progress. The therapy read is now owned by
 `src/features/therapy/services/therapy-route.ts`, and `PlannerPage` no longer
 loads or returns therapy. The journal page owns its dated browser and entry
 read, dashboard and calendar routes own non-empty journal marker reads, and
-`PlannerPage` no longer loads or returns journal data. No compatibility query
-parameter was introduced.
+`PlannerPage` no longer loads or returns journal data. Dashboard and calendar
+share a nested loader for routine history, selected-date synced tasks, points
+and achievement progress; these fields are no longer in the root planner
+response. Quest-log reads are also page-owned. Remaining shared reads are
+quests and reward redemptions for their current consumers. No compatibility
+query parameter was introduced.
 
 ### 6. Python CRUD learning equivalent
 
@@ -381,19 +384,29 @@ write API and adapters should be removed as follow-up work. No schema or Python
 changes were made.
 Reader progress retains its direct resource requests and intentional save queue.
 
-Milestone 5 therapy-read slice is implemented. Next bounded task: extract the
-session/configuration shell, then migrate quest-log reads. The journal
-fetcher-read now uses its page route loader, and journal fields are no longer
-loaded by the UI planner request.
+Milestone 5 now includes page-owned reads for therapy, journal, quest log,
+profile, dashboard and calendar. Dashboard/calendar share one nested route
+loader for completion history, routines, synced tasks, points, and achievement
+preview data. Their controller owns task writes and selected-date state while
+the root response supplies shell data and the remaining quest/reward consumers.
+The next bounded task is to move quest-board and rewards reads out of the root
+planner response, then remove obsolete planner adapters after their final UI
+consumers move.
 The quest-log route owns reads for routines, templates, and historical template
-acceptance; the combined planner snapshot no longer returns templates or
-acceptance history. Routines remain in that snapshot for the dashboard and
-calendar until their page-owned read migration. The profile route now owns
+acceptance; the root planner response no longer returns those fields or the
+dashboard/calendar resources. The profile route now owns
 completion history, routine definitions needed by achievement creation, current
 achievement progress, and lifetime XP without loading quests or calendar tasks.
 Preserve selected-date navigation and keep achievement refresh behavior on
 planner reads until equivalent write/streak coverage exists. Do not run write
 tests against the normal app database.
+
+Dashboard/calendar verification: `npm run test:profile` (42 tests),
+`npm run test:server` (2 tests), `npm run typecheck`,
+`npm run lint:hooks`, `npm run build`, and `git diff --check` passed.
+`TEST_DATABASE_URL` is unavailable in this environment, so disposable-database
+integration tests were not run. The existing browser API server did not include
+the new route yet, so interactive route validation was not conclusive.
 
 Earlier bounded-slice verification:
 

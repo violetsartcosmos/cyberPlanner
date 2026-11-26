@@ -6,12 +6,15 @@ import { WeeklyProtocolPanel } from "@/features/calendar/components/weekly-proto
 import { TaskSection } from "@/features/planner/components/navigation-sections";
 import { routineGroupFor, routineWeekday } from "../../shared/planner/routines";
 import { dayProgress } from "../../shared/planner/utils";
-import { usePlannerContext } from "@/features/planner/hooks/planner-context";
+import { usePlannerCalendarContext } from "@/features/planner/hooks/planner-context";
 import witchyCalendar from "@/assets/images/witchycalendar.png";
 import { useNotification } from "@/components/notifications";
 import { journalMarkersLoader } from "@/features/planner/services/journal-actions";
 
-/** Displays calendar resources with page-owned journal activity markers. */
+/**
+ * Displays calendar tasks, progress and page-owned journal activity markers.
+ * @returns The selected-date calendar view.
+ */
 export default function CalendarPage() {
   const {
     page,
@@ -25,12 +28,18 @@ export default function CalendarPage() {
     onToggleTask,
     onSelectDate,
     onSelectToday,
-  } = usePlannerContext();
+    routines,
+    routineGroups,
+    achievements,
+    checks,
+    earnedTaskKeys,
+    tasks,
+  } = usePlannerCalendarContext();
   const journalMarkers = useLoaderData<typeof journalMarkersLoader>();
   const journalDates = journalMarkers.journalDates ?? [];
   useNotification(journalMarkers.error ?? "");
-  const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { id: 0, weekday: routineWeekday(weekday), title: "", message: "" };
-  const { total, completed, percent } = dayProgress(date, checked, page.routines);
+  const quest = routineGroupFor(routineGroups, routineWeekday(weekday)) ?? { id: 0, weekday: routineWeekday(weekday), title: "", message: "" };
+  const { total, completed, percent } = dayProgress(date, checked, routines);
 
   const calendarSummary = (
     <section className="calendar-summary" aria-label="Selected date summary">
@@ -54,7 +63,7 @@ export default function CalendarPage() {
       <div className="calendar-summary-art" aria-hidden="true">
         <img src={witchyCalendar} alt="" />
       </div>
-      <AchievementPreview achievements={page.achievements} />
+      <AchievementPreview achievements={achievements} />
     </section>
   );
 
@@ -65,11 +74,11 @@ export default function CalendarPage() {
         <TaskSection
           kind="daily"
           selected={selected}
-          routines={page.routines}
-          routineGroups={page.routineGroups}
+          routines={routines}
+          routineGroups={routineGroups}
           weekday={weekday}
           checked={checked}
-          earnedTaskKeys={page.earnedTaskKeys}
+          earnedTaskKeys={earnedTaskKeys}
           disabled={tasksDisabled}
           onToggle={onToggleTask}
         />
@@ -77,10 +86,10 @@ export default function CalendarPage() {
           <TaskSection
             kind="routines"
             selected={selected}
-            routines={page.routines}
-            routineGroups={page.routineGroups}
+            routines={routines}
+            routineGroups={routineGroups}
             checked={checked}
-            earnedTaskKeys={page.earnedTaskKeys}
+            earnedTaskKeys={earnedTaskKeys}
             disabled={tasksDisabled}
             onToggle={onToggleTask}
           />
@@ -89,11 +98,11 @@ export default function CalendarPage() {
           <TaskSection
             kind="synced"
             selected={selected}
-            routines={page.routines}
-            routineGroups={page.routineGroups}
-            tasks={page.tasks}
+            routines={routines}
+            routineGroups={routineGroups}
+            tasks={tasks}
             checked={externalChecked}
-            earnedTaskKeys={page.earnedTaskKeys}
+            earnedTaskKeys={earnedTaskKeys}
             disabled={tasksDisabled}
             onToggle={onToggleTask}
           />
@@ -104,14 +113,14 @@ export default function CalendarPage() {
           date={date}
           selected={selected}
           today={today}
-          checks={page.checks}
+          checks={checks}
           journalDates={journalDates}
-          routines={page.routines}
+          routines={routines}
           googleEnabled
           onSelect={onSelectDate}
           onToday={onSelectToday}
         />
-        <WeeklyProtocolPanel selected={selected} weekday={weekday} routineGroups={page.routineGroups} />
+        <WeeklyProtocolPanel selected={selected} weekday={weekday} routineGroups={routineGroups} />
         <GoogleIntegrationPanel email={page.email} selected={selected} />
       </div>
     </div>

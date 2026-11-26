@@ -51,10 +51,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const database = await vite.ssrLoadModule("/server/db/client.ts");
       db = database.getDatabase();
       const date = "2026-11-21";
-      const getPlannerSnapshot = async (selectedDate) => page.getPlannerSnapshot(
-        await routines.listRoutineCompletions(),
-        await externalTasks.getExternalTasks(selectedDate),
-      );
+      const getPlannerSnapshot = page.getPlannerCalendarPage;
       const routineId = async (list, weekday, title) => String((await db.routineTask.findFirstOrThrow({
         where: weekday === null
           ? { list, title, groups: { none: {} } }
@@ -323,15 +320,27 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal((await therapy.getTherapyPlan(nextTherapyDate)).earnedPoints, 10);
       assert.equal(await db.pointLedger.count({ where: { taskKey: `pt:${therapyDate}:am:glute` } }), 1);
       assert.equal((await db.pointLedger.findFirstOrThrow({ where: { taskKey: `pt:${therapyDate}:am:glute` } })).amount, 10);
-      const { getPlannerPage } = await vite.ssrLoadModule("/server/planner/page.ts");
-      const loaded = await getPlannerPage(new Request(`http://localhost/api/planner?date=${therapyDate}&taskKeys=visible`, {
+      const { getPlannerPage, getPlannerCalendarPage } = await vite.ssrLoadModule("/server/planner/page.ts");
+      const loaded = await getPlannerPage(new Request(`http://localhost/api/planner?date=${therapyDate}`, {
         headers: { Cookie: cookie },
       }));
       assert.equal(loaded.selected, therapyDate);
       assert.ok(!("therapy" in loaded));
       assert.ok(!("journal" in loaded));
       assert.ok(!("journalDates" in loaded));
-      assert.equal(loaded.todayPoints, 20);
+      assert.ok(!("checks" in loaded));
+      assert.ok(!("tasks" in loaded));
+      assert.ok(!("todayPoints" in loaded));
+      const calendarPage = await getPlannerCalendarPage(therapyDate);
+      assert.equal(calendarPage.todayPoints, 20);
+      assert.ok(calendarPage.checks[therapyDate]);
+      const calendarResponse = await app.request(
+        `http://localhost/api/planner/calendar?date=${therapyDate}`,
+        { headers: journalHeaders },
+      );
+      assert.equal(calendarResponse.status, 200);
+      assert.equal(calendarResponse.headers.get("cache-control"), "no-store");
+      assert.equal((await calendarResponse.json()).todayPoints, 20);
 
       const questUrl = "http://localhost/api/quests";
       const questRequest = (url, method, body) => app.request(url, {

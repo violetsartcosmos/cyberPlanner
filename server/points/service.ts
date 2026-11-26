@@ -59,6 +59,36 @@ export async function getPointsSummary(date: string, tasks?: readonly ExternalTa
   };
 }
 
+/**
+ * Loads the balance and recent redemptions needed by the shared planner shell.
+ * @returns The current balance and the ten most recent reward redemptions.
+ */
+export async function getPlannerPointsSummary() {
+  const db = getDatabase();
+  const [total, redemptions] = await db.$transaction([
+    db.pointLedger.aggregate({ _sum: { amount: true } }),
+    db.pointLedger.findMany({
+      where: { entryType: "spend" },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+  ], { isolationLevel: "RepeatableRead" });
+  return {
+    balance: total._sum.amount ?? 0,
+    redemptions: redemptions.map((row) => {
+      if (row.rewardId === null || row.rewardName === null) {
+        throw new Error("Point redemption is missing its reward details.");
+      }
+      return {
+        rewardId: row.rewardId,
+        rewardName: row.rewardName,
+        amount: -row.amount,
+        createdAt: row.createdAt.toISOString(),
+      };
+    }),
+  };
+}
+
 export async function redeemReward(reward: {
   id: string;
   name: string;

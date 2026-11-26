@@ -5,12 +5,16 @@ import { LevelHeader } from "@/features/planner/components/level-header";
 import { TaskSection } from "@/features/planner/components/navigation-sections";
 import { routineGroupFor, routineWeekday } from "../../shared/planner/routines";
 import { dayProgress } from "../../shared/planner/utils";
-import { usePlannerContext } from "@/features/planner/hooks/planner-context";
+import { usePlannerCalendarContext } from "@/features/planner/hooks/planner-context";
 import witchyBroom from "@/assets/images/witchybroom.png";
+import witchyAction from "@/assets/images/witchyaction.png";
 import { useNotification } from "@/components/notifications";
 import { journalMarkersLoader } from "@/features/planner/services/journal-actions";
 
-/** Displays the dashboard with page-owned journal activity markers. */
+/**
+ * Displays dashboard tasks, progress and page-owned journal activity markers.
+ * @returns The selected-date dashboard view.
+ */
 export default function DashboardPage() {
   const {
     page,
@@ -23,14 +27,21 @@ export default function DashboardPage() {
     tasksDisabled,
     onToggleTask,
     onSelectDate,
-  } = usePlannerContext();
+    routines,
+    routineGroups,
+    checks,
+    achievements,
+    earnedTaskKeys,
+    tasks,
+    celebration,
+  } = usePlannerCalendarContext();
   const journalMarkers = useLoaderData<typeof journalMarkersLoader>();
   const journalDates = journalMarkers.journalDates ?? [];
   useNotification(journalMarkers.error ?? "");
-  const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { id: 0, weekday: routineWeekday(weekday), title: "", message: "" };
-  const { total, completed } = dayProgress(date, checked, page.routines);
+  const quest = routineGroupFor(routineGroups, routineWeekday(weekday)) ?? { id: 0, weekday: routineWeekday(weekday), title: "", message: "" };
+  const { total, completed } = dayProgress(date, checked, routines);
   let earned = 0;
-  for (const achievement of page.achievements) {
+  for (const achievement of achievements) {
     if (achievement.earnedAt) earned += 1;
   }
   const dateSummary = (
@@ -51,6 +62,11 @@ export default function DashboardPage() {
 
   return (
     <>
+      {celebration > 0 && (
+        <div className="task-celebration" key={celebration} aria-hidden="true">
+          <img src={witchyAction} alt="" />
+        </div>
+      )}
       <LevelHeader totalXp={page.totalXp} earned={earned} />
       <div className="row g-3 align-items-start">
         <aside className="col-12 col-lg-4 col-xl-3 d-grid gap-3">
@@ -58,9 +74,9 @@ export default function DashboardPage() {
             date={date}
             selected={selected}
             today={today}
-            checks={page.checks}
+            checks={checks}
             journalDates={journalDates}
-            routines={page.routines}
+            routines={routines}
             googleEnabled={false}
             onSelect={onSelectDate}
             onToday={() => onSelectDate(today)}
@@ -69,11 +85,11 @@ export default function DashboardPage() {
           <TaskSection
             kind="daily"
             selected={selected}
-            routines={page.routines}
-            routineGroups={page.routineGroups}
+            routines={routines}
+            routineGroups={routineGroups}
             weekday={weekday}
             checked={checked}
-            earnedTaskKeys={page.earnedTaskKeys}
+            earnedTaskKeys={earnedTaskKeys}
             disabled={tasksDisabled}
             onToggle={onToggleTask}
           />
@@ -110,11 +126,11 @@ export default function DashboardPage() {
           <TaskSection
             kind="synced"
             selected={selected}
-            routines={page.routines}
-            routineGroups={page.routineGroups}
-            tasks={page.tasks}
+            routines={routines}
+            routineGroups={routineGroups}
+            tasks={tasks}
             checked={externalChecked}
-            earnedTaskKeys={page.earnedTaskKeys}
+            earnedTaskKeys={earnedTaskKeys}
             disabled={tasksDisabled}
             onToggle={onToggleTask}
           />
@@ -124,10 +140,10 @@ export default function DashboardPage() {
           <TaskSection
             kind="routines"
             selected={selected}
-            routines={page.routines}
-            routineGroups={page.routineGroups}
+            routines={routines}
+            routineGroups={routineGroups}
             checked={checked}
-            earnedTaskKeys={page.earnedTaskKeys}
+            earnedTaskKeys={earnedTaskKeys}
             disabled={tasksDisabled}
             onToggle={onToggleTask}
           />

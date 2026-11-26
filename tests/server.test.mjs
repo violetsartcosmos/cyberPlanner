@@ -45,6 +45,9 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.deepEqual(await page.json(), {
       authenticated: false, missingConfiguration: [], authError: "denied",
     });
+    const anonymousPlannerCalendar = await app.request("http://localhost/api/planner/calendar?date=2026-11-21");
+    assert.equal(anonymousPlannerCalendar.status, 401);
+    assert.equal(anonymousPlannerCalendar.headers.get("cache-control"), "no-store");
     const anonymousCalendar = await app.request("http://localhost/api/calendar");
     assert.equal(anonymousCalendar.status, 401);
     const anonymousBooks = await app.request("http://localhost/api/books");

@@ -1,5 +1,6 @@
 import { createBrowserRouter, Link, useRouteError } from "react-router";
 import { plannerLoader } from "../features/planner/services/planner-route";
+import { plannerCalendarLoader } from "../features/planner/services/planner-calendar-route";
 import { questLogLoader } from "../features/planner/services/quest-log-route";
 import {
   acceptQuestTemplateAction, completeQuestAction, createQuestAction, questResourceAction,
@@ -26,6 +27,7 @@ import {
   deleteBookmarkAction, renameBookAction, saveBookDetailsAction,
 } from "../features/books/services/book-actions";
 import PlannerLayout from "../layouts/planner-layout";
+import PlannerCalendarLayout from "../features/planner/components/planner-calendar-layout";
 import BooksPage from "../pages/books";
 import CalendarPage from "../pages/calendar";
 import DashboardPage from "../pages/dashboard";
@@ -69,9 +71,17 @@ export const router = createBrowserRouter([{
   HydrateFallback,
   ErrorBoundary: RootError,
   children: [
-    { index: true, Component: DashboardPage, loader: journalMarkersLoader, ErrorBoundary: PageError },
-    { path: "calendar", Component: CalendarPage, loader: journalMarkersLoader, ErrorBoundary: PageError },
-    { path: "quests", Component: CalendarPage, loader: journalMarkersLoader, ErrorBoundary: PageError },
+    {
+      id: "planner-calendar",
+      Component: PlannerCalendarLayout,
+      loader: plannerCalendarLoader,
+      ErrorBoundary: PageError,
+      children: [
+        { index: true, Component: DashboardPage, loader: journalMarkersLoader, ErrorBoundary: PageError },
+        { path: "calendar", Component: CalendarPage, loader: journalMarkersLoader, ErrorBoundary: PageError },
+        { path: "quests", Component: CalendarPage, loader: journalMarkersLoader, ErrorBoundary: PageError },
+      ],
+    },
     { path: "calendar/events", loader: calendarLoader, shouldRevalidate: () => false, ErrorBoundary: PageError },
     { path: "calendar/:calendarId/events", action: createCalendarEventAction, ErrorBoundary: PageError },
     { path: "calendar/:calendarId/events/:id", action: updateCalendarEventAction, ErrorBoundary: PageError },
