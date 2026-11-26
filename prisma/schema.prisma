@@ -8,13 +8,22 @@ datasource db {
   provider = "postgresql"
 }
 
-model PlannerDay {
+model Journal {
   id      Int      @id @default(autoincrement())
   day     DateTime @unique @db.Date
-  checks  Json     @default("[]")
-  journal String   @default("")
+  content String   @default("")
 
-  @@map("planner_days")
+  @@map("journals")
+}
+
+model RoutineTaskCompletion {
+  day    DateTime    @db.Date
+  taskId Int         @map("task_id")
+  task   RoutineTask @relation(fields: [taskId], references: [id], onDelete: Restrict)
+
+  @@id([day, taskId])
+  @@index([taskId])
+  @@map("routine_task_completions")
 }
 
 model GoogleConnection {
@@ -150,6 +159,7 @@ model RoutineTask {
   kind   String
   points Int
   groups RoutineTaskGroup[]
+  completions RoutineTaskCompletion[]
 
   @@map("routine_tasks")
 }

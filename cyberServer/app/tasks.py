@@ -56,20 +56,6 @@ def routine_id(task_id: str) -> int | None:
     return int(task_id)
 
 
-def _validate_checks(value: Any) -> list[str]:
-    """Check that the stored planner day contains a list of string task IDs.
-
-    value comes from the planner_days.checks JSON column. Return the list when
-    valid; raise an HTTP 500 error when it is malformed. The leading underscore
-    marks this as a helper intended for use inside this module.
-
-    This mirrors the taskChecks helper in server/planner/service.ts.
-    """
-    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-        raise HTTPException(status_code=500, detail="Stored planner checks are invalid.")
-    return value
-
-
 @router.get("/tasks")
 def list_tasks(
     selected_date: date = Query(alias="date"),
@@ -80,7 +66,7 @@ def list_tasks(
     selected_date comes from the date query parameter; FastAPI opens the
     database connection through Depends(get_connection). The query loads
     morning and night routines plus the daily routine for that weekday. It
-    compares their IDs with planner_days.checks to mark each task completed
+    compares their IDs with routine_task_completions to mark each task completed
     or not completed. If the day has no saved row, all tasks start unchecked.
 
     Return the selected date and a tasks list containing IDs, titles, types,
@@ -94,23 +80,29 @@ def list_tasks(
     # from user input. This reads the existing Prisma-managed tables.
     rows = connection.execute(
         """
-        SELECT id, list, weekday, title, kind, points
-        FROM routine_tasks
-        WHERE weekday IS NULL OR weekday = %s
+        SELECT t.id, t.list, t.title, t.kind, t.points
+        FROM routine_tasks t
+        WHERE NOT EXISTS (SELECT 1 FROM routine_task_groups tg WHERE tg.task_id = t.id)
+           OR EXISTS (
+               SELECT 1 FROM routine_task_groups tg
+               JOIN routine_groups g ON g.id = tg.group_id
+               WHERE tg.task_id = t.id AND g.weekday = %s
+           )
         ORDER BY CASE list
             WHEN 'morning' THEN 0
             WHEN 'night' THEN 1
             ELSE 2
-        END, id
+        END, t.id
         """,
         (weekday_name(selected_date),),
     ).fetchall()
-    day_row = connection.execute(
-        "SELECT checks FROM planner_days WHERE day = %s",
+    checks = connection.execute(
+        """
+        SELECT task_id FROM routine_task_completions WHERE day = %s
+        """,
         (selected_date,),
-    ).fetchone()
-    checks = _validate_checks(day_row["checks"]) if day_row else []
-    completed_ids = set(checks)
+    ).fetchall()
+    completed_ids = {row["task_id"] for row in checks}
 
     return {
         "date": selected_date.isoformat(),
@@ -121,7 +113,7 @@ def list_tasks(
                 "title": row["title"],
                 "kind": row["kind"],
                 "points": row["points"],
-                "completed": str(row["id"]) in completed_ids,
+                "completed": row["id"] in completed_ids,
             }
             for row in rows
         ],
@@ -139,8 +131,8 @@ def set_task_completion(
     task_id identifies a built-in routine; request supplies the planner date
     and desired completed state. FastAPI provides the database connection.
     The function validates the ID and checks that the routine applies to the
-    requested weekday. Morning/night routines have no weekday restriction
-    (NULL); daily tasks have a named weekday. It then updates the day's checks
+    requested weekday. Ungrouped routines have no weekday restriction;
+    grouped tasks must match the selected weekday. It then updates the day's checks
     and, when completing, attempts to insert
     one ledger award. The check and award share a transaction. Unchecking does
     not remove the award, so checking the task again cannot earn it twice.
@@ -162,46 +154,42 @@ def set_task_completion(
     with connection.transaction():
         routine = connection.execute(
             """
-            SELECT points
-            FROM routine_tasks
-            WHERE id = %s AND (weekday IS NULL OR weekday = %s)
+            SELECT t.points
+            FROM routine_tasks t
+            WHERE t.id = %s AND (
+                NOT EXISTS (SELECT 1 FROM routine_task_groups tg WHERE tg.task_id = t.id)
+                OR EXISTS (
+                    SELECT 1 FROM routine_task_groups tg
+                    JOIN routine_groups g ON g.id = tg.group_id
+                    WHERE tg.task_id = t.id AND g.weekday = %s
+                )
+            )
             """,
             (id, weekday_name(request.date)),
         ).fetchone()
         if routine is None:
             raise HTTPException(status_code=404, detail="That planner task is invalid.")
 
-        # Insert a day if needed; otherwise add/remove the ID in the existing
-        # JSON array. 
-        checks_row = connection.execute(
-            """
-            INSERT INTO planner_days (day, checks)
-            VALUES (
-                %s,
-                CASE WHEN %s THEN jsonb_build_array(%s::text)
-                     ELSE '[]'::jsonb
-                END
+        if request.completed:
+            connection.execute(
+                """
+                INSERT INTO routine_task_completions (day, task_id) VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (request.date, id),
             )
-            ON CONFLICT (day) DO UPDATE
-            SET checks = CASE WHEN %s THEN
-                CASE WHEN planner_days.checks ? %s
-                     THEN planner_days.checks
-                     ELSE planner_days.checks || jsonb_build_array(%s::text)
-                END
-            ELSE planner_days.checks - %s::text
-            END
-            RETURNING checks
-            """,
-            (
-                request.date,
-                request.completed,
-                task_id,
-                request.completed,
-                task_id,
-                task_id,
-                task_id,
-            ),
-        ).fetchone()
+        else:
+            connection.execute(
+                "DELETE FROM routine_task_completions WHERE day = %s AND task_id = %s",
+                (request.date, id),
+            )
+        checks = [
+            str(row["task_id"])
+            for row in connection.execute(
+                "SELECT task_id FROM routine_task_completions WHERE day = %s ORDER BY task_id",
+                (request.date,),
+            ).fetchall()
+        ]
 
         awarded_points = 0
         if request.completed:
@@ -219,7 +207,6 @@ def set_task_completion(
             if award is not None:
                 awarded_points = routine["points"]
 
-    checks = _validate_checks(checks_row["checks"])
     return {
         "ok": True,
         "date": request.date.isoformat(),

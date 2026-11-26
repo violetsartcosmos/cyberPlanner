@@ -64,11 +64,13 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         planner.setBuiltinTaskCompletion(date, daily1, true),
       ]);
       await planner.setBuiltinTaskCompletion(date, daily0, true);
-      const savedDay = await db.plannerDay.findUniqueOrThrow({ where: { day: database.databaseDate(date) } });
-      assert.ok(savedDay.id > 0);
+      assert.equal(await db.journal.count({ where: { day: database.databaseDate(date) } }), 0);
       const journal = JSON.stringify([{ type: "paragraph", content: "A moment to remember" }]);
       await planner.savePlannerJournal(date, journal);
-      assert.equal((await db.plannerDay.findUniqueOrThrow({ where: { day: database.databaseDate(date) } })).id, savedDay.id);
+      const savedJournal = await db.journal.findUniqueOrThrow({ where: { day: database.databaseDate(date) } });
+      assert.ok(savedJournal.id > 0);
+      await planner.savePlannerJournal(date, journal);
+      assert.equal((await db.journal.findUniqueOrThrow({ where: { day: database.databaseDate(date) } })).id, savedJournal.id);
       await planner.setBuiltinTaskCompletion(date, daily2, true);
       const snapshot = await planner.getPlannerSnapshot(date);
       assert.deepEqual(new Set(snapshot.checks[date]), new Set([daily0, daily1, daily2]));

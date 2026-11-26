@@ -245,3 +245,63 @@ test("entity ID migration preserves existing records and natural-key constraints
     await client.end();
   }
 });
+
+test("journal and completion migration preserves valid checks and journal content", async () => {
+  const url = process.env.TEST_DATABASE_URL;
+  if (!url) throw new Error("TEST_DATABASE_URL must point to a disposable PostgreSQL database.");
+  const client = new pg.Client({ connectionString: url });
+  const schema = `completion_migration_${randomUUID().replaceAll("-", "")}`;
+  await client.connect();
+  try {
+    await client.query(`CREATE SCHEMA "${schema}"`);
+    await client.query(`SET search_path TO "${schema}"`);
+    const root = new URL("../prisma/migrations/", import.meta.url);
+    const current = "20261130050000_journals_and_routine_completions";
+    const folders = (await readdir(root, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory() && entry.name < current)
+      .map((entry) => entry.name).sort();
+    for (const folder of folders) {
+      await client.query(await readFile(new URL(`${folder}/migration.sql`, root), "utf8"));
+    }
+
+    const tasks = (await client.query("SELECT id FROM routine_tasks ORDER BY id LIMIT 2")).rows;
+    const [first, second] = tasks.map((row) => row.id);
+    const original = (await client.query(
+      "INSERT INTO planner_days (day, checks, journal) VALUES ($1, $2::jsonb, $3) RETURNING id",
+      ["2026-11-23", JSON.stringify([String(first), String(first), String(second)]), "saved journal"],
+    )).rows[0];
+    await client.query(
+      "INSERT INTO planner_days (day, checks) VALUES ($1, $2::jsonb)",
+      ["2026-11-24", JSON.stringify(["unknown"])],
+    );
+    const migration = await readFile(new URL(`${current}/migration.sql`, root), "utf8");
+    await assert.rejects(client.query(migration), /invalid or unknown routine task ID/);
+    await client.query("ROLLBACK");
+    await client.query("UPDATE planner_days SET checks = '[]' WHERE day = '2026-11-24'");
+    await client.query(migration);
+
+    const journal = (await client.query("SELECT id, content FROM journals WHERE day = '2026-11-23'")).rows[0];
+    assert.deepEqual(journal, { id: original.id, content: "saved journal" });
+    const completions = (await client.query(
+      "SELECT day::text, task_id FROM routine_task_completions ORDER BY task_id",
+    )).rows;
+    assert.deepEqual(completions, [
+      { day: "2026-11-23", task_id: first },
+      { day: "2026-11-23", task_id: second },
+    ]);
+    await assert.rejects(client.query(
+      "INSERT INTO routine_task_completions (day, task_id) VALUES ($1, $2)", ["2026-11-23", first],
+    ), /routine_task_completions_pkey/);
+    await assert.rejects(client.query(
+      "INSERT INTO routine_task_completions (day, task_id) VALUES ($1, $2)", ["2026-11-25", 2147483647],
+    ), /routine_task_completions_task_id_fkey/);
+    await client.query("INSERT INTO routine_task_completions (day, task_id) VALUES ($1, $2)", ["2026-11-25", first]);
+    assert.equal((await client.query("SELECT count(*)::int AS count FROM journals WHERE day = '2026-11-25'")).rows[0].count, 0);
+    const next = (await client.query("INSERT INTO journals (day, content) VALUES ('2026-11-25', 'new') RETURNING id")).rows[0];
+    assert.notEqual(next.id, original.id);
+  } finally {
+    await client.query("ROLLBACK");
+    await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await client.end();
+  }
+});

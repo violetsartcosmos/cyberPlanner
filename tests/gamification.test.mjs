@@ -18,7 +18,7 @@ function fixture(achievements, days = [], points = 0) {
       findMany: async () => achievements,
       update: async ({ where, data }) => Object.assign(achievements.find((item) => item.id === where.id), data),
     },
-    plannerDay: { findMany: async () => days },
+    routineTaskCompletion: { findMany: async () => days.flatMap(({ day, checks }) => checks.map(({ taskId }) => ({ day, taskId }))) },
     pointLedger: { aggregate: async () => ({ _sum: { amount: state.points } }) },
     routineTask: { findMany: async () => [...routineRows, { id: 17, list: "night", weekday: null, title: "Lights out", kind: "side", points: 10 }] },
     routineGroup: { findMany: async () => [] },
@@ -68,10 +68,10 @@ test("points milestones use lifetime earned points and award XP only once", asyn
 });
 
 test("streak milestones increase and award XP once per new record, including backfilled milestones", async () => {
-  const achievement = { id: "water", title: "Water", tracking: "streak", taskId: "morning-2", milestoneInterval: 3, target: 3, current: 0, xp: 50, earnedAt: null, awardedXp: 0 };
+  const achievement = { id: "water", title: "Water", tracking: "streak", taskId: "3", milestoneInterval: 3, target: 3, current: 0, xp: 50, earnedAt: null, awardedXp: 0 };
   const days = Array.from({ length: 7 }, (_, index) => ({
     day: new Date(`2026-11-${String(15 + index).padStart(2, "0")}T00:00:00Z`),
-    checks: ["morning-2"],
+    checks: [{ taskId: 3 }],
   }));
   const { client } = fixture([achievement], days);
   assert.deepEqual(await refreshAchievements(client, "2026-11-17"), ["Water"]);
@@ -97,32 +97,32 @@ test("streak milestones increase and award XP once per new record, including bac
 test("activity streak counts built-in checks, not invalid or future tasks", async () => {
   const achievement = { id: "active", title: "Active", tracking: "activity_streak", taskId: null, milestoneInterval: 2, target: 2, current: 0, xp: 10, earnedAt: null, awardedXp: 0 };
   const days = [
-    { day: new Date("2026-11-20T00:00:00Z"), checks: ["1"] },
-    { day: new Date("2026-11-21T00:00:00Z"), checks: ["unknown"] },
-    { day: new Date("2026-11-22T00:00:00Z"), checks: ["17"] },
+    { day: new Date("2026-11-20T00:00:00Z"), checks: [{ taskId: 1 }] },
+    { day: new Date("2026-11-21T00:00:00Z"), checks: [] },
+    { day: new Date("2026-11-22T00:00:00Z"), checks: [{ taskId: 17 }] },
   ];
   const { client } = fixture([achievement], days);
   assert.deepEqual(await refreshAchievements(client, "2026-11-21"), []);
   assert.equal(achievement.current, 1);
-  days[1].checks = ["17"];
+  days[1].checks = [{ taskId: 17 }];
   assert.deepEqual(await refreshAchievements(client, "2026-11-21"), ["Active"]);
   assert.equal(achievement.target, 4);
 });
 
-test("multiple streaks use shared day history without counting duplicate checks twice", async () => {
+test("multiple streaks use shared completion history", async () => {
   const base = { tracking: "streak", milestoneInterval: 3, target: 3, current: 0, xp: 10, earnedAt: null, awardedXp: 0 };
   const achievements = [
-    { ...base, id: "water", title: "Water", taskId: "morning-2" },
-    { ...base, id: "walk", title: "Walk", taskId: "morning-3" },
-    { ...base, id: "water-again", title: "Water again", taskId: "morning-2" },
+    { ...base, id: "water", title: "Water", taskId: "3" },
+    { ...base, id: "walk", title: "Walk", taskId: "4" },
+    { ...base, id: "water-again", title: "Water again", taskId: "3" },
   ];
   const days = [
-    { day: new Date("2026-11-20T00:00:00Z"), checks: ["morning-2", "morning-2"] },
-    { day: new Date("2026-11-21T00:00:00Z"), checks: ["morning-2", "morning-3"] },
+    { day: new Date("2026-11-20T00:00:00Z"), checks: [{ taskId: 3 }] },
+    { day: new Date("2026-11-21T00:00:00Z"), checks: [{ taskId: 3 }, { taskId: 4 }] },
   ];
   const { client } = fixture(achievements, days);
-  client.plannerDay.findMany = () => { throw new Error("Day history should be reused"); };
-  await refreshAchievements(client, "2026-11-21", days);
+  client.routineTaskCompletion.findMany = () => { throw new Error("Completion history should be reused"); };
+  await refreshAchievements(client, "2026-11-21", days.flatMap(({ day, checks }) => checks.map(({ taskId }) => ({ day, taskId }))));
   assert.deepEqual(achievements.map((item) => item.current), [2, 1, 2]);
 });
 
@@ -130,7 +130,7 @@ test("a long recorded streak awards every missed milestone exactly once", async 
   const achievement = { id: "week", title: "Week", tracking: "activity_streak", taskId: null, milestoneInterval: 7, target: 7, current: 0, xp: 50, earnedAt: null, awardedXp: 0 };
   const days = Array.from({ length: 14 }, (_, index) => ({
     day: new Date(`2026-11-${String(index + 1).padStart(2, "0")}T00:00:00Z`),
-    checks: ["1"],
+    checks: [{ taskId: 1 }],
   }));
   const { client } = fixture([achievement], days);
   assert.deepEqual(await refreshAchievements(client, "2026-11-14"), ["Week"]);

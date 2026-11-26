@@ -61,15 +61,14 @@ Available first-slice endpoints:
 - `GET /api/v1/points?date=YYYY-MM-DD`
 - `POST /api/v1/rewards/{reward_id}/redeem`
 
-The task and point endpoints use the existing `routine_tasks`, `planner_days`,
+The task and point endpoints use the `routine_tasks`, `routine_task_completions`,
 and `point_ledger` tables. Task awards are append-only and use the database's
 unique award key to prevent duplicates. Reward redemption uses serializable
 transactions so concurrent requests cannot spend the same balance twice.
 Apply the committed Prisma migrations before starting this version. Routine
-task IDs are positive integers; the checklist and ledger store their decimal
-representations as strings for compatibility with the rest of the planner.
-Morning and night routines have a `NULL` weekday; daily routines have a named
-weekday such as `monday`. The migration converts the old numeric values.
+task IDs are positive integers; the API and ledger use their decimal string
+representations. Routine tasks are associated with weekday groups when needed;
+ungrouped tasks apply every day.
 
 Run Python tests from the repository root:
 

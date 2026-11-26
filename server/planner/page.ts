@@ -26,9 +26,9 @@ export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const pointsRequest = url.searchParams.get("taskKeys") === "visible"
     ? tasks.then((visible) => getPointsSummary(selected, visible))
     : getPointsSummary(selected);
-  const [{ plannerDays, ...gamification }, plannerTasks, points, therapy] = await Promise.all([
+  const [{ completions, ...gamification }, plannerTasks, points, therapy] = await Promise.all([
     getGamification(today), tasks, pointsRequest, getTherapyPlan(selected),
   ]);
-  const planner = await getPlannerSnapshot(selected, plannerDays, plannerTasks);
+  const planner = await getPlannerSnapshot(selected, completions, plannerTasks);
   return { authenticated: true, email, today, selected, ...planner, ...points, ...gamification, therapy };
 }

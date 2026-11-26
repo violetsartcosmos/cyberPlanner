@@ -58,7 +58,7 @@ The [Prisma schema](../prisma/schema.prisma) is the source of truth for fields, 
 A **model** describes the shape of stored data; in Prisma, each model below
 maps to a PostgreSQL table. A row is one saved record, and a primary key
 identifies that record. For example, `RoutineTask` describes a task definition,
-while `PlannerDay` describes what was checked on a particular date.
+while `Journal` stores a journal entry for a particular date.
 
 The Python `TaskCompletion` class is different: it is a Pydantic request model
 that validates the date and completion state sent to the API. It is not a
@@ -67,7 +67,8 @@ the Node server.
 
 | Model | Purpose |
 | --- | --- |
-| `PlannerDay` | One row per date containing built-in task checks and a journal entry. |
+| `Journal` | Journal entry for a date. |
+| `RoutineTaskCompletion` | A checked routine task on a date. |
 | `GoogleConnection` | Singleton connection with the account email and encrypted refresh token. |
 | `ExternalTask` | Synced Google task or Gmail follow-up, with a unique source and external ID. |
 | `PointLedger` | Earn and spend entries. A partial unique index prevents duplicate earn entries for a task key. |
@@ -106,16 +107,15 @@ Therapy awards use `pt:<date>:<session-id>:<exercise-id>` keys. The completion r
 
 The names below are **Prisma field names**; fields mapped with `@map` use snake_case column names in PostgreSQL (for example, `taskKey` is `task_key`). `?` means the column can be null; other scalar fields are required. Dates marked `Date` store a calendar date without a time; `Timestamp` values include a time and timezone. Defaults apply when a new row omits the field.
 
-### `PlannerDay` (`planner_days`)
+### `Journal` (`journals`)
 
-Stores the state of built-in tasks and the journal for a particular day. Task definitions themselves live in [`shared/planner/definitions.ts`](../shared/planner/definitions.ts), not in this table.
+Stores a journal for a particular day, independently of routine task completions.
 
 | Field | Type / default | What it holds and why |
 | --- | --- | --- |
-| `id` | Integer; auto-increment; primary key | Stable identifier for the planner day. |
-| `day` | Date; unique | The planner date; ensures at most one row per day. |
-| `checks` | JSON; `[]` | Array of completed built-in `RoutineTask` IDs encoded as strings, such as `"42"`. Used to display progress and calculate routine streaks. |
-| `journal` | String; `""` | The day's BlockNote JSON document; nonempty entries also mark dates on the calendar. |
+| `id` | Integer; auto-increment; primary key | Stable identifier for the journal. |
+| `day` | Date; unique | The journal date; ensures at most one row per day. |
+| `content` | String; `""` | The day's BlockNote JSON document; nonempty entries also mark dates on the calendar. |
 
 ### `GoogleConnection` (`google_connections`)
 
@@ -215,7 +215,7 @@ Represents a custom quest, distinct from built-in daily and routine tasks. On co
 | `kind` | `side`, `main`, or `boss`, used to classify the task. |
 | `points` | The points earned when the task is completed. |
 
-`PlannerDay.checks` stores the completed task IDs as strings for each date. `PointLedger.taskKey` combines the date and ID (for example, `builtin:2026-11-22:42`) so a task can earn points once per day. A streak-tracking `Achievement.taskId` contains the same ID as text. The integer-ID migration translates existing checks and award keys using their date's weekday, and preserves streak links; unknown historical checks and ledger keys are retained.
+`RoutineTaskCompletion` records each checked task and date, with a composite primary key preventing duplicates and a foreign key enforcing valid tasks. The API represents task IDs as strings. `PointLedger.taskKey` combines the date and ID (for example, `builtin:2026-11-22:42`) so a task can earn points once per day. A streak-tracking `Achievement.taskId` contains the same ID as text. The completion migration preserves valid checks and rejects invalid or unknown task IDs rather than silently discarding them.
 
 `RoutineGroup` stores an incremental ID, a named weekday, title, and message. `RoutineTaskGroup` joins daily routine tasks to weekday groups; morning and night tasks have no joins. `QuestTemplate` stores suggested quests and their track, type, rarity, and points.
 

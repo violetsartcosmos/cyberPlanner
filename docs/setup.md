@@ -41,6 +41,11 @@ the numeric weekdays with lowercase names in both routine tasks and groups.
 It rejects unexpected existing values instead of silently changing a schedule.
 The same backup, server shutdown, and matching-code requirements apply.
 
+The journal and routine completion migration moves checks into a separate
+table and renames planner days to journals. It rejects invalid or unknown task
+IDs instead of silently discarding checks. Deploy matching Node and Python
+code after migrating.
+
 ### 1. Install the project
 
 Open a terminal in the CyberPlanner project folder and run:

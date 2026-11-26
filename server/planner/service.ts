@@ -5,7 +5,6 @@ import { dateKey } from "../../shared/planner/utils";
 import { routinePoints, type RoutineKind } from "../../shared/planner/routines";
 import { refreshAchievements } from "../gamification/service";
 import { findRoutine } from "./routines";
-import type { Prisma } from "../generated/prisma/client";
 
 export type { ExternalTask } from "../../shared/planner/types";
 export type ExternalTaskSource = ExternalTask["source"];
@@ -37,14 +36,7 @@ function externalTask(row: StoredExternalTask): ExternalTask {
   };
 }
 
-function taskChecks(value: unknown): string[] {
-  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
-    throw new Error("Stored planner checks are invalid.");
-  }
-  return value;
-}
-
-type PlannerDaySnapshot = { day: Date; checks: Prisma.JsonValue; journal: string };
+type RoutineCompletion = { day: Date; taskId: number };
 
 export async function getPlannerTasks(date: string) {
   const rows = await getDatabase().externalTask.findMany({
@@ -57,27 +49,31 @@ export async function getPlannerTasks(date: string) {
   return rows.map(externalTask);
 }
 
-export async function getPlannerSnapshot(date: string, plannerDays?: PlannerDaySnapshot[], plannerTasks?: ExternalTask[]) {
-  const [days, tasks] = await Promise.all([
-    plannerDays ?? getDatabase().plannerDay.findMany({ select: { day: true, checks: true, journal: true } }),
+export async function getPlannerSnapshot(date: string, completions?: RoutineCompletion[], plannerTasks?: ExternalTask[]) {
+  const [checks, journals, tasks] = await Promise.all([
+    completions ?? getDatabase().routineTaskCompletion.findMany({ orderBy: [{ day: "asc" }, { taskId: "asc" }] }),
+    getDatabase().journal.findMany(),
     plannerTasks ?? getPlannerTasks(date),
   ]);
+  const checksByDate: Record<string, string[]> = {};
+  for (const check of checks) {
+    const key = dateString(check.day);
+    (checksByDate[key] ??= []).push(String(check.taskId));
+  }
   return {
-    checks: Object.fromEntries(
-      days.map((day) => [dateString(day.day), taskChecks(day.checks)]),
-    ),
-    journalDates: days.filter((day) => day.journal.trim()).map((day) => dateString(day.day)),
-    journal: days.find((day) => dateString(day.day) === date)?.journal ?? "",
+    checks: checksByDate,
+    journalDates: journals.filter((journal) => journal.content.trim()).map((journal) => dateString(journal.day)),
+    journal: journals.find((journal) => dateString(journal.day) === date)?.content ?? "",
     tasks,
   };
 }
 
 export async function savePlannerJournal(date: string, journal: string) {
   const day = databaseDate(date);
-  await getDatabase().plannerDay.upsert({
+  await getDatabase().journal.upsert({
     where: { day },
-    create: { day, journal },
-    update: { journal },
+    create: { day, content: journal },
+    update: { content: journal },
   });
 }
 
@@ -90,16 +86,18 @@ export async function setBuiltinTaskCompletion(
   return serializableTransaction(async (client) => {
     const routine = await findRoutine(client, date, taskId);
     if (!routine) throw new Error("That planner task is invalid.");
-    const existing = await client.plannerDay.findUnique({ where: { day } });
-    const next = new Set(taskChecks(existing?.checks ?? []));
-    if (completed) next.add(taskId);
-    else next.delete(taskId);
-    const checks = [...next];
-    await client.plannerDay.upsert({
-      where: { day },
-      create: { day, checks },
-      update: { checks },
-    });
+    if (completed) {
+      await client.routineTaskCompletion.upsert({
+        where: { day_taskId: { day, taskId: routine.id } },
+        create: { day, taskId: routine.id },
+        update: {},
+      });
+    } else {
+      await client.routineTaskCompletion.deleteMany({ where: { day, taskId: routine.id } });
+    }
+    const checks = (await client.routineTaskCompletion.findMany({
+      where: { day }, orderBy: { taskId: "asc" }, select: { taskId: true },
+    })).map((check) => String(check.taskId));
     if (completed) {
       await awardTaskPoints(client, `builtin:${date}:${taskId}`, date, routine.points);
     }

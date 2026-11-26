@@ -17,12 +17,12 @@ type AchievementInput = {
   reward: string;
 };
 
-type AchievementDay = { day: Date; checks: Prisma.JsonValue };
+type RoutineCompletion = { day: Date; taskId: number };
 
-export async function refreshAchievements(client: Prisma.TransactionClient, today: string, plannerDays?: AchievementDay[]) {
-  const [achievements, days, taskPoints] = await Promise.all([
+export async function refreshAchievements(client: Prisma.TransactionClient, today: string, completions?: RoutineCompletion[]) {
+  const [achievements, checks, taskPoints] = await Promise.all([
     client.achievement.findMany({ where: { deleted: false } }),
-    plannerDays ?? client.plannerDay.findMany({ select: { day: true, checks: true } }),
+    completions ?? client.routineTaskCompletion.findMany(),
     client.pointLedger.aggregate({ where: { entryType: "earn" }, _sum: { amount: true } }),
   ]);
   const earnedAchievements: string[] = [];
@@ -55,15 +55,18 @@ export async function refreshAchievements(client: Prisma.TransactionClient, toda
       const activityDates: string[] = [];
       const hasActivityStreak = achievements.some((item) => item.tracking === "activity_streak");
       const routines = hasActivityStreak ? (await loadRoutines(client)).routines : [];
-      for (const day of days) {
-        if (!Array.isArray(day.checks) || !day.checks.every((item) => typeof item === "string")) {
-          throw new Error("Stored planner checks are invalid.");
+      const checksByDate = new Map<string, string[]>();
+      for (const check of checks) {
+        const date = dateString(check.day);
+        const taskId = String(check.taskId);
+        taskDates.get(taskId)?.push(date);
+        if (!checksByDate.has(date)) checksByDate.set(date, []);
+        checksByDate.get(date)!.push(taskId);
+      }
+      if (hasActivityStreak) {
+        for (const [date, taskIds] of checksByDate) {
+          if (dayProgress(parseDate(date), taskIds, routines).completed > 0) activityDates.push(date);
         }
-        const date = dateString(day.day);
-        for (const taskId of new Set(day.checks)) {
-          taskDates.get(taskId)?.push(date);
-        }
-        if (hasActivityStreak && dayProgress(parseDate(date), day.checks, routines).completed > 0) activityDates.push(date);
       }
       streakResults = new Map();
       for (const [taskId, dates] of taskDates) {
@@ -103,8 +106,8 @@ export async function refreshAchievements(client: Prisma.TransactionClient, toda
 
 export async function getGamification(today: string) {
   return serializableTransaction(async (client) => {
-    const plannerDays = await client.plannerDay.findMany({ select: { day: true, checks: true, journal: true } });
-    const newlyEarned = await refreshAchievements(client, today, plannerDays);
+    const completions = await client.routineTaskCompletion.findMany({ orderBy: [{ day: "asc" }, { taskId: "asc" }] });
+    const newlyEarned = await refreshAchievements(client, today, completions);
     const [achievements, quests, acceptedQuests, questTemplates, taskXp, achievementXp, { routines, routineGroups }] = await Promise.all([
       client.achievement.findMany({ where: { deleted: false }, orderBy: { createdAt: "asc" } }),
       client.quest.findMany({ where: { deleted: false }, orderBy: { createdAt: "desc" } }),
@@ -127,7 +130,7 @@ export async function getGamification(today: string) {
       acceptedTemplateIds: acceptedQuests.flatMap(({ templateId }) => templateId === null ? [] : [templateId]),
       totalXp: (taskXp._sum.amount ?? 0) + (achievementXp._sum.awardedXp ?? 0),
       newlyEarned,
-      plannerDays,
+      completions,
       routines,
       routineGroups,
     };

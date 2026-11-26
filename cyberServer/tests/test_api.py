@@ -44,8 +44,8 @@ class TaskListConnection:
                     },
                 ]
             )
-        if "SELECT checks FROM planner_days" in query:
-            return FakeCursor([{"checks": ["3"]}])
+        if "FROM routine_task_completions" in query:
+            return FakeCursor([{"task_id": 3}])
         raise AssertionError(f"Unexpected query: {query}")
 
 

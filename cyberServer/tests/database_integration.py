@@ -17,7 +17,7 @@ def test_numeric_tasks_share_checks_and_awards_with_node():
     selected_date = date(2098, 1, 6)
     with psycopg.connect(url) as connection:
         existing = connection.execute(
-            "SELECT 1 FROM planner_days WHERE day = %s", (selected_date,)
+            "SELECT 1 FROM routine_task_completions WHERE day = %s", (selected_date,)
         ).fetchone()
         if existing:
             raise RuntimeError("The disposable test date already contains planner data.")
@@ -25,11 +25,27 @@ def test_numeric_tasks_share_checks_and_awards_with_node():
             "SELECT id, points FROM routine_tasks WHERE list = 'morning' ORDER BY id LIMIT 1"
         ).fetchone()
         other_day = connection.execute(
-            "SELECT id FROM routine_tasks WHERE list = 'daily' AND weekday <> %s LIMIT 1",
-            (weekday_name(selected_date),),
+            """
+            SELECT t.id FROM routine_tasks t
+            JOIN routine_task_groups tg ON tg.task_id = t.id
+            JOIN routine_groups g ON g.id = tg.group_id
+            WHERE t.list = 'daily' AND g.weekday <> %s
+              AND NOT EXISTS (
+                SELECT 1 FROM routine_task_groups other
+                JOIN routine_groups matching ON matching.id = other.group_id
+                WHERE other.task_id = t.id AND matching.weekday = %s
+              )
+            LIMIT 1
+            """,
+            (weekday_name(selected_date), weekday_name(selected_date)),
         ).fetchone()
         matching_day = connection.execute(
-            "SELECT id, points FROM routine_tasks WHERE list = 'daily' AND weekday = %s LIMIT 1",
+            """
+            SELECT t.id, t.points FROM routine_tasks t
+            JOIN routine_task_groups tg ON tg.task_id = t.id
+            JOIN routine_groups g ON g.id = tg.group_id
+            WHERE t.list = 'daily' AND g.weekday = %s LIMIT 1
+            """,
             (weekday_name(selected_date),),
         ).fetchone()
     assert routine is not None and other_day is not None and matching_day is not None
@@ -62,11 +78,14 @@ def test_numeric_tasks_share_checks_and_awards_with_node():
 
     with psycopg.connect(url) as connection:
         checks = connection.execute(
-            "SELECT checks FROM planner_days WHERE day = %s", (selected_date,)
-        ).fetchone()
+            """
+            SELECT task_id FROM routine_task_completions WHERE day = %s
+            """,
+            (selected_date,),
+        ).fetchall()
         award = connection.execute(
             "SELECT amount FROM point_ledger WHERE task_key = %s",
             (f"builtin:{selected_date}:{task_id}",),
         ).fetchall()
-    assert checks is not None and str(task_id) in checks[0]
+    assert (task_id,) in checks
     assert award == [(points,)]
