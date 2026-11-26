@@ -10,6 +10,13 @@ import { matchesLibraryFilter, renameErrorMessage, shuffleBooks } from "../src/f
 import { commonsFileTitle, parseWikipediaExtract, wikipediaImageReference } from "../src/features/books/utils/wikipedia-utils.ts";
 import { isWikipediaDetails, MAX_WIKIPEDIA_TEXT_LENGTH } from "../shared/planner/books.ts";
 import { bookResponse, findBook, listBooks } from "../server/books/library.ts";
+import { bookUrl } from "../src/features/books/utils/book-url.ts";
+
+test("book file URLs use the saved storage path", () => {
+  const book = { path: "old.epub", storagePath: "shelf/current.epub", title: "Current", format: "epub" };
+  assert.equal(bookUrl(book), "/api/books/file?path=shelf%2Fcurrent.epub");
+  assert.equal(bookUrl({ ...book, storagePath: undefined }), "/api/books/file?path=old.epub");
+});
 
 test("Wikipedia extracts preserve introductory paragraphs and nested sections", () => {
   assert.deepEqual(parseWikipediaExtract("First paragraph.\n\nSecond paragraph.\n\n== History ==\n\nPast.\n\n=== Origins ===\n\nDetails.\n\n== Legacy ==\n\nLater."), {

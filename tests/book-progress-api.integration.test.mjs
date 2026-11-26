@@ -65,7 +65,7 @@ test("authenticated progress API atomically rejects competing saves", async () =
     assert.equal((await app.request("http://localhost/api/books/progress?path=missing.epub", { headers })).status, 404);
   } finally {
     if (db) {
-      await db.bookData.deleteMany({ where: { library: "ebooks", path: "Test.epub" } });
+      await db.book.deleteMany({ where: { library: "ebooks", path: "Test.epub" } });
       await db.$disconnect();
     }
   }

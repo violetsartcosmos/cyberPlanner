@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { getDatabase } from "../server/db/client.ts";
-import { addBookmark, addStoragePaths, getProgress, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveProgress, saveWikipedia } from "../server/books/data.ts";
+import { addBookmark, attachBookIds, getProgress, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveProgress, saveWikipedia } from "../server/books/data.ts";
 
 test("book data survives renaming and bookmark changes", async () => {
   if (!process.env.TEST_DATABASE_URL && process.env.BOOK_DATA_TEST_ALLOW_SHARED !== "1") {
@@ -24,12 +24,14 @@ test("book data survives renaming and bookmark changes", async () => {
   try {
     await writeFile(join(root, original), "test audio");
     assert.equal(await getSavedWikipedia(root, "audiblebooks", original), null);
-    assert.equal(await db.bookData.findUnique({ where: { library_path: { library: "audiblebooks", path: original } } }), null);
+    assert.equal(await db.book.findUnique({ where: { library_path: { library: "audiblebooks", path: original } } }), null);
 
     const image = { url: "https://upload.wikimedia.org/example.jpg", page: "https://commons.wikimedia.org/wiki/File:Example.jpg", title: "Example", author: "Author", license: "CC BY 4.0" };
     const details = { url: "https://en.wikipedia.org/wiki/Example", description: "Example text", image, sections: [{ title: "History", level: 2, text: "Text" }] };
     const cover = Uint8Array.from([255, 216, 255, 1, 2]);
     await saveWikipedia(root, "audiblebooks", original, details, cover, "image/jpeg");
+    const savedBook = await db.book.findUniqueOrThrow({ where: { library_path: { library: "audiblebooks", path: original } } });
+    assert.equal(savedBook.storagePath, original);
     assert.equal((await getSavedWikipedia(root, "audiblebooks", original)).image.cached, true);
     const bookmark = await addBookmark(root, "audiblebooks", original, "42.5", "00:42");
     const updates = await Promise.all([
@@ -52,14 +54,17 @@ test("book data survives renaming and bookmark changes", async () => {
     }
     const updated = await renameBook(root, "audiblebooks", original, renamedTitle);
     assert.equal(updated.path, renamed);
-    assert.equal(updated.storagePath, original);
+    assert.equal(updated.id, savedBook.id);
+    assert.equal(updated.storagePath, renamed);
+    assert.equal((await db.book.findUniqueOrThrow({ where: { id: savedBook.id } })).storagePath, renamed);
     assert.equal(await readFile(join(root, renamed), "utf8"), "test audio");
     await assert.rejects(() => readFile(join(root, original)), { code: "ENOENT" });
     assert.equal((await listBookmarks(root, "audiblebooks", renamed))[0].id, bookmark.id);
     assert.deepEqual(await getProgress(root, "audiblebooks", renamed), progress);
     assert.deepEqual(Array.from((await savedCover(root, "audiblebooks", renamed)).cover), Array.from(cover));
     assert.equal((await getSavedWikipedia(root, "audiblebooks", renamed)).description, "Example text");
-    assert.equal((await addStoragePaths([updated]))[0].storagePath, original);
+    assert.equal((await attachBookIds([updated]))[0].id, updated.id);
+    assert.equal((await attachBookIds([updated]))[0].storagePath, renamed);
     await removeBookmark(root, "audiblebooks", renamed, bookmark.id);
     assert.deepEqual(await listBookmarks(root, "audiblebooks", renamed), []);
     const [renameResult, saveResult] = await Promise.allSettled([
@@ -76,7 +81,7 @@ test("book data survives renaming and bookmark changes", async () => {
       assert.deepEqual(finalProgress, progress);
     }
   } finally {
-    await db.bookData.deleteMany({ where: { library: "audiblebooks", path: { in: [original, renamed, second, collision] } } });
+    await db.book.deleteMany({ where: { library: "audiblebooks", path: { in: [original, renamed, second, collision] } } });
     await db.$disconnect();
     await rm(root, { recursive: true, force: true });
   }

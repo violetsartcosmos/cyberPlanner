@@ -20,7 +20,7 @@ export default function DashboardPage() {
     onToggleTask,
     onSelectDate,
   } = usePlannerContext();
-  const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { title: "", message: "" };
+  const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { id: 0, weekday: routineWeekday(weekday), title: "", message: "" };
   const { total, completed } = dayProgress(date, checked, page.routines);
   let earned = 0;
   for (const achievement of page.achievements) {

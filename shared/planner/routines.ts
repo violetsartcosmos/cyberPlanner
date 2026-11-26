@@ -18,6 +18,7 @@ export type RoutineTask = {
 };
 
 export type RoutineGroup = {
+  id: number;
   weekday: RoutineWeekday;
   title: string;
   message: string;

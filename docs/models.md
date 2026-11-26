@@ -75,27 +75,24 @@ the Node server.
 | `TherapyCompletion` | Completed session exercises, keyed by date, session, and exercise. |
 | `Achievement` | Achievement definition, progress, tracking method, earned state, and awarded XP. Deleted achievements retain awarded XP. |
 | `Quest` | Custom side, main, or boss quest with its point value and completion time. |
-| `BookData` | Metadata and revisioned progress keyed by library and path. |
-| `BookAlias` | Historical filename aliases retained in the database; no longer used for progress. |
-| `BookBookmark` | Saved position and label belonging to a `BookData` row; updates and deletes cascade with that book record. |
+| `Book` | Metadata and revisioned progress keyed by a stable UUID. |
+| `Bookmark` | Saved position and label belonging to a `Book` row. |
 
 ```mermaid
 erDiagram
-    BookData ||--o{ BookBookmark : has
-    BookData ||--o{ BookAlias : has
-    BookData {
-        string library PK
-        string path PK
-        string storagePath
+    Book ||--o{ Bookmark : has
+    Book {
+        string id PK
+        string library
+        string path
         string progress
         int revision
         json wikipedia
         bytes cover
     }
-    BookBookmark {
+    Bookmark {
         string id PK
-        string library FK
-        string path FK
+        string bookId FK
         string position
         string label
     }
@@ -115,7 +112,8 @@ Stores the state of built-in tasks and the journal for a particular day. Task de
 
 | Field | Type / default | What it holds and why |
 | --- | --- | --- |
-| `day` | Date; primary key | The planner date; ensures at most one row per day. |
+| `id` | Integer; auto-increment; primary key | Stable identifier for the planner day. |
+| `day` | Date; unique | The planner date; ensures at most one row per day. |
 | `checks` | JSON; `[]` | Array of completed built-in `RoutineTask` IDs encoded as strings, such as `"42"`. Used to display progress and calculate routine streaks. |
 | `journal` | String; `""` | The day's BlockNote JSON document; nonempty entries also mark dates on the calendar. |
 
@@ -212,47 +210,45 @@ Represents a custom quest, distinct from built-in daily and routine tasks. On co
 | --- | --- |
 | `id` | Numeric primary key generated when a task is created. |
 | `list` | `morning`, `night`, or `daily`, identifying which checklist contains the task. |
-| `weekday` | `NULL` for morning/night, or a lowercase weekday name for the daily checklist. A database constraint enforces the valid combinations. |
 | `title` | The task text displayed in the planner. |
 | `kind` | `side`, `main`, or `boss`, used to classify the task. |
 | `points` | The points earned when the task is completed. |
 
 `PlannerDay.checks` stores the completed task IDs as strings for each date. `PointLedger.taskKey` combines the date and ID (for example, `builtin:2026-11-22:42`) so a task can earn points once per day. A streak-tracking `Achievement.taskId` contains the same ID as text. The integer-ID migration translates existing checks and award keys using their date's weekday, and preserves streak links; unknown historical checks and ledger keys are retained.
 
-`RoutineGroup` stores each named weekday's title and message. `QuestTemplate` stores the suggested quests and their track, type, rarity, and points. These are separate from routine task IDs.
+`RoutineGroup` stores an incremental ID, a named weekday, title, and message. `RoutineTaskGroup` joins daily routine tasks to weekday groups; morning and night tasks have no joins. `QuestTemplate` stores suggested quests and their track, type, rarity, and points.
 
-### `BookData` (`book_data`)
+### `Book` (`books`)
 
-Stores saved information for a library file, not the file itself. `(library, path)` is the composite primary key; a row is created when needed for progress, saved details, bookmarks, or a rename.
+Stores saved information for a library file. `id` is the stable UUID; `(library, path)` is unique and identifies the current filesystem location. A row is created when needed for progress or saved details.
 
 | Field | Type / default | What it holds and why |
 | --- | --- | --- |
-| `library` | String | `ebooks` or `audiblebooks`; selects the library root and distinguishes files with the same relative path. |
-| `path` | String | Current path relative to the library root; identifies the file and changes when it is renamed in the app. |
-| `storagePath` | String | Original path retained across in-app renames for compatibility. |
+| `id` | UUID; primary key | Stable identity retained when a file is renamed or moved. |
+| `library` | String | `ebooks` or `audiblebooks`; selects the library root. |
+| `path` | String | Current path relative to the library root; changes when a file is renamed or moved. |
+| `storagePath` | String | Current file path relative to the library root, used to fetch the book. Renaming a file updates it. |
 | `wikipedia` | JSON? | Imported reference text and image attribution, or null if no reference is saved. Its shape is described below. |
 | `cover` | Bytes? | Cached imported cover image bytes, allowing the saved image to be displayed without refetching it. |
 | `coverType` | String? | Cached cover's MIME type, such as `image/png`, used when serving the bytes. |
 | `progress` | String? | Current EPUB CFI or audiobook seconds; null means no position has been saved. |
 | `revision` | Integer; `0` | Revision incremented atomically on every progress save. |
-| `bookmarks` | Relation, not a column | The associated `BookBookmark` records. The relation uses `(library, path)` and cascades on key updates and deletes. |
-| `aliases` | Relation, not a column | Historical filename aliases, cascading with the book key; no longer written by the app. |
+| `bookmarks` | Relation, not a column | The associated `Bookmark` records. They reference the stable book ID and cascade on deletion. |
 
 `wikipedia` contains the article `url`, introduction `description`, optional `sections` (each with `title`, heading `level`, and `text`), and `image`, which is null or an object containing image `url`, source `page`, `title`, `author`, and `license`. These preserve the reference and attribution. The API can also report a computed `cached` flag for the image; that flag is not stored in the JSON.
 
-### `BookBookmark` (`book_bookmarks`)
+### `Bookmark` (`bookmarks`)
 
-Stores user-created EPUB and audiobook bookmarks in PostgreSQL; the automatic current position is stored separately in `BookData`.
+Stores user-created EPUB and audiobook bookmarks in PostgreSQL; the automatic current position is stored separately in `Book`.
 
 | Field | Type / default | What it holds and why |
 | --- | --- | --- |
 | `id` | String; UUID by default; primary key | Identifies an individual bookmark for removal. |
-| `library` | String | Library of the bookmarked book; with `path`, references `BookData`. |
-| `path` | String | Current relative path of the bookmarked book; updated automatically when its `BookData` key changes. |
+| `bookId` | UUID | Stable foreign key to `Book.id`. |
 | `position` | String | Location to return to: an EPUB reader location or audiobook time in seconds encoded as text. |
 | `label` | String | User-visible bookmark name. |
 | `createdAt` | Timestamp; current time | When the bookmark was created; used to list bookmarks in creation order. |
-| `book` | Relation, not a column | The parent `BookData` record. Deleting the parent cascades to its bookmarks. |
+| `book` | Relation, not a column | The parent `Book` record. Deleting the parent cascades to its bookmarks. |
 
 ## Storage boundaries
 

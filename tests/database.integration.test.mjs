@@ -48,7 +48,9 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       db = database.getDatabase();
       const date = "2026-11-21";
       const routineId = async (list, weekday, title) => String((await db.routineTask.findFirstOrThrow({
-        where: { list, weekday, title },
+        where: weekday === null
+          ? { list, title, groups: { none: {} } }
+          : { list, title, groups: { some: { group: { weekday } } } },
       })).id);
       const daily0 = await routineId("daily", "saturday", "Make or change the bed");
       const daily1 = await routineId("daily", "saturday", "Refresh towels");
@@ -62,8 +64,11 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         planner.setBuiltinTaskCompletion(date, daily1, true),
       ]);
       await planner.setBuiltinTaskCompletion(date, daily0, true);
+      const savedDay = await db.plannerDay.findUniqueOrThrow({ where: { day: database.databaseDate(date) } });
+      assert.ok(savedDay.id > 0);
       const journal = JSON.stringify([{ type: "paragraph", content: "A moment to remember" }]);
       await planner.savePlannerJournal(date, journal);
+      assert.equal((await db.plannerDay.findUniqueOrThrow({ where: { day: database.databaseDate(date) } })).id, savedDay.id);
       await planner.setBuiltinTaskCompletion(date, daily2, true);
       const snapshot = await planner.getPlannerSnapshot(date);
       assert.deepEqual(new Set(snapshot.checks[date]), new Set([daily0, daily1, daily2]));

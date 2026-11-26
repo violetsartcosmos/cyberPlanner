@@ -124,3 +124,51 @@ test("routine ID migration preserves checks, awards, and streak references", asy
     await client.end();
   }
 });
+
+test("planner day IDs and book storage paths preserve existing data", async () => {
+  const url = process.env.TEST_DATABASE_URL;
+  if (!url) throw new Error("TEST_DATABASE_URL must point to a disposable PostgreSQL database.");
+  const client = new pg.Client({ connectionString: url });
+  const schema = `storage_migration_${randomUUID().replaceAll("-", "")}`;
+  await client.connect();
+  try {
+    await client.query(`CREATE SCHEMA "${schema}"`);
+    await client.query(`SET search_path TO "${schema}"`);
+    const root = new URL("../prisma/migrations/", import.meta.url);
+    const current = "20261130030000_planner_day_ids_book_storage_path";
+    const folders = (await readdir(root, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory() && entry.name < current)
+      .map((entry) => entry.name).sort();
+    for (const folder of folders) {
+      await client.query(await readFile(new URL(`${folder}/migration.sql`, root), "utf8"));
+    }
+
+    const bookId = randomUUID();
+    await client.query(`
+      INSERT INTO planner_days (day, checks, journal)
+      VALUES ('2026-11-23', '["42"]', 'saved journal'), ('2026-11-24', '[]', '')
+    `);
+    await client.query(`
+      INSERT INTO books (id, library, path, progress, revision)
+      VALUES ($1, 'ebooks', 'shelf/example.epub', 'epubcfi(/6/2)', 1)
+    `, [bookId]);
+    await client.query(await readFile(new URL(`${current}/migration.sql`, root), "utf8"));
+
+    const days = (await client.query("SELECT id, day::text, checks, journal FROM planner_days ORDER BY day")).rows;
+    assert.equal(new Set(days.map((day) => day.id)).size, 2);
+    assert.ok(days.every((day) => day.id > 0));
+    assert.deepEqual(days[0].checks, ["42"]);
+    assert.equal(days[0].journal, "saved journal");
+    const book = (await client.query("SELECT id, path, storage_path, progress, revision FROM books WHERE id = $1", [bookId])).rows[0];
+    assert.equal(book.storage_path, "shelf/example.epub");
+    assert.equal(book.progress, "epubcfi(/6/2)");
+    assert.equal(book.revision, 1);
+    await assert.rejects(client.query("INSERT INTO planner_days (day) VALUES ('2026-11-23')"), /planner_days_day_key/);
+    const inserted = await client.query("INSERT INTO planner_days (day) VALUES ('2026-11-25') RETURNING id");
+    assert.ok(!days.some((day) => day.id === inserted.rows[0].id));
+  } finally {
+    await client.query("ROLLBACK");
+    await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await client.end();
+  }
+});

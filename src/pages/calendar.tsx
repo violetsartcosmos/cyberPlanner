@@ -22,7 +22,7 @@ export default function CalendarPage() {
     onSelectDate,
     onSelectToday,
   } = usePlannerContext();
-  const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { title: "", message: "" };
+  const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { id: 0, weekday: routineWeekday(weekday), title: "", message: "" };
   const { total, completed, percent } = dayProgress(date, checked, page.routines);
 
   const calendarSummary = (

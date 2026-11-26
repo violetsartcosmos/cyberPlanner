@@ -8,7 +8,7 @@ import { getPlannerPage } from "./planner/page";
 import { getSignedInEmail } from "./auth/service";
 import { getCalendarData, validCalendarRange } from "./google/calendar";
 import { audiobookDirectory, bookResponse, libraryDirectory, listBooks } from "./books/library";
-import { addBookmark, addStoragePaths, getChapters, getProgress, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveProgress, saveWikipedia } from "./books/data";
+import { addBookmark, attachBookIds, getChapters, getProgress, getSavedWikipedia, listBookmarks, removeBookmark, renameBook, savedCover, saveProgress, saveWikipedia } from "./books/data";
 import type { LibraryName } from "./books/library";
 import { isWikipediaDetails, validBookPosition, type WikipediaDetails } from "../shared/planner/books";
 
@@ -271,7 +271,7 @@ app.get("/api/books", noStore, requireSignIn, async (context) => {
       listBooks(libraryDirectory),
       listBooks(audiobookDirectory, "audiblebooks"),
     ]);
-    return context.json(await addStoragePaths([...books, ...audiobooks].sort((a, b) => a.title.localeCompare(b.title) || a.path.localeCompare(b.path))));
+    return context.json(await attachBookIds([...books, ...audiobooks].sort((a, b) => a.title.localeCompare(b.title) || a.path.localeCompare(b.path))));
   } catch (error) {
     return reportServerError(context, error, "Could not load ebook library.", "Could not load the ebook library.");
   }

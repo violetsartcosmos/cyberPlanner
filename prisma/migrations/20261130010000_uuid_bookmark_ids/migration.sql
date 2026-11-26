@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE "bookmarks"
+  ALTER COLUMN "id" TYPE UUID USING "id"::UUID;
+
+COMMIT;

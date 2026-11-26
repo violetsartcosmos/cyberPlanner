@@ -1,7 +1,7 @@
 import type { LibraryBook } from "../../../../shared/planner/books";
 
 export function bookUrl(book: LibraryBook) {
-  return `/api/books/file?${bookQuery(book)}`;
+  return `/api/books/file?${bookQuery({ ...book, path: book.storagePath ?? book.path })}`;
 }
 
 export function bookQuery(book: Pick<LibraryBook, "path" | "library">) {

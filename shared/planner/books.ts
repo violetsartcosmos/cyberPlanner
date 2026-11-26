@@ -1,4 +1,5 @@
 export type LibraryBook = {
+  id?: string;
   path: string;
   title: string;
   format: "epub" | "pdf" | "m4b";

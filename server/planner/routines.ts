@@ -35,13 +35,18 @@ function storedWeekday(value: string): RoutineWeekday {
 
 export async function loadRoutines(client: RoutineClient) {
   const [rows, groups] = await Promise.all([
-    client.routineTask.findMany({ orderBy: [{ list: "asc" }, { weekday: "asc" }, { id: "asc" }] }),
+    client.routineTask.findMany({
+      include: { groups: { include: { group: true } } },
+      orderBy: [{ list: "asc" }, { id: "asc" }],
+    }),
     client.routineGroup.findMany({ orderBy: { weekday: "asc" } }),
   ]);
   const routines: RoutineTask[] = rows.map((row) => ({
     id: row.id,
     list: routineList(row.list),
-    weekday: row.weekday === null ? null : storedWeekday(row.weekday),
+    weekday: !("groups" in row) || row.groups.length === 0
+      ? null
+      : storedWeekday(row.groups[0].group.weekday),
     title: row.title,
     kind: routineKind(row.kind),
     points: row.points,
@@ -51,6 +56,7 @@ export async function loadRoutines(client: RoutineClient) {
       - (b.weekday === null ? -1 : routineWeekdays.indexOf(b.weekday))
     || a.id - b.id);
   const routineGroups: RoutineGroup[] = groups.map((group) => ({
+    id: group.id,
     weekday: storedWeekday(group.weekday),
     title: group.title,
     message: group.message,
@@ -71,8 +77,8 @@ export async function findRoutine(client: RoutineClient, date: string, taskId: s
     where: {
       id,
       OR: [
-        { weekday: null },
-        { weekday: routineWeekday(weekdayIndex(parseDate(date))) },
+        { groups: { none: {} } },
+        { groups: { some: { group: { weekday: routineWeekday(weekdayIndex(parseDate(date))) } } } },
       ],
     },
   });

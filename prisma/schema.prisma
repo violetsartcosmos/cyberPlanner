@@ -9,9 +9,10 @@ datasource db {
 }
 
 model PlannerDay {
-  day    DateTime @id @db.Date
-  checks Json     @default("[]")
-  journal String  @default("")
+  id      Int      @id @default(autoincrement())
+  day     DateTime @unique @db.Date
+  checks  Json     @default("[]")
+  journal String   @default("")
 
   @@map("planner_days")
 }
@@ -58,12 +59,12 @@ model PointLedger {
 }
 
 model TherapyExercise {
-  id          String                   @id
-  name        String
+  id           String                   @id
+  name         String
   prescription String
   instructions String
-  purpose     String
-  sessions    TherapySessionExercise[]
+  purpose      String
+  sessions     TherapySessionExercise[]
 
   @@map("therapy_exercises")
 }
@@ -103,23 +104,23 @@ model TherapyCompletion {
 }
 
 model Achievement {
-  id          String    @id @default(uuid())
-  title       String
-  description String
-  category    String
-  tier        String
-  xp          Int
-  target      Int
-  current     Int       @default(0)
-  icon        String    @default("award")
-  tracking    String    @default("points")
-  taskId      String?   @map("task_id")
-  milestoneInterval Int? @map("milestone_interval")
-  reward      String    @default("")
-  earnedAt    DateTime? @map("unlocked_at") @db.Timestamptz(6)
-  awardedXp   Int       @default(0) @map("awarded_xp")
-  deleted     Boolean   @default(false)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                String    @id @default(uuid())
+  title             String
+  description       String
+  category          String
+  tier              String
+  xp                Int
+  target            Int
+  current           Int       @default(0)
+  icon              String    @default("award")
+  tracking          String    @default("points")
+  taskId            String?   @map("task_id")
+  milestoneInterval Int?      @map("milestone_interval")
+  reward            String    @default("")
+  earnedAt          DateTime? @map("unlocked_at") @db.Timestamptz(6)
+  awardedXp         Int       @default(0) @map("awarded_xp")
+  deleted           Boolean   @default(false)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("achievements")
 }
@@ -140,22 +141,34 @@ model Quest {
 }
 
 model RoutineTask {
-  id     Int    @id @default(autoincrement())
+  id     Int                @id @default(autoincrement())
   list   String
-  weekday String?
   title  String
   kind   String
   points Int
+  groups RoutineTaskGroup[]
 
   @@map("routine_tasks")
 }
 
 model RoutineGroup {
-  weekday String @id
+  id      Int                @id @default(autoincrement())
+  weekday String             @unique
   title   String
   message String
+  tasks   RoutineTaskGroup[]
 
   @@map("routine_groups")
+}
+
+model RoutineTaskGroup {
+  taskId  Int          @map("task_id")
+  groupId Int          @map("group_id")
+  task    RoutineTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  group   RoutineGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, groupId])
+  @@map("routine_task_groups")
 }
 
 model QuestTemplate {
@@ -171,41 +184,30 @@ model QuestTemplate {
   @@map("quest_templates")
 }
 
-model BookData {
-  library      String
-  path         String
-  storagePath  String         @map("storage_path")
-  wikipedia    Json?
-  cover        Bytes?
-  coverType    String?        @map("cover_type")
-  progress     String?
-  revision     Int            @default(0)
-  bookmarks    BookBookmark[]
-  aliases      BookAlias[]
+model Book {
+  id          String     @id @default(uuid()) @db.Uuid
+  library     String
+  path        String
+  storagePath String     @map("storage_path")
+  wikipedia   Json?
+  cover       Bytes?
+  coverType   String?    @map("cover_type")
+  progress    String?
+  revision    Int        @default(0)
+  bookmarks   Bookmark[]
 
-  @@id([library, path])
-  @@map("book_data")
+  @@unique([library, path])
+  @@map("books")
 }
 
-model BookAlias {
-  library String
-  path    String
-  alias   String
-  book    BookData @relation(fields: [library, path], references: [library, path], onUpdate: Cascade, onDelete: Cascade)
-
-  @@id([library, path, alias])
-  @@map("book_aliases")
-}
-
-model BookBookmark {
-  id        String   @id @default(uuid())
-  library   String
-  path      String
+model Bookmark {
+  id        String   @id @default(uuid()) @db.Uuid
+  bookId    String   @map("book_id") @db.Uuid
   position  String
   label     String
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  book      BookData @relation(fields: [library, path], references: [library, path], onUpdate: Cascade, onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onUpdate: Cascade, onDelete: Cascade)
 
-  @@index([library, path])
-  @@map("book_bookmarks")
+  @@index([bookId])
+  @@map("bookmarks")
 }
