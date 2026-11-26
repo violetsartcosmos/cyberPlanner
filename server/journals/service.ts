@@ -1,5 +1,11 @@
 import { databaseDate, getDatabase } from "../db/client";
 
+/**
+ * Creates or replaces a journal entry for a date.
+ * @param date - The journal date in YYYY-MM-DD format.
+ * @param content - The saved journal document.
+ * @returns Nothing after the entry is persisted.
+ */
 export async function saveJournal(date: string, content: string) {
   const day = databaseDate(date);
   await getDatabase().journal.upsert({
@@ -9,6 +15,11 @@ export async function saveJournal(date: string, content: string) {
   });
 }
 
+/**
+ * Reads one journal entry by date.
+ * @param date - The journal date in YYYY-MM-DD format.
+ * @returns The entry content, or null when no entry exists.
+ */
 export async function getJournal(date: string) {
   return getDatabase().journal.findUnique({
     where: { day: databaseDate(date) },
@@ -16,10 +27,10 @@ export async function getJournal(date: string) {
   });
 }
 
-export async function listJournals() {
-  return getDatabase().journal.findMany();
-}
-
+/**
+ * Lists saved journal dates, including explicitly created empty entries.
+ * @returns Journal dates in newest-first order.
+ */
 export async function listJournalDates() {
   return getDatabase().journal.findMany({
     select: { day: true },
@@ -27,12 +38,35 @@ export async function listJournalDates() {
   });
 }
 
+/**
+ * Lists dates whose journal contains visible entry content.
+ * @returns Newest-first non-empty journal dates for calendar markers.
+ */
+export async function listJournalMarkers() {
+  const journals = await getDatabase().journal.findMany({
+    select: { day: true, content: true },
+    orderBy: { day: "desc" },
+  });
+  return journals.filter((journal) => journal.content.trim());
+}
+
+/**
+ * Creates a journal entry without replacing an existing date.
+ * @param date - The journal date in YYYY-MM-DD format.
+ * @param content - The optional initial journal document.
+ * @returns The created journal entry.
+ */
 export async function createJournal(date: string, content?: string) {
   return getDatabase().journal.create({
     data: { day: databaseDate(date), content },
   });
 }
 
+/**
+ * Deletes a journal entry by date.
+ * @param date - The journal date in YYYY-MM-DD format.
+ * @returns True when an entry was deleted, otherwise false.
+ */
 export async function deleteJournal(date: string) {
   const result = await getDatabase().journal.deleteMany({
     where: { day: databaseDate(date) },

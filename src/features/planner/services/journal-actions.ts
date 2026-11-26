@@ -1,9 +1,10 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { dateKey, isValidDateKey } from "../../../../shared/planner/utils";
 
 /** Journal write feedback; successful writes do not require response bodies. */
 export type JournalActionResult = { status: number; message?: string; error?: string };
 
-/** Resource reads used by the journal browser without replacing the planner loader. */
+/** Resource reads used by the page-owned journal browser loader. */
 export type JournalReadResult = {
   status: number;
   error?: string;
@@ -11,15 +12,24 @@ export type JournalReadResult = {
   entry?: { date: string; content: string; exists: boolean };
 };
 
+/** Non-empty journal dates displayed as calendar markers. */
+export type JournalMarkerResult = {
+  status: number;
+  error?: string;
+  journalDates?: string[];
+};
+
 /**
- * Loads the saved dates and selected journal entry.
- * @param args - The selected date parameter and cancellable loader request.
+ * Loads the saved dates and journal entry for the selected query date.
+ * @param args - The dated journal request and its cancellation signal.
  * @returns Journal browser data or the API's HTTP error.
  */
-export async function journalLoader({ request, params }: LoaderFunctionArgs): Promise<JournalReadResult> {
+export async function journalLoader({ request }: LoaderFunctionArgs): Promise<JournalReadResult> {
+  const requestedDate = new URL(request.url).searchParams.get("date");
+  const selected = requestedDate && isValidDateKey(requestedDate) ? requestedDate : dateKey(new Date());
   const [listResponse, entryResponse] = await Promise.all([
     fetch("/api/journals", { signal: request.signal }),
-    fetch(`/api/journals/${encodeURIComponent(params.date as string)}`, { signal: request.signal }),
+    fetch(`/api/journals/${encodeURIComponent(selected)}`, { signal: request.signal }),
   ]);
   if (!listResponse.ok) return { status: listResponse.status, error: (await listResponse.json() as { error: string }).error };
   if (!entryResponse.ok && entryResponse.status !== 404) {
@@ -30,8 +40,20 @@ export async function journalLoader({ request, params }: LoaderFunctionArgs): Pr
   return {
     status: 200,
     dates: dates.map((item) => item.date),
-    entry: { date: params.date as string, content: entry?.content ?? "", exists: entry !== null },
+    entry: { date: selected, content: entry?.content ?? "", exists: entry !== null },
   };
+}
+
+/**
+ * Loads the non-empty dates used to mark journal activity on calendars.
+ * @param args - The cancellable calendar/dashboard loader request.
+ * @returns Non-empty journal dates or the API's HTTP error.
+ */
+export async function journalMarkersLoader({ request }: LoaderFunctionArgs): Promise<JournalMarkerResult> {
+  const response = await fetch("/api/journals/markers", { signal: request.signal });
+  if (!response.ok) return { status: response.status, error: (await response.json() as { error: string }).error };
+  const journals = await response.json() as { date: string }[];
+  return { status: response.status, journalDates: journals.map((journal) => journal.date) };
 }
 
 /**

@@ -40,7 +40,7 @@ test("the planner loader requests only visible task keys without losing the sele
 
 test("the planner loader accepts responses without a therapy plan", async (t) => {
   const page = {
-    authenticated: true, journal: "", journalDates: [], achievements: [], quests: [],
+    authenticated: true, achievements: [], quests: [],
     routines: [], routineGroups: [], questTemplates: [], acceptedTemplateIds: [],
     newlyEarned: [], totalXp: 0,
   };

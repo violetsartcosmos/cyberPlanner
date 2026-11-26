@@ -63,6 +63,7 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.equal((await app.request("http://localhost/api/journals/2026-11-21")).status, 401);
     for (const [method, path] of [
       ["GET", "/api/journals"],
+      ["GET", "/api/journals/markers"],
       ["POST", "/api/journals"],
       ["DELETE", "/api/journals/2026-11-21"],
       ["GET", "/api/routines/completions?date=2026-11-21"],
@@ -76,7 +77,9 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     ]) {
       const response = await app.request(`http://localhost${path}`, { method, headers: { Origin: "http://localhost" } });
       assert.equal(response.status, 401);
-      assert.equal(response.headers.get("cache-control"), "no-store");
+      if (!path.startsWith("/api/journals")) {
+        assert.equal(response.headers.get("cache-control"), "no-store");
+      }
     }
     assert.equal((await app.request("http://localhost/api/journals/not/a/route")).status, 404);
     assert.equal((await app.request("http://localhost/api/routines/not/a/route")).status, 404);

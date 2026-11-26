@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useBlocker, useFetcher } from "react-router";
+import { useBlocker, useFetcher, useLoaderData } from "react-router";
 import { useDebouncedValue, useWindowEvent } from "@mantine/hooks";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -9,7 +9,8 @@ import "@blocknote/mantine/style.css";
 import { parseDate } from "../../shared/planner/utils";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import { useActionNotifications, useNotification } from "@/components/notifications";
-import type { JournalActionResult, JournalReadResult } from "@/features/planner/services/journal-actions";
+import type { JournalActionResult } from "@/features/planner/services/journal-actions";
+import { journalLoader } from "@/features/planner/services/journal-actions";
 
 /**
  * Restores the editor's saved blocks or a legacy plain-text paragraph.
@@ -129,16 +130,11 @@ function JournalEntry({ entryDate, content }: { entryDate: string; content: stri
  */
 export default function JournalPage() {
   const { selected, onSelectDate } = usePlannerContext();
-  const reader = useFetcher<JournalReadResult>();
-  const entries = reader.data?.dates ?? [];
-  const entry = reader.data?.entry?.date === selected ? reader.data.entry : null;
-  const { load } = reader;
-  const error = reader.data?.error ?? "";
+  const journal = useLoaderData<typeof journalLoader>();
+  const entries = journal.dates ?? [];
+  const entry = journal.entry?.date === selected ? journal.entry : null;
+  const error = journal.error ?? "";
   useNotification(error);
-
-  useEffect(function loadEntries() {
-    void load(`/journal/entries/${selected}`);
-  }, [selected, load]);
 
   return (
     <div className="journal-layout">

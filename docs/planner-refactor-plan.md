@@ -298,7 +298,7 @@ combined planner request merely because the shared layout is convenient.
 
 - [x] Therapy: use a page loader for `GET /api/therapy/sessions`, preserve
   selected-date navigation, and omit therapy from the UI planner request.
-- [ ] Journal: use one dated route loader for the browser and selected entry;
+- [x] Journal: use one dated route loader for the browser and selected entry;
   remove journal reads from the UI planner request.
 - [ ] Quest log: load routines plus templates and historical acceptance with
   page-owned reads; remove those fields from the UI planner request.
@@ -336,7 +336,10 @@ combined planner request merely because the shared layout is convenient.
 
 Status: in progress. The therapy read is now owned by
 `src/features/therapy/services/therapy-route.ts`, and `PlannerPage` no longer
-loads or returns therapy. No compatibility query parameter was introduced.
+loads or returns therapy. The journal page owns its dated browser and entry
+read, dashboard and calendar routes own non-empty journal marker reads, and
+`PlannerPage` no longer loads or returns journal data. No compatibility query
+parameter was introduced.
 
 ### 6. Python CRUD learning equivalent
 
@@ -377,8 +380,9 @@ changes were made.
 Reader progress retains its direct resource requests and intentional save queue.
 
 Milestone 5 therapy-read slice is implemented. Next bounded task: extract the
-session/configuration shell, then migrate journal's fetcher-read into its
-page route loader and remove journal fields from the UI planner request.
+session/configuration shell, then migrate quest-log reads. The journal
+fetcher-read now uses its page route loader, and journal fields are no longer
+loaded by the UI planner request.
 Preserve selected-date navigation and keep achievement refresh behavior on
 planner reads until equivalent write/streak coverage exists. Do not run write
 tests against the normal app database.
@@ -454,6 +458,14 @@ continues to own completion writes. The planner page no longer queries, returns,
 or types therapy data, so revalidation performs one direct therapy read.
 Verification: 31 focused planner/profile tests passed and TypeScript typecheck
 passed.
+
+Journal read follow-up: the journal route owns its selected-date browser and
+entry loader. Journal marker dates are page-owned by the dashboard and calendar
+routes, preserving the previous non-empty-marker behavior. The planner snapshot
+and shared type no longer query or return journal content or dates.
+Verification: 37 focused planner/profile tests, both server/action suites, all 5
+disposable-database tests, typecheck, hook lint, production build and whitespace
+checks passed.
 
 Temporary browser servers are stopped after testing. The database suite leaves
 tables and test data behind; recreate only the disposable test database before

@@ -52,7 +52,6 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       db = database.getDatabase();
       const date = "2026-11-21";
       const getPlannerSnapshot = async (selectedDate) => page.getPlannerSnapshot(
-        selectedDate,
         await routines.listRoutineCompletions(),
         await externalTasks.getExternalTasks(selectedDate),
       );
@@ -83,8 +82,9 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       await routines.setRoutineCompletion(date, daily2, true);
       const snapshot = await getPlannerSnapshot(date);
       assert.deepEqual(new Set(snapshot.checks[date]), new Set([daily0, daily1, daily2]));
-      assert.ok(snapshot.journalDates.includes(date));
-      assert.equal(snapshot.journal, journal);
+      assert.ok(!("journalDates" in snapshot));
+      assert.ok(!("journal" in snapshot));
+      assert.equal((await journals.getJournal(date)).content, journal);
       const { app } = await vite.ssrLoadModule("/server/app.ts");
       const sessionStorage = createCookieSessionStorage({
         cookie: {
@@ -106,7 +106,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       });
       assert.equal(journalWrite.status, 200);
       assert.deepEqual(await journalWrite.json(), { date, content: updatedJournal });
-      assert.equal((await getPlannerSnapshot(date)).journal, updatedJournal);
+      assert.equal((await journals.getJournal(date)).content, updatedJournal);
       const newJournalUrl = "http://localhost/api/journals/2026-11-20";
       const createdJournal = await app.request(newJournalUrl, {
         method: "PUT", headers: journalHeaders, body: JSON.stringify({ content: "A new entry" }),
@@ -114,7 +114,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal(createdJournal.status, 200);
       assert.deepEqual(await (await app.request(newJournalUrl, { headers: journalHeaders })).json(),
         { date: "2026-11-20", content: "A new entry" });
-      assert.equal((await getPlannerSnapshot("2026-11-20")).journal, "A new entry");
+      assert.equal((await journals.getJournal("2026-11-20")).content, "A new entry");
       assert.equal((await points.getPointsSummary(date)).todayPoints, 30);
 
       const redemptions = await Promise.all(
@@ -188,23 +188,23 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         ok: false, error: "That planner task is invalid.",
       });
       assert.deepEqual(await submit({ intent: "search_gmail", query: " " }), {
-        ok: false, error: "Enter a Gmail search query (up to 256 characters).",
+        ok: false, error: "Enter a Gmail search query.",
       });
       assert.deepEqual(await submit({ intent: "redeem_reward", rewardId: "missing" }), {
         ok: false, error: "That reward is not available.",
       });
       assert.equal((await submit({ intent: "save_journal", date: extraDate, journal })).ok, true);
-      assert.equal((await getPlannerSnapshot(extraDate)).journal, journal);
+      assert.equal((await journals.getJournal(extraDate)).content, journal);
       for (const fields of [{}, { journal: new File(["entry"], "journal.txt") }]) {
         assert.equal((await submit({ intent: "save_journal", date: extraDate, ...fields })).ok, false);
-        assert.equal((await getPlannerSnapshot(extraDate)).journal, journal);
+        assert.equal((await journals.getJournal(extraDate)).content, journal);
       }
       assert.equal((await submit({
         intent: "toggle_builtin", date: extraDate, taskId: new File(["1"], "task.txt"), completed: "true",
       })).ok, false);
       assert.equal((await submit({ intent: "save_journal", date: extraDate, journal: "" })).ok, true);
-      assert.equal((await getPlannerSnapshot(extraDate)).journal, "");
-      assert.ok(!(await getPlannerSnapshot(extraDate)).journalDates.includes(extraDate));
+      assert.equal((await journals.getJournal(extraDate)).content, "");
+      assert.ok(!(await journals.listJournalMarkers()).some((item) => item.day.toISOString().startsWith(extraDate)));
 
       const gamification = await vite.ssrLoadModule("/server/gamification/service.ts");
       const utils = await vite.ssrLoadModule("/shared/planner/utils.ts");
@@ -328,8 +328,9 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         headers: { Cookie: cookie },
       }));
       assert.equal(loaded.selected, therapyDate);
-      assert.equal(loaded.therapy.earnedPoints, 20);
-      assert.equal(loaded.therapy.therapySessions[1].exercises.find((exercise) => exercise.id === "glute").completed, true);
+      assert.ok(!("therapy" in loaded));
+      assert.ok(!("journal" in loaded));
+      assert.ok(!("journalDates" in loaded));
       assert.equal(loaded.todayPoints, 20);
 
       const questUrl = "http://localhost/api/quests";
@@ -346,20 +347,23 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.deepEqual(journalCreates.map((response) => response.status).sort(), [201, 409]);
       assert.deepEqual(await journalCreates.find((response) => response.status === 201).json(), { date: crudDate, content: "" });
       const journalList = await questRequest("http://localhost/api/journals", "GET");
-      assert.equal(journalList.headers.get("cache-control"), "no-store");
+      assert.equal(journalList.headers.get("cache-control"), null);
       const journalDates = await journalList.json();
       assert.ok(journalDates.some((item) => item.date === crudDate));
       assert.deepEqual(journalDates, [...journalDates].sort((a, b) => b.date.localeCompare(a.date)));
+      assert.ok(!(await (await questRequest("http://localhost/api/journals/markers", "GET")).json())
+        .some((item) => item.date === crudDate));
       assert.deepEqual(await (await questRequest(crudUrl, "GET")).json(), { date: crudDate, content: "" });
       assert.equal((await questRequest(crudUrl, "PUT", { content: "CRUD example" })).status, 200);
       assert.deepEqual(await (await questRequest(crudUrl, "GET")).json(), { date: crudDate, content: "CRUD example" });
-      assert.equal((await getPlannerSnapshot(crudDate)).journal, "CRUD example");
+      assert.ok((await (await questRequest("http://localhost/api/journals/markers", "GET")).json())
+        .some((item) => item.date === crudDate));
+      assert.equal((await journals.getJournal(crudDate)).content, "CRUD example");
       const deletedJournal = await questRequest(crudUrl, "DELETE");
       assert.equal(deletedJournal.status, 204);
       assert.equal(await deletedJournal.text(), "");
       assert.equal((await questRequest(crudUrl, "GET")).status, 404);
       assert.equal((await questRequest(crudUrl, "DELETE")).status, 404);
-      assert.ok(!(await getPlannerSnapshot(crudDate)).journalDates.includes(crudDate));
       assert.ok(!(await (await questRequest("http://localhost/api/journals", "GET")).json()).some((item) => item.date === crudDate));
       assert.equal((await points.getPointsSummary(crudDate)).balance, balanceBeforeJournal);
       const createdResponse = await questRequest(questUrl, "POST", {

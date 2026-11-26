@@ -13,7 +13,7 @@ import {
   therapyCompletionAction, therapyLoader,
 } from "../features/therapy/services/therapy-route";
 import {
-  createJournalAction, journalLoader, journalResourceAction,
+  createJournalAction, journalLoader, journalMarkersLoader, journalResourceAction,
 } from "../features/planner/services/journal-actions";
 import {
   calendarLoader, createCalendarEventAction, gmailMessagesLoader, importGmailAction,
@@ -67,9 +67,9 @@ export const router = createBrowserRouter([{
   HydrateFallback,
   ErrorBoundary: RootError,
   children: [
-    { index: true, Component: DashboardPage, ErrorBoundary: PageError },
-    { path: "calendar", Component: CalendarPage, ErrorBoundary: PageError },
-    { path: "quests", Component: CalendarPage, ErrorBoundary: PageError },
+    { index: true, Component: DashboardPage, loader: journalMarkersLoader, ErrorBoundary: PageError },
+    { path: "calendar", Component: CalendarPage, loader: journalMarkersLoader, ErrorBoundary: PageError },
+    { path: "quests", Component: CalendarPage, loader: journalMarkersLoader, ErrorBoundary: PageError },
     { path: "calendar/events", loader: calendarLoader, shouldRevalidate: () => false, ErrorBoundary: PageError },
     { path: "calendar/:calendarId/events", action: createCalendarEventAction, ErrorBoundary: PageError },
     { path: "calendar/:calendarId/events/:id", action: updateCalendarEventAction, ErrorBoundary: PageError },
@@ -85,9 +85,9 @@ export const router = createBrowserRouter([{
     { path: "routines/:id/completions/:date", action: routineCompletionAction, ErrorBoundary: PageError },
     { path: "therapy/sessions/:sessionId/exercises/:exerciseId/completions/:date", action: therapyCompletionAction, ErrorBoundary: PageError },
     { path: "external-tasks/:source/:id/completions/:date", action: externalCompletionAction, ErrorBoundary: PageError },
-    { path: "journal", Component: JournalPage, ErrorBoundary: PageError },
+    { path: "journal", Component: JournalPage, loader: journalLoader, ErrorBoundary: PageError },
     { path: "journal/entries", action: createJournalAction, ErrorBoundary: PageError },
-    { path: "journal/entries/:date", loader: journalLoader, action: journalResourceAction, ErrorBoundary: PageError },
+    { path: "journal/entries/:date", action: journalResourceAction, ErrorBoundary: PageError },
     { path: "books", Component: BooksPage, ErrorBoundary: PageError },
     // Metadata mutations update local state; avoid rereading old paths during a rename.
     { path: "books/collection", loader: booksLoader, shouldRevalidate: () => false, ErrorBoundary: PageError },

@@ -1,3 +1,4 @@
+import { useLoaderData } from "react-router";
 import { AchievementPreview } from "@/features/planner/components/achievements";
 import { CalendarSection } from "@/features/calendar/components/calendar-section";
 import { GoogleIntegrationPanel } from "@/features/calendar/components/integration-panel";
@@ -7,7 +8,10 @@ import { routineGroupFor, routineWeekday } from "../../shared/planner/routines";
 import { dayProgress } from "../../shared/planner/utils";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import witchyCalendar from "@/assets/images/witchycalendar.png";
+import { useNotification } from "@/components/notifications";
+import { journalMarkersLoader } from "@/features/planner/services/journal-actions";
 
+/** Displays calendar resources with page-owned journal activity markers. */
 export default function CalendarPage() {
   const {
     page,
@@ -22,6 +26,9 @@ export default function CalendarPage() {
     onSelectDate,
     onSelectToday,
   } = usePlannerContext();
+  const journalMarkers = useLoaderData<typeof journalMarkersLoader>();
+  const journalDates = journalMarkers.journalDates ?? [];
+  useNotification(journalMarkers.error ?? "");
   const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { id: 0, weekday: routineWeekday(weekday), title: "", message: "" };
   const { total, completed, percent } = dayProgress(date, checked, page.routines);
 
@@ -41,7 +48,7 @@ export default function CalendarPage() {
           <div className="progress" role="progressbar" aria-label="Selected date task progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
             <div className="progress-bar" style={{ width: `${percent}%` }} />
           </div>
-          <span>{completed} / {total} BUILT-IN TASKS COMPLETE{page.journalDates.includes(selected) && " · JOURNAL ENTRY"}</span>
+          <span>{completed} / {total} BUILT-IN TASKS COMPLETE{journalDates.includes(selected) && " · JOURNAL ENTRY"}</span>
         </div>
       </div>
       <div className="calendar-summary-art" aria-hidden="true">
@@ -98,7 +105,7 @@ export default function CalendarPage() {
           selected={selected}
           today={today}
           checks={page.checks}
-          journalDates={page.journalDates}
+          journalDates={journalDates}
           routines={page.routines}
           googleEnabled
           onSelect={onSelectDate}

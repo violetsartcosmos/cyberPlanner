@@ -1,4 +1,5 @@
 import { Sparkles } from "lucide-react";
+import { useLoaderData } from "react-router";
 import { CalendarSection } from "@/features/calendar/components/calendar-section";
 import { LevelHeader } from "@/features/planner/components/level-header";
 import { TaskSection } from "@/features/planner/components/navigation-sections";
@@ -6,7 +7,10 @@ import { routineGroupFor, routineWeekday } from "../../shared/planner/routines";
 import { dayProgress } from "../../shared/planner/utils";
 import { usePlannerContext } from "@/features/planner/hooks/planner-context";
 import witchyBroom from "@/assets/images/witchybroom.png";
+import { useNotification } from "@/components/notifications";
+import { journalMarkersLoader } from "@/features/planner/services/journal-actions";
 
+/** Displays the dashboard with page-owned journal activity markers. */
 export default function DashboardPage() {
   const {
     page,
@@ -20,6 +24,9 @@ export default function DashboardPage() {
     onToggleTask,
     onSelectDate,
   } = usePlannerContext();
+  const journalMarkers = useLoaderData<typeof journalMarkersLoader>();
+  const journalDates = journalMarkers.journalDates ?? [];
+  useNotification(journalMarkers.error ?? "");
   const quest = routineGroupFor(page.routineGroups, routineWeekday(weekday)) ?? { id: 0, weekday: routineWeekday(weekday), title: "", message: "" };
   const { total, completed } = dayProgress(date, checked, page.routines);
   let earned = 0;
@@ -37,7 +44,7 @@ export default function DashboardPage() {
       })}</h2>
       <p>
         {completed} / {total} TASKS COMPLETE
-        {page.journalDates.includes(selected) && " · JOURNAL ENTRY"}
+        {journalDates.includes(selected) && " · JOURNAL ENTRY"}
       </p>
     </section>
   );
@@ -52,7 +59,7 @@ export default function DashboardPage() {
             selected={selected}
             today={today}
             checks={page.checks}
-            journalDates={page.journalDates}
+            journalDates={journalDates}
             routines={page.routines}
             googleEnabled={false}
             onSelect={onSelectDate}

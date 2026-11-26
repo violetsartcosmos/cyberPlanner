@@ -5,17 +5,20 @@ import { getPointsSummary } from "../points/service";
 import { getExternalTasks } from "../external-tasks/service";
 import { getGamification } from "../gamification/service";
 import { dateString } from "../db/client";
-import { listJournals } from "../journals/service";
 
 type RoutineCompletion = { day: Date; taskId: number };
 
+/**
+ * Assembles routine checks and selected-date tasks for the shared UI snapshot.
+ * @param completions - Saved routine completions.
+ * @param plannerTasks - External tasks visible for the selected date.
+ * @returns Planner-owned routine and task state.
+ */
 export async function getPlannerSnapshot(
-  date: string,
   completions: RoutineCompletion[],
   plannerTasks: ExternalTask[],
 ) {
   const checks = completions;
-  const journals = await listJournals();
   const checksByDate: Record<string, string[]> = {};
   for (const check of checks) {
     const key = dateString(check.day);
@@ -23,8 +26,6 @@ export async function getPlannerSnapshot(
   }
   return {
     checks: checksByDate,
-    journalDates: journals.filter((journal) => journal.content.trim()).map((journal) => dateString(journal.day)),
-    journal: journals.find((journal) => dateString(journal.day) === date)?.content ?? "",
     tasks: plannerTasks,
   };
 }
@@ -57,7 +58,7 @@ export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const [{ completions, ...gamification }, plannerTasks, points] = await Promise.all([
     getGamification(today), tasks, pointsRequest,
   ]);
-  const planner = await getPlannerSnapshot(selected, completions, plannerTasks);
+  const planner = await getPlannerSnapshot(completions, plannerTasks);
   return {
     authenticated: true,
     email,

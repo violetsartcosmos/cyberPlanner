@@ -16,8 +16,8 @@ Book requests that take a `path` require a non-empty path of at most 2,048 chara
 
 `GET /api/planner` returns all earned task keys by default. Set `taskKeys=visible` to return only keys for the selected date's built-in tasks and its visible synced tasks.
 The shared UI shell still loads its combined page through `GET /api/planner`.
-Therapy is now the exception: its page uses a dated resource loader, and
-`/api/planner` no longer returns therapy data.
+Therapy and journal pages own their dated resource reads, so `/api/planner`
+no longer returns therapy or journal data.
 All UI form writes now use feature-owned React Router actions and resource endpoints.
 No UI forms dispatch hidden planner intents or write to `POST /api/planner`.
 The planner endpoints are temporary migration surfaces and will be removed once
@@ -43,18 +43,20 @@ These endpoints require a signed-in session. Dates use `YYYY-MM-DD`.
 | Method and path | Description |
 | --- | --- |
 | `GET /api/journals` | Lists saved entry dates, newest first, as `[{"date":"YYYY-MM-DD"}]`, including empty entries. |
+| `GET /api/journals/markers` | Lists non-empty saved entry dates, newest first, for calendar markers. |
 | `POST /api/journals` | Creates an entry using `{"date":"YYYY-MM-DD","content":"..."}` and returns the saved date and content with `201`; an existing date returns `409`. Omitted content uses the database's empty-string default. |
 | `GET /api/journals/{date}` | Returns `{"date":"YYYY-MM-DD","content":"..."}`; returns `404` if no journal has been saved for that date. |
 | `PUT /api/journals/{date}` | Creates or replaces the entry using `{"content":"..."}` and returns the saved date and content. Content can be empty. |
 | `DELETE /api/journals/{date}` | Deletes the entry and returns `204` with no body; returns `404` if missing. |
 
-These endpoints share journal data with `/api/planner`. Deleting a journal does
-not alter points. The planner's existing `journalDates` still lists only
-non-empty entries; the journal browser lists every saved entry.
+These endpoints replace the journal reads formerly returned by `/api/planner`.
+Deleting a journal does not alter points. Calendar marker reads list only
+non-empty entries, while the journal browser lists every saved entry.
 
 The UI submits POST to `/journal/entries`, and PUT or DELETE to
-`/journal/entries/{date}`. Its dated resource loader reads both saved dates and
-entry content. A missing entry shows an explicit creation form; the editor
+`/journal/entries/{date}`. The journal page loader owns the selected-date read
+of both saved dates and entry content. Dashboard and calendar routes separately
+read the non-empty marker dates. A missing entry shows an explicit creation form; the editor
 opens only after creation and always saves using the existing entry's date ID.
 Deletion has its own fetcher and confirmed DELETE form, separate from autosave.
 Autosave keeps the submitted content separate from edits made while saving.

@@ -59,9 +59,11 @@ The client uses browser APIs; server modules run in Node.js. The Vite configurat
    `/api/planner` write adapter remains temporarily for migration cleanup.
 
 The therapy page reads sessions through `/api/therapy/sessions?date=...` in its
-own loader, and `/api/planner` no longer returns therapy data. The journal page
-reads saved dates and entry content through its own GET endpoints. The shared
-planner shell still uses the combined loader for remaining resources. See
+own loader. The journal page reads saved dates and selected entry content
+through its own loader, while dashboard and calendar routes read non-empty
+journal marker dates separately. `/api/planner` no longer returns therapy or
+journal data. The shared planner shell still uses the combined loader for
+remaining resources. See
 the [refactor plan](planner-refactor-plan.md) for the CRUD learning slice and
 remaining migrations.
 

@@ -1,13 +1,16 @@
 import { Hono } from "hono";
 import { isValidDateKey } from "../../shared/planner/utils";
-import { noStore, reportServerError, requireSignIn } from "../http";
+import { reportServerError, requireSignIn } from "../http";
 import { dateString } from "../db/client";
 import { Prisma } from "../generated/prisma/client";
-import { createJournal, deleteJournal, getJournal, listJournalDates, saveJournal } from "./service";
+import {
+  createJournal, deleteJournal, getJournal, listJournalDates, listJournalMarkers, saveJournal,
+} from "./service";
 
+/** Journal collection and dated-entry HTTP routes. */
 export const journalRoutes = new Hono();
 
-journalRoutes.get("/", noStore, requireSignIn, async (context) => {
+journalRoutes.get("/", requireSignIn, async (context) => {
   try {
     const journals = await listJournalDates();
     return context.json(journals.map((journal) => ({ date: dateString(journal.day) })));
@@ -16,7 +19,16 @@ journalRoutes.get("/", noStore, requireSignIn, async (context) => {
   }
 });
 
-journalRoutes.post("/", noStore, requireSignIn, async (context) => {
+journalRoutes.get("/markers", requireSignIn, async (context) => {
+  try {
+    const journals = await listJournalMarkers();
+    return context.json(journals.map((journal) => ({ date: dateString(journal.day) })));
+  } catch (error) {
+    return reportServerError(context, error, "Could not load journal markers.");
+  }
+});
+
+journalRoutes.post("/", requireSignIn, async (context) => {
   const { date, content } = await context.req.json<{ date: string; content?: string }>();
   if (!isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
   try {
@@ -30,7 +42,7 @@ journalRoutes.post("/", noStore, requireSignIn, async (context) => {
   }
 });
 
-journalRoutes.get("/:date", noStore, requireSignIn, async (context) => {
+journalRoutes.get("/:date", requireSignIn, async (context) => {
   const date = context.req.param("date");
   if (!isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
   try {
@@ -42,7 +54,7 @@ journalRoutes.get("/:date", noStore, requireSignIn, async (context) => {
   }
 });
 
-journalRoutes.put("/:date", noStore, requireSignIn, async (context) => {
+journalRoutes.put("/:date", requireSignIn, async (context) => {
   const date = context.req.param("date");
   if (!isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
   const { content } = await context.req.json<{ content: string }>();
@@ -54,7 +66,7 @@ journalRoutes.put("/:date", noStore, requireSignIn, async (context) => {
   }
 });
 
-journalRoutes.delete("/:date", noStore, requireSignIn, async (context) => {
+journalRoutes.delete("/:date", requireSignIn, async (context) => {
   const date = context.req.param("date");
   if (!isValidDateKey(date)) return context.json({ error: "That planner date is invalid." }, 400);
   try {

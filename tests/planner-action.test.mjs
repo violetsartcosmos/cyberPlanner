@@ -8,7 +8,7 @@ import {
   therapyCompletionAction, therapyLoader,
 } from "../src/features/therapy/services/therapy-route.ts";
 import {
-  createJournalAction, journalLoader, journalResourceAction,
+  createJournalAction, journalLoader, journalMarkersLoader, journalResourceAction,
 } from "../src/features/planner/services/journal-actions.ts";
 import {
   calendarLoader, createCalendarEventAction, gmailMessagesLoader, importGmailAction,
@@ -374,15 +374,15 @@ test("journal actions create empty entries and route saves and deletes on the sa
   }
 });
 
-test("journal resource reads distinguish missing entries, empty entries and API errors", async (t) => {
+test("journal page loader reads the selected entry and distinguishes empty entries and API errors", async (t) => {
   const fetch = t.mock.method(globalThis, "fetch", async (url, options) => {
     assert.equal(options.signal, request.signal);
     return url === "/api/journals"
       ? Response.json([{ date: "2026-11-21" }])
       : Response.json({ error: "Not found." }, { status: 404 });
   });
-  const request = new Request("http://localhost/journal/entries/2026-11-21");
-  const args = { request, params: { date: "2026-11-21" } };
+  const request = new Request("http://localhost/journal?date=2026-11-21");
+  const args = { request, params: {} };
   assert.deepEqual(await journalLoader(args), {
     status: 200, dates: ["2026-11-21"], entry: { date: "2026-11-21", content: "", exists: false },
   });
@@ -392,6 +392,22 @@ test("journal resource reads distinguish missing entries, empty entries and API 
   assert.equal((await journalLoader(args)).entry.exists, true);
   fetch.mock.mockImplementation(async () => Response.json({ error: "Sign in first." }, { status: 401 }));
   assert.deepEqual(await journalLoader(args), { status: 401, error: "Sign in first." });
+});
+
+test("journal markers use their own resource read and return API errors", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", async (url, options) => {
+    assert.equal(url, "/api/journals/markers");
+    assert.equal(options.signal, request.signal);
+    return Response.json([{ date: "2026-11-21" }]);
+  });
+  const request = new Request("http://localhost/calendar?date=2026-11-21");
+  assert.deepEqual(await journalMarkersLoader({ request }), {
+    status: 200, journalDates: ["2026-11-21"],
+  });
+  fetch.mock.mockImplementation(async () => Response.json({ error: "Could not load markers." }, { status: 500 }));
+  assert.deepEqual(await journalMarkersLoader({ request }), {
+    status: 500, error: "Could not load markers.",
+  });
 });
 
 test("Google and calendar actions keep normalized fields and resource identities separate", async (t) => {
