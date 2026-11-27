@@ -73,13 +73,13 @@ def journal_client():
 def test_journal_crud_and_bodyless_delete(journal_client):
     client, _connection = journal_client
     path = "/api/journals/2099-01-01"
-    assert client.get(path).json() == {"detail": "Journal not found."}
+    assert client.get(path).json() == {"error": "Journal not found."}
     created = client.post("/api/journals", json={"date": "2099-01-01"})
     assert created.status_code == 201
     assert created.json() == {"date": "2099-01-01", "content": ""}
     duplicate = client.post("/api/journals", json={"date": "2099-01-01", "content": "not saved"})
     assert duplicate.status_code == 409
-    assert duplicate.json() == {"detail": "A journal entry already exists for that date."}
+    assert duplicate.json() == {"error": "A journal entry already exists for that date."}
     assert client.get(path).json()["content"] == ""
 
     content = '[{"text":"Snow \u2603"}]' * 10000
@@ -117,7 +117,7 @@ def test_invalid_dates_return_error(journal_client, value):
     client, connection = journal_client
     response = client.post("/api/journals", json={"date": value})
     assert response.status_code == 400
-    assert response.json() == {"detail": "That planner date is invalid."}
+    assert response.json() == {"error": "That planner date is invalid."}
     assert client.get(f"/api/journals/{value}").status_code == 400
     assert connection.commits == 0
 
@@ -141,11 +141,12 @@ def test_bad_request_and_database_errors(journal_client):
     client, connection = journal_client
     response = client.put("/api/journals/2099-01-01", json={"content": 42})
     assert response.status_code == 422
-    assert response.json()["detail"][0]["loc"] == ["body", "content"]
+    assert response.json() == {"error": "Journal content must be a string."}
     response = client.post("/api/journals", json={"date": "2099-01-01", "content": None})
     assert response.status_code == 422
     response = client.post("/api/journals", json={})
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert response.json() == {"error": "That planner date is invalid."}
 
     def fail(_query, _params=()):
         raise psycopg.OperationalError("database failed")

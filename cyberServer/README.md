@@ -246,19 +246,22 @@ The operations below can be exercised against fictional fixture dates:
 
 Use the [Node journal operations](../server/journals/service.ts) and
 [journal API reference](../docs/api.md#journals) as the comparison, not the
-experimental `/api/v1/tasks` response format. Python uses `{"detail": ...}`
-for journal errors and `422` with a validation detail array for invalid bodies.
-Node uses `{"error": ...}` for journal and authentication errors, `400` for
-malformed JSON or a missing date, and `422` for invalid content. Python does
-not yet authenticate.
+experimental `/api/v1/tasks` response format. Python journals now use Node's
+`{"error": ...}` shape and documented `400`, `404`, `409`, and `422` statuses;
+other experimental endpoints retain FastAPI `{"detail": ...}` errors. Python
+does not yet authenticate.
 Use explicit SQL commits/transactions; closing a psycopg connection without
 committing is not a successful persistent write. Python reports a missing or
 unavailable database as `503`; Node reports database failures as `500`.
 Unexpected database failures are logged and return a generic `500` response.
 Both APIs accept real calendar dates in `YYYY-MM-DD` format.
 
-Journal response annotations describe string-valued JSON objects. The exact
-`date` and `content` fields are documented in the Node journal API reference.
+Journal response annotations describe string-valued JSON objects. Its HTTP
+error bodies use Node's `{"error":"..."}` shape, with matching `400`, `404`,
+`409`, and `422` statuses for date, missing-row, duplicate, and content errors.
+The exact `date` and `content` fields are documented in the Node journal API
+reference. Other experimental `/api/v1` routes retain standard FastAPI
+`{"detail":"..."}` errors until those resources are ported.
 
 Fake-connection tests run with the normal Python suite. The separate journal
 persistence test reads both URLs from the environment or `.env`, validates that

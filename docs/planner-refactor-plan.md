@@ -419,16 +419,16 @@ second database setup and preserves the exact schema Python's SQL expects.
 Keep the app's `DATABASE_URL` unchanged in `.env`. The Python launcher must
 override it only in its child process.
 
-- [ ] Follow [the Python learning setup](../cyberServer/README.md#isolated-journal-crud)
+- [X] Follow [the Python learning setup](../cyberServer/README.md#isolated-journal-crud)
   to validate the test URL, apply committed migrations without resetting the
   database, check the `journals` table, and run Python on loopback.
-- [ ] Use the test database sequentially. Stop the Python API before running
+- [X] Use the test database sequentially. Stop the Python API before running
   `npm run test:database`: that command resets the public schema and deletes
   learning rows. Do not run Node and Python persistence suites concurrently.
-- [ ] Copy the journal *behavior* first, not the entire Node codebase or a
+- [X] Copy the journal *behavior* first, not the entire Node codebase or a
   production database dump. Reimplement a single operation in Python, compare
   it with Node, then add the next operation.
-- [ ] Start with fictional journal content. Existing Prisma migrations create
+- [X] Start with fictional journal content. Existing Prisma migrations create
   the full schema and seed definitions; only `journals` receives new learning
   data in the first slice. Do not import OAuth tokens, mail, personal journals,
   or book files for this exercise.
@@ -440,6 +440,13 @@ override it only in its child process.
   Preserve business identifiers, dates, and relations; if numeric primary keys
   are copied, advance their sequences. Verify counts and content before using
   the copy. No broad import or delete is part of the first slice.
+
+Setup verification passed: the configured Python 3.12 virtual environment ran
+the 20 unit tests, Prisma reported no pending migrations on the disposable
+database, a bound read confirmed `public.journals`, the isolated journal
+persistence test passed and cleaned its fixture rows, and loopback FastAPI health
+and journal-marker reads succeeded. The Python process was stopped before
+leaving the milestone.
 
 #### 6c. First implementation: Journals (`Journal` / `journals`)
 
@@ -470,21 +477,30 @@ psycopg, and pytest patterns; do not add an ORM or generic CRUD framework.
 - [X] Use bound SQL parameters, database uniqueness, explicit commits or
   transactions, and logged database errors. The learning API uses standard
   FastAPI `detail` errors and `422` for invalid request bodies.
-- [ ] Resolve journal error-body and request-validation differences between
+- [X] Resolve journal error-body and request-validation differences between
   Node and Python before cutover; both require real `YYYY-MM-DD` dates.
 - [X] Add focused API tests with fake connections, then real persistence
   coverage on `TEST_DATABASE_URL`: duplicate creation, missing reads/deletes,
   replacement, empty content, list/marker ordering, and unchanged points.
   Read saved rows through an independent connection to prove commit behavior.
-- [ ] Verify React journal creation, editing, markers, and deletion against
+- [X] Verify React journal creation, editing, markers, and deletion against
   the authenticated Node API on disposable data. Keep React on Node until
   Python authentication and CSRF parity pass.
-- [ ] Compare Node and Python on separate, equivalent fixture dates, or reset
+- [X] Compare Node and Python on separate, equivalent fixture dates, or reset
   only the owned journal fixture rows between runs. Never mirror a write to
   both APIs against the same date and call the second result a parity test.
 - [X] Document the authenticated Node contract separately from the initial
   loopback-only learning API. No React proxy or real-data connection changes
   belong in this slice.
+
+Status: complete. Python journal HTTP errors now match Node's documented
+`{"error": ...}` shape and date/content statuses while `/api/v1` endpoints keep
+their FastAPI errors. The side-by-side disposable-database matrix passed for
+create, duplicate, read, update, list, markers, content validation, delete, and
+missing delete using different fixture dates. React creation, autosave, saved
+calendar markers, confirmed deletion, and empty-state revalidation passed
+against an authenticated disposable Node API. All fixture rows were removed,
+and Python remained disconnected from React.
 
 #### 6d. Subsequent resource slices
 
