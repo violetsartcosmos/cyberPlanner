@@ -163,6 +163,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const utils = await vite.ssrLoadModule("/shared/planner/utils.ts");
       const today = utils.dateKey(new Date());
       const initial = await gamification.getGamification(today);
+      const questTemplates = await gamification.listQuestTemplates();
       assert.equal(initial.achievements.length, 30);
       assert.ok(initial.achievements.some((item) => item.id === "daily-early-bird"));
       await gamification.saveAchievement(null, {
@@ -202,7 +203,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
 
       assert.equal((await db.routineTask.findUniqueOrThrow({ where: { id: Number(morning2) } })).title, "Water");
       assert.ok(await routineId("morning", null, "Workout"));
-      assert.equal(initial.questTemplates.length, 16);
+      assert.equal(questTemplates.length, 16);
       assert.equal(initial.routineGroups.length, 7);
       const firstDate = "2026-10-01";
       const nextDate = "2026-10-02";
@@ -237,7 +238,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       await gamification.deleteQuest(accepted.id);
       const afterDelete = await gamification.getGamification(today);
       assert.ok(!afterDelete.quests.some((quest) => quest.id === accepted.id));
-      assert.ok(afterDelete.acceptedTemplateIds.includes(templateId));
+      assert.ok((await gamification.listAcceptedTemplateIds()).includes(templateId));
       assert.equal((await questRequest(templateUrl, "POST")).status, 409);
       assert.equal((await questRequest(acceptedUrl, "PATCH", update)).status, 404);
 
@@ -293,7 +294,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.ok(!("todayPoints" in loaded));
       const calendarPage = await getPlannerCalendarPage(therapyDate);
       assert.equal(calendarPage.todayPoints, 20);
-      assert.ok(calendarPage.checks[therapyDate]);
+      assert.equal(calendarPage.checks[therapyDate], undefined);
       const calendarResponse = await app.request(
         `http://localhost/api/planner/calendar?date=${therapyDate}`,
         { headers: journalHeaders },
@@ -358,7 +359,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal((await questRequest(questItemUrl, "GET")).status, 404);
       assert.equal((await questRequest(questItemUrl, "PATCH", { title: "Again" })).status, 404);
       assert.equal(await db.pointLedger.count({ where: { taskKey: `quest:${created.id}` } }), 1);
-      const anotherTemplate = initial.questTemplates.find((item) => item.id !== templateId);
+      const anotherTemplate = questTemplates.find((item) => item.id !== templateId);
       const acceptUrl = `http://localhost/api/quest-templates/${anotherTemplate.id}/accept`;
       assert.equal((await questRequest(acceptUrl, "POST")).status, 201);
       assert.equal((await questRequest(acceptUrl, "POST")).status, 409);
@@ -411,7 +412,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.ok(newAchievementBody.earnedAchievements.includes("API achievement"));
       assert.ok((await db.achievement.findUniqueOrThrow({ where: { id: newAchievementBody.achievement.id } })).earnedAt);
       const templatesResponse = await questRequest("http://localhost/api/quest-templates", "GET");
-      assert.equal((await templatesResponse.json()).length, initial.questTemplates.length);
+      assert.equal((await templatesResponse.json()).length, questTemplates.length);
       const taskResponse = await questRequest(`http://localhost/api/external-tasks?date=${date}`, "GET");
       assert.ok((await taskResponse.json()).some((item) => item.source === "gmail" && item.externalId === "message"));
       const externalUrl = "http://localhost/api/external-tasks/gmail/message/completion";
@@ -438,7 +439,7 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const longJournalDate = "2026-07-01";
       assert.equal((await questRequest(`http://localhost/api/journals/${longJournalDate}`, "PUT", { content: longJournal })).status, 200);
       assert.equal((await journals.getJournal(longJournalDate)).content, longJournal);
-      assert.equal((await questRequest(`http://localhost/api/journals/${longJournalDate}`, "PUT", { content: 123 })).status, 500);
+      assert.equal((await questRequest(`http://localhost/api/journals/${longJournalDate}`, "PUT", { content: 123 })).status, 422);
       assert.equal((await journals.getJournal(longJournalDate)).content, longJournal);
 
       const largeQuest = await questRequest(questUrl, "POST", {

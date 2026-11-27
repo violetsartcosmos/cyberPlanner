@@ -393,18 +393,23 @@ is not fully verified: its page-loader/revalidation checklist and the latest
 disposable-database run are still open. Do not label them complete without
 running those checks. They do not block an isolated Python learning slice.
 
-- [ ] Close the loader fixtures for therapy, journal, quest log, quest board,
+- [X] Close the loader fixtures for therapy, journal, quest log, quest board,
   rewards, profile, dashboard/calendar, and the session shell. Check selected
   dates, errors, cancellation, revalidation after writes, and unrelated reads.
-- [ ] Run the migrated Node database integration suite against the disposable
+- [X] Run the migrated Node database integration suite against the disposable
   test database and preserve the Node journal response baseline.
-- [ ] Verify the matching Node API is running before checking React in Chrome.
-  The shared dashboard inspection currently shows "Reload planner", with
-  recorded `404` responses for `/api/session` and `/api/planner/calendar` and
-  `400` for `/api/journals/markers`. This is not a passed live UI check; confirm
-  the server build/routes and then recheck the shell and selected-date pages.
-- [ ] Keep the existing achievement refresh on shell/profile/calendar reads.
+- [X] Verify the matching Node API is running before checking React in Chrome.
+  Direct API and Vite-proxy checks passed, and authenticated dashboard,
+  calendar-owned summary, quest log, therapy, and journal pages loaded without
+  the earlier `404` or invalid-date failures.
+- [X] Keep the existing achievement refresh on shell/profile/calendar reads.
   A later read-only redesign is separate from the Python port.
+
+Status: complete. The focused loader/action suite, server contract suite,
+typecheck, production build, and disposable database integration suite pass.
+The database fixture now reads quest templates and accepted template IDs from
+their resource-owned operations and preserves the separate calendar, therapy,
+journal, and shell response boundaries.
 
 #### 6b. Reuse the disposable database and copy one feature at a time
 

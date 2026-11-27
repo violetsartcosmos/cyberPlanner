@@ -164,6 +164,29 @@ test("the profile loader reads only profile-owned resources", async (t) => {
   assert.equal(requestedUrl, "/api/profile");
 });
 
+test("page-owned loaders propagate errors and cancellation without unrelated requests", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch");
+  const cases = [
+    [questBoardLoader, "/quest-board?date=2026-11-21", "/api/quests", "Could not load quests"],
+    [questLogLoader, "/quest-log?date=2026-11-21", "/api/routines", "Could not load routines"],
+    [rewardsLoader, "/rewards?date=2026-11-21", "/api/points?date=2026-11-21", "Could not load rewards"],
+    [profileLoader, "/profile?date=2026-11-21", "/api/profile", "Could not load profile"],
+  ];
+  for (const [loader, pageUrl, resourceUrl, message] of cases) {
+    const request = new Request(`http://localhost${pageUrl}`);
+    fetch.mock.mockImplementation(async (url, options) => {
+      assert.equal(options.signal, request.signal);
+      if (url === resourceUrl) return new Response(null, { status: 503 });
+      return Response.json(url.includes("/api/routines")
+        ? { routines: [], routineGroups: [] }
+        : url.includes("/accepted") ? { templateIds: [] } : []);
+    });
+    await assert.rejects(loader({ request, params: {} }), new RegExp(message));
+    fetch.mock.mockImplementation(async () => { throw new DOMException("Aborted", "AbortError"); });
+    await assert.rejects(loader({ request, params: {} }), { name: "AbortError" });
+  }
+});
+
 test("points milestones use lifetime earned points and award XP only once", async () => {
   const achievement = { id: "points", title: "Points", tracking: "points", target: 100, current: 0, xp: 25, earnedAt: null, awardedXp: 0 };
   const { client, state } = fixture([achievement], [], 90);

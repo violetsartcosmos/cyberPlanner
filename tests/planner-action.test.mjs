@@ -457,6 +457,8 @@ test("journal page loader reads the selected entry and distinguishes empty entri
   assert.deepEqual((await journalLoader(args)).entry, { date: "2026-11-21", content: "Saved", exists: true });
   fetch.mock.mockImplementation(async () => Response.json({ error: "Sign in first." }, { status: 401 }));
   assert.deepEqual(await journalLoader(args), { status: 401, error: "Sign in first." });
+  fetch.mock.mockImplementation(async () => { throw new DOMException("Aborted", "AbortError"); });
+  await assert.rejects(journalLoader(args), { name: "AbortError" });
 });
 
 test("journal markers use their own resource read and return API errors", async (t) => {
@@ -473,6 +475,8 @@ test("journal markers use their own resource read and return API errors", async 
   assert.deepEqual(await journalMarkersLoader({ request }), {
     status: 500, error: "Could not load markers.",
   });
+  fetch.mock.mockImplementation(async () => { throw new DOMException("Aborted", "AbortError"); });
+  await assert.rejects(journalMarkersLoader({ request }), { name: "AbortError" });
 });
 
 test("journal actions display domain, validation, and server errors", async (t) => {
