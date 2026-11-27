@@ -10,6 +10,8 @@ import { plannerCalendarLoader } from "../src/features/planner/services/planner-
 import { plannerLoader } from "../src/features/planner/services/planner-route.ts";
 import { questLogLoader } from "../src/features/planner/services/quest-log-route.ts";
 import { profileLoader } from "../src/features/planner/services/profile-route.ts";
+import { questBoardLoader } from "../src/features/planner/services/quest-actions.ts";
+import { rewardsLoader } from "../src/features/planner/services/gamification-actions.ts";
 import { NotificationProvider } from "../src/components/notifications.tsx";
 
 function fixture(achievements, days = [], points = 0) {
@@ -42,11 +44,39 @@ test("the planner shell loader preserves the selected date without task-read fla
 test("the planner shell loader accepts the reduced shared response", async (t) => {
   const page = {
     authenticated: true, email: "planner@example.test", today: "2026-11-21",
-    selected: "2026-11-21", balance: 12, redemptions: [], quests: [],
+    selected: "2026-11-21", balance: 12,
     newlyEarned: [], totalXp: 0,
   };
   t.mock.method(globalThis, "fetch", async () => Response.json(page));
   assert.deepEqual(await plannerLoader({ request: new Request("http://localhost/physical-therapy") }), page);
+});
+
+test("the quest-board loader reads only quests", async (t) => {
+  let requestedUrl;
+  t.mock.method(globalThis, "fetch", async (input) => {
+    requestedUrl = input;
+    return Response.json([{ id: "quest-1", title: "Learn", kind: "main", tier: "Rare", points: 50, description: "", completedAt: null }]);
+  });
+  const quests = await questBoardLoader({ request: new Request("http://localhost/quest-board?date=2026-11-21") });
+  assert.equal(requestedUrl, "/api/quests");
+  assert.equal(quests[0].id, "quest-1");
+});
+
+test("the rewards loader reads selected-date points, balance and redemption history", async (t) => {
+  let requestedUrl;
+  t.mock.method(globalThis, "fetch", async (input) => {
+    requestedUrl = input;
+    return Response.json({
+      balance: 90,
+      redemptions: [{ rewardId: "snacks", rewardName: "Snacks", amount: 10, createdAt: "2026-11-21T12:00:00.000Z" }],
+      todayPoints: 20,
+      earnedTaskKeys: [],
+    });
+  });
+  const result = await rewardsLoader({ request: new Request("http://localhost/rewards?date=2026-11-21") });
+  assert.equal(requestedUrl, "/api/points?date=2026-11-21");
+  assert.equal(result.balance, 90);
+  assert.equal(result.redemptions.length, 1);
 });
 
 test("the dashboard and calendar loader requests one selected-date page summary", async (t) => {

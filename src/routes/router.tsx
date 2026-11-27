@@ -3,10 +3,10 @@ import { plannerLoader } from "../features/planner/services/planner-route";
 import { plannerCalendarLoader } from "../features/planner/services/planner-calendar-route";
 import { questLogLoader } from "../features/planner/services/quest-log-route";
 import {
-  acceptQuestTemplateAction, completeQuestAction, createQuestAction, questResourceAction,
+  acceptQuestTemplateAction, completeQuestAction, createQuestAction, questBoardLoader, questResourceAction,
 } from "../features/planner/services/quest-actions";
 import {
-  createAchievementAction, redeemRewardAction,
+  createAchievementAction, redeemRewardAction, rewardsLoader,
 } from "../features/planner/services/gamification-actions";
 import {
   externalCompletionAction, routineCompletionAction, updateRoutineAction,
@@ -88,7 +88,7 @@ export const router = createBrowserRouter([{
     { path: "google/tasks/sync/:date", action: syncGoogleTasksAction, ErrorBoundary: PageError },
     { path: "google/gmail/messages", loader: gmailMessagesLoader, ErrorBoundary: PageError },
     { path: "google/gmail/messages/:id/tasks/:date", action: importGmailAction, ErrorBoundary: PageError },
-    { path: "quest-board", Component: QuestBoardPage, action: createQuestAction, ErrorBoundary: PageError },
+    { path: "quest-board", Component: QuestBoardPage, loader: questBoardLoader, action: createQuestAction, ErrorBoundary: PageError },
     { path: "quest-board/:id", action: questResourceAction, ErrorBoundary: PageError },
     { path: "quest-board/:id/complete", action: completeQuestAction, ErrorBoundary: PageError },
     { path: "quest-log", Component: QuestLogPage, loader: questLogLoader, ErrorBoundary: PageError },
@@ -108,7 +108,7 @@ export const router = createBrowserRouter([{
     { path: "books/:library/:path/bookmarks", loader: bookmarksLoader, action: createBookmarkAction, ErrorBoundary: PageError },
     { path: "books/:library/:path/bookmarks/:id", action: deleteBookmarkAction, ErrorBoundary: PageError },
     { path: "books/:library/:path/chapters", loader: chaptersLoader, ErrorBoundary: PageError },
-    { path: "rewards", Component: RewardsPage, ErrorBoundary: PageError },
+    { path: "rewards", Component: RewardsPage, loader: rewardsLoader, ErrorBoundary: PageError },
     { path: "rewards/:id/redemptions", action: redeemRewardAction, ErrorBoundary: PageError },
     { path: "profile", Component: ProfilePage, loader: profileLoader, ErrorBoundary: PageError },
     { path: "profile/achievements", action: createAchievementAction, ErrorBoundary: PageError },

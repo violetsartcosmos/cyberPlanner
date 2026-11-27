@@ -3,7 +3,6 @@ import { csrf } from "hono/csrf";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { redirect } from "react-router";
 import { beginGoogleAuthorization, completeGoogleAuthorization, endSession } from "./auth/service";
-import { handlePlannerAction } from "./planner/dispatch";
 import { getPlannerPage } from "./planner/page";
 import { googleRoutes } from "./google/routes";
 import { bookRoutes } from "./books/routes";
@@ -38,11 +37,6 @@ app.route("/api", plannerRoutes);
 // Loads planner data for the current request.
 app.get("/api/planner", noStore, async (context) => {
   return context.json(await getPlannerPage(context.req.raw));
-});
-
-// Validates and dispatches a planner action.
-app.post("/api/planner", noStore, async (context) => {
-  return context.json(await handlePlannerAction(context.req.raw));
 });
 
 // Starts the configured Google OAuth flow.

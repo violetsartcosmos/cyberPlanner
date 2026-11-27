@@ -1,4 +1,4 @@
-import type { Achievement, Quest } from "./gamification";
+import type { Achievement } from "./gamification";
 import type { RoutineGroup, RoutineTask } from "./routines";
 
 /** HTTP status and notification returned by quest form actions. */
@@ -127,11 +127,4 @@ export type PlannerPage =
       balance: number;
       totalXp: number;
       newlyEarned: string[];
-      quests: Quest[];
-      redemptions: Array<{
-        rewardId: string;
-        rewardName: string;
-        amount: number;
-        createdAt: string;
-      }>;
     };

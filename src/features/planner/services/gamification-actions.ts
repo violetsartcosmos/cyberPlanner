@@ -1,5 +1,26 @@
-import type { ActionFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import type { AchievementActionResult, QuestActionResult } from "../../../../shared/planner/types";
+import { dateKey, isValidDateKey } from "../../../../shared/planner/utils";
+
+export type RewardPageData = {
+  balance: number;
+  redemptions: Array<{
+    rewardId: string;
+    rewardName: string;
+    amount: number;
+    createdAt: string;
+  }>;
+};
+
+export async function rewardsLoader({ request }: LoaderFunctionArgs): Promise<RewardPageData> {
+  const requestedDate = new URL(request.url).searchParams.get("date");
+  const date = requestedDate && isValidDateKey(requestedDate) ? requestedDate : dateKey(new Date());
+  const response = await fetch(`/api/points?date=${encodeURIComponent(date)}`, {
+    signal: request.signal,
+  });
+  if (!response.ok) throw new Error(`Could not load rewards (${response.status}).`);
+  return await response.json() as RewardPageData;
+}
 
 /**
  * Creates an achievement submitted to POST /profile/achievements.

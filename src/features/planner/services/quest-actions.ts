@@ -1,5 +1,12 @@
-import type { ActionFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import type { Quest } from "../../../../shared/planner/gamification";
 import type { QuestActionResult } from "../../../../shared/planner/types";
+
+export async function questBoardLoader({ request }: LoaderFunctionArgs): Promise<Quest[]> {
+  const response = await fetch("/api/quests", { signal: request.signal });
+  if (!response.ok) throw new Error(`Could not load quests (${response.status}).`);
+  return await response.json() as Quest[];
+}
 
 /**
  * Creates a quest submitted to POST /quest-board.

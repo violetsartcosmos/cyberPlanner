@@ -346,20 +346,6 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.equal(invalidCalendarRange.status, 400);
     const missingCalendarRange = await app.request("http://localhost/api/calendar", { headers: { Cookie: cookie } });
     assert.equal(missingCalendarRange.status, 400);
-    const submit = (origin, includeCookie = true) => app.request("http://localhost/api/planner", {
-      method: "POST",
-      headers: { Origin: origin, ...(includeCookie ? { Cookie: cookie } : {}) },
-      body: new URLSearchParams({ intent: "not-an-action" }),
-    });
-    const denied = await submit("http://attacker.example");
-    assert.equal(denied.status, 403);
-    const anonymous = await submit("http://localhost", false);
-    assert.deepEqual(await anonymous.json(), {
-      ok: false, error: "Sign in with your configured Google account first.",
-    });
-    const signedIn = await submit("http://localhost");
-    assert.deepEqual(await signedIn.json(), { ok: false, error: "Unknown planner action." });
-
     const signIn = await app.request("http://localhost/auth/google");
     assert.equal(signIn.status, 302);
     const authorization = new URL(signIn.headers.get("location"));
@@ -405,12 +391,6 @@ test("API routes preserve authentication and reject cross-origin submissions", a
       assert.match(await html.text(), /CyberPlanner/);
       const proxied = await fetch(`${origin}/api/planner`);
       assert.equal((await proxied.json()).authenticated, false);
-      const action = await fetch(`${origin}/api/planner`, {
-        method: "POST",
-        headers: { Origin: origin, Cookie: cookie },
-        body: new URLSearchParams({ intent: "not-an-action" }),
-      });
-      assert.deepEqual(await action.json(), { ok: false, error: "Unknown planner action." });
       const login = await fetch(`${origin}/auth/google`, { redirect: "manual" });
       assert.equal(login.status, 302);
       assert.equal(new URL(login.headers.get("location")).hostname, "accounts.google.com");

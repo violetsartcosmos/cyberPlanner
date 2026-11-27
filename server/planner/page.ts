@@ -1,9 +1,9 @@
 import { dateKey, isValidDateKey } from "../../shared/planner/utils";
 import type { PlannerPage } from "../../shared/planner/types";
 import { getMissingConfiguration, getSignedInEmail } from "../auth/service";
-import { getPlannerPointsSummary, getPointsSummary } from "../points/service";
+import { getPlannerBalance, getPointsSummary } from "../points/service";
 import { getExternalTasks } from "../external-tasks/service";
-import { getPlannerHeaderSummary, getProfileSummary, listQuests } from "../gamification/service";
+import { getPlannerHeaderSummary, getProfileSummary } from "../gamification/service";
 
 /**
  * Assembles the remaining combined planner snapshot.
@@ -26,10 +26,9 @@ export async function getPlannerPage(request: Request): Promise<PlannerPage> {
   const today = dateKey(new Date());
   const requestedDate = url.searchParams.get("date");
   const selected = requestedDate && isValidDateKey(requestedDate) ? requestedDate : today;
-  const [header, points, questRows] = await Promise.all([
+  const [header, points] = await Promise.all([
     getPlannerHeaderSummary(today),
-    getPlannerPointsSummary(),
-    listQuests(),
+    getPlannerBalance(),
   ]);
   return {
     authenticated: true,
@@ -38,10 +37,6 @@ export async function getPlannerPage(request: Request): Promise<PlannerPage> {
     selected,
     ...header,
     ...points,
-    quests: questRows.map(({ completedAt, ...quest }) => ({
-      ...quest,
-      completedAt: completedAt?.toISOString() ?? null,
-    })),
   };
 }
 
