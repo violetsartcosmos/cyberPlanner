@@ -20,7 +20,7 @@ learning and validating the Python code.
 | `app/database.py` | Loads configuration and opens/closes a PostgreSQL connection for a request. | `server/db/client.ts`, which uses Prisma rather than psycopg |
 | `app/journals.py` | Provides experimental journal CRUD and marker reads. | `server/journals/routes.ts` and `server/journals/service.ts` |
 | `app/routines.py` | Unmounted starting point for routine definitions and weekday groups. | `server/routines/routes.ts`, `server/routines/definitions.ts`, and `server/routines/service.ts` |
-| `app/therapy.py` | Unmounted starting point for reading therapy sessions. | `server/therapy/routes.ts` and `server/therapy/service.ts` |
+| `app/therapy.py` | Unmounted starting point for therapy sessions and completions. | `server/therapy/routes.ts` and `server/therapy/service.ts` |
 | `app/tasks.py` | Lists built-in routines by numeric ID and records a check and its point award. | `server/routines/definitions.ts`, `server/routines/service.ts`, and `server/points/service.ts` |
 | `app/points.py` | Reads the ledger and allows redemption of a predefined reward. | `server/points/service.ts`, `server/points/routes.ts`, and `shared/planner/definitions.ts` |
 | `app/__init__.py` | Marks `app` as a Python package. | No direct Node equivalent |
@@ -293,8 +293,10 @@ ready; keep React on Node and use the disposable database for persistence tests.
 
 ## Therapy sessions starting point
 
-`app/therapy.py` contains an unmounted skeleton for `GET /api/therapy/sessions`.
+`app/therapy.py` contains an unmounted work-in-progress
+`GET /api/therapy/sessions` and a skeleton for updating exercise completions.
 Use the Node therapy route and service as the contract, including exercise
-ordering, completion states, and earned points. This slice reads existing
-assignments; it does not add therapy definition editing. Verify it with
-focused tests before mounting the router.
+ordering, completion states, earned points, one-time awards, and achievement
+refresh. This slice uses existing assignments; it does not add therapy
+definition editing. Verify the handlers with focused tests before mounting the
+router.

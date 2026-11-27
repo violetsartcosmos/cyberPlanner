@@ -3,9 +3,9 @@
 import datetime
 
 import psycopg
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, StrictBool
-
+from app.tasks import parse_id
 from app.database import get_connection
 
 
@@ -54,14 +54,14 @@ def update_routine_kind(
 ) -> dict[str, object]:
     kind_to_points = {"side": 10, "main": 50, "boss": 150}
     if body.kind not in kind_to_points:
-        raise ValueError("Invalid kind")
+        raise HTTPException(status_code=400, detail="Invalid kind")
     points = kind_to_points[body.kind]
     result = connection.execute(
         "UPDATE routines SET kind = %s, points = %s WHERE id = %s RETURNING id, kind",
         (body.kind, points, routine_id),
     ).fetchone()
     if not result:
-        raise ValueError("Routine not found")
+        raise HTTPException(status_code=404, detail="Routine not found")
     connection.commit()
     return dict(result)
 
@@ -79,14 +79,15 @@ def get_routine_completions(
 ) -> dict[str, object]:
     if selected_date:
         try:
-            datetime.datetime.strptime(selected_date, "%Y-%m-%d")
+            day = datetime.datetime.strptime(selected_date, "%Y-%m-%d")
         except ValueError:
-            raise ValueError("Invalid date")
+            raise HTTPException(status_code=400, detail="Invalid date format")
     else:
-        raise ValueError("Missing date")
-
+        raise HTTPException(status_code=400, detail="Missing date")
+    if day.date().isoformat() != selected_date:
+        raise HTTPException(status_code=400, detail="Invalid date format")
     result = connection.execute(
-        "SELECT date, task_id FROM routine_completions WHERE date = %s ORDER BY task_id",
+        "SELECT day, task_id FROM routine_task_completions WHERE day = %s ORDER BY task_id",
         (selected_date,),
     ).fetchall()
     return {"date": selected_date, "taskIds": [str(row["task_id"]) for row in result]}
@@ -113,26 +114,38 @@ def set_routine_completion(
     body: RoutineCompletionUpdate,
     connection: psycopg.Connection = Depends(get_connection),
 ) -> dict[str, object]:
-    id = int(routine_id)
-    if id is None or id <= 0:
-        raise ValueError("Invalid routine ID")
+    id = parse_id(routine_id)
+    if id is None:
+        raise HTTPException(status_code=400, detail="Invalid routine ID")
     with connection.transaction():
         try:
-            datetime.datetime.strptime(selected_date, "%Y-%m-%d")
+            day = datetime.datetime.strptime(selected_date, "%Y-%m-%d")
         except ValueError:
-            raise ValueError("Invalid date")
+            raise HTTPException(status_code=400, detail="Invalid date format")
+        if day.date().isoformat() != selected_date:
+            raise HTTPException(status_code=400, detail="Invalid date format")
+        # Update the completion state if the routine is marked as completed
+        if body.completed:
+            connection.execute(
+                "INSERT INTO routine_task_completions (day, task_id) VALUES (%s, %s) "
+                "ON CONFLICT (day, task_id) DO NOTHING",
+                (day.date(), id),
+            )
+        else:
+            connection.execute(
+                "DELETE FROM routine_task_completions WHERE day = %s AND task_id = %s",
+                (day.date(), id),
+            )
 
-        # Update the completion state
-        connection.execute(
-            "INSERT INTO routine_completions (date, task_id, completed) VALUES (%s, %s, %s) "
-            "ON CONFLICT (date, task_id) DO UPDATE SET completed = EXCLUDED.completed",
-            (selected_date, id, body.completed),
-        )
-        connection.commit()
+        rows = connection.execute(
+            "SELECT task_id FROM routine_task_completions WHERE day = %s ORDER BY task_id",
+            (day.date(),),
+        ).fetchall()
+        checked_task_ids = [str(row["task_id"]) for row in rows]
         return {
             "date": selected_date,
             "taskId": str(id),
             "completed": body.completed,
-            "checkedTaskIds": 1,  # Placeholder for the checked task ID list
+            "checkedTaskIds": checked_task_ids,  # Placeholder for the checked task ID list
             "earnedAchievements": [],  # Placeholder for actual achievements
         }

@@ -41,19 +41,19 @@ def weekday_name(selected_date: date) -> str:
     return WEEKDAYS[selected_date.weekday()]
 
 
-def routine_id(task_id: str) -> int | None:
+def parse_id(id: str) -> int | None:
     """Parse a positive PostgreSQL integer ID, or return None for an invalid ID.
 
     The URL supplies task_id as text. The stable ID identifies the task itself;
     its weekday is checked separately when looking it up. This mirrors
     routineId in server/planner/routines.ts.
     """
-    if not task_id.isascii() or not task_id.isdecimal() or task_id.startswith("0"):
+    if not id.isascii() or not id.isdecimal() or id.startswith("0"):
         return None
     # PostgreSQL INTEGER values cannot exceed 2,147,483,647.
-    if len(task_id) > 10 or int(task_id) > 2147483647:
+    if len(id) > 10 or int(id) > 2147483647:
         return None
-    return int(task_id)
+    return int(id)
 
 
 @router.get("/tasks")
@@ -145,7 +145,7 @@ def set_task_completion(
     awardTaskPoints in server/points/service.ts. Unlike Node, this function
     does not refresh achievements or return newly earned achievements yet.
     """
-    id = routine_id(task_id)
+    id = parse_id(task_id)
     if id is None:
         raise HTTPException(status_code=400, detail="That planner task is invalid.")
 
