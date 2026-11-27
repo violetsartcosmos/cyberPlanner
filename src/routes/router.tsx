@@ -1,5 +1,5 @@
 import { createBrowserRouter, Link, useRouteError } from "react-router";
-import { plannerLoader } from "../features/planner/services/planner-route";
+import { sessionLoader } from "../features/planner/services/session-route";
 import { plannerCalendarLoader } from "../features/planner/services/planner-calendar-route";
 import { questLogLoader } from "../features/planner/services/quest-log-route";
 import {
@@ -67,7 +67,7 @@ export const router = createBrowserRouter([{
   id: "planner",
   path: "/",
   Component: PlannerLayout,
-  loader: plannerLoader,
+  loader: sessionLoader,
   HydrateFallback,
   ErrorBoundary: RootError,
   children: [

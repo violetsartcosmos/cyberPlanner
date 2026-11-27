@@ -1,6 +1,6 @@
 # API reference
 
-The API is served by the same origin as the app. Book and calendar endpoints require a session for the configured Google account. Planner, calendar, and book responses are marked non-cacheable. Requests that change data must pass the server's same-origin CSRF check.
+The API is served by the same origin as the app. Book and calendar endpoints require a session for the configured Google account. Session, calendar, and book responses are marked non-cacheable. Requests that change data must pass the server's same-origin CSRF check.
 
 Authenticated resource endpoints return `401` if the configured Google account
 is not signed in.
@@ -10,31 +10,29 @@ JSON request bodies should use the types shown below. Invalid values rejected by
 The optional `library` parameter accepts `ebooks` (the default) or `audiblebooks`.
 Book requests that take a `path` require a non-empty path of at most 2,048 characters. Calendar requests require a valid `start` and `end` range.
 
-## Planner
+## Session and calendar summaries
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/planner` | Loads shared session, selected-date, balance, XP, quest, and redemption data. |
+| `GET /api/session?date=...` | Loads sign-in/configuration state or authenticated app-shell data, including the selected date, balance, XP, and newly earned achievements. An invalid or omitted date defaults to today. |
 | `GET /api/planner/calendar?date=...` | Loads routine history, selected-date synced tasks, points, and achievement progress for the dashboard or calendar. |
-| `POST /api/planner` | Validates and dispatches a planner action. |
 
-`GET /api/planner` carries shared shell data and the remaining quest-board and
-rewards reads. Dashboard and calendar routes own their routine, completion,
-synced-task, point, and achievement reads through
-`GET /api/planner/calendar?date=...`; their journal markers use the separate
-`GET /api/journals/markers` resource. Therapy and journal pages own their
-dated reads, so `/api/planner` does not return their data.
-All UI form writes now use feature-owned React Router actions and resource endpoints.
-No UI forms dispatch hidden planner intents or write to `POST /api/planner`.
-The planner endpoints are temporary migration surfaces and will be removed once
-their remaining UI consumers move to resource endpoints.
-Resource action results carry numeric HTTP statuses and API errors, rather
-than the planner action's obsolete `ok` flag.
+`GET /api/session` owns only shared shell state. Therapy, journal, quest,
+reward, profile, and calendar pages load their own resource data through
+purpose-specific endpoints. The dashboard and calendar share one selected-date
+summary through `GET /api/planner/calendar`; journal markers use the separate
+`GET /api/journals/markers` resource.
 
-Planner form fields are text. Date and completion-state checks remain at the
-request boundary; task assignments and one-time awards are checked in the
-services. Routine kinds are checked against the server's point-value mapping.
-Stored-field constraints are left to Prisma and the database.
+The former `GET /api/planner` aggregate and `POST /api/planner` intent
+dispatcher have been removed. UI writes use feature-owned React Router actions
+and resource endpoints; action results carry numeric HTTP statuses and API
+errors rather than a planner-specific `ok` flag. The calendar summary route
+remains because it is an active, purpose-built dashboard/calendar read.
+
+Dates and completion states are checked at their request boundaries; task
+assignments and one-time awards are checked in their services. Routine kinds
+are checked against the server's point-value mapping. Stored-field constraints
+are left to Prisma and the database.
 
 The physical-therapy page reads exercise definitions, point values, completion
 states, and earned points from `GET /api/therapy/sessions?date=...`. Writes use

@@ -9,7 +9,7 @@ import { DailyAffirmation } from "@/features/planner/components/dashboard-widget
 import { SignInPanel } from "@/features/auth/components/sign-in-panel";
 import { usePlannerController } from "@/features/planner/hooks/use-planner-controller";
 import { plannerCalendarLoader } from "@/features/planner/services/planner-calendar-route";
-import { plannerLoader } from "@/features/planner/services/planner-route";
+import { sessionLoader } from "@/features/planner/services/session-route";
 import type { AuthenticatedPlannerPage } from "@/features/planner/types/planner-outlet-context";
 import type { PlannerCalendarData } from "../../shared/planner/types";
 import { dayProgress } from "../../shared/planner/utils";
@@ -24,7 +24,7 @@ function getNavigationLabel(section: string) {
 }
 
 export default function PlannerLayout() {
-  const page = useLoaderData<typeof plannerLoader>();
+  const page = useLoaderData<typeof sessionLoader>();
 
   if (!page.authenticated) {
     return (

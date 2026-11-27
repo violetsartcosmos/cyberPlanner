@@ -193,7 +193,7 @@ numeric journal content and zero-point quests are expected rejection checks.
   route modules so the application file stays composition-focused.
 - [X] Make the application primarily middleware installation, router mounting,
   authentication routes, and static serving.
-- [X] Keep `getPlannerPage` responsible for authentication/date selection and
+- [X] Keep `getSessionPage` responsible for authentication/date selection and
   assembling resource results, not resource persistence.
 - [X] Make snapshot query ownership explicit rather than using optional
   preloaded values with implicit query fallbacks. Preserve query reuse.
@@ -309,14 +309,14 @@ combined planner request merely because the shared layout is convenient.
   tasks, points, journal-date markers and achievement preview reads.
 - [X] Use page-specific React Router loaders/actions with shared session and
   selected-date navigation.
-- [ ] Add only missing read contracts: journal browser dates, completion
+- [X] Add only missing read contracts: journal browser dates, completion
   history/ranges, historical template acceptance, profile XP/streak summaries,
   and session/configuration state independent of the planner page.
-- [ ] Avoid fetching every resource on every navigation. Purpose-built read
+- [X] Avoid fetching every resource on every navigation. Purpose-built read
   summaries are acceptable where they reduce requests and preserve consistency.
   A page-owned loader must not silently replace the combined request with
   duplicate requests for the same resource.
-- [ ] Remove obsolete planner fields, endpoints, dispatch, and tests after
+- [X] Remove obsolete planner fields, endpoints, dispatch, and tests after
   their final UI consumers move.
 
 **Review additions**
@@ -328,7 +328,7 @@ combined planner request merely because the shared layout is convenient.
 - Keep the achievement-refresh behavior on reads until a purpose-built summary
   has tests proving that date-dependent streaks and newly earned milestones
   remain equivalent.
-- Define loader-level fixtures and tests for every page: selected date, API
+- [ ] Define loader-level fixtures and tests for every page: selected date, API
   error, request cancellation, revalidation after that page's writes, and no
   request for unrelated page resources.
 - [X] Do not add query flags such as `include...` or `without...` to hide resources
@@ -336,23 +336,218 @@ combined planner request merely because the shared layout is convenient.
   contract, and let tests enforce the smaller response.
 
 Status: in progress. The therapy read is now owned by
-`src/features/therapy/services/therapy-route.ts`, and `PlannerPage` no longer
-loads or returns therapy. The journal page owns its dated browser and entry
-read, dashboard and calendar routes own non-empty journal marker reads, and
-`PlannerPage` no longer loads or returns journal data. Dashboard and calendar
-share a nested loader for routine history, selected-date synced tasks, points
-and achievement progress; these fields are no longer in the root planner
-response. Quest-log reads are also page-owned. Remaining shared reads are
-quests and reward redemptions for their current consumers. No compatibility
-query parameter was introduced.
+`src/features/therapy/services/therapy-route.ts`, and the session response no
+longer loads or returns therapy. The journal page owns its dated browser and
+entry read, while dashboard and calendar own non-empty journal marker reads.
+The session response no longer loads or returns journal data. Dashboard and
+calendar share a nested loader for routine history, selected-date synced tasks,
+points and achievement progress; these fields are no longer in the root
+session response. Quest-board and rewards reads are also page-owned, the old
+`/api/planner` aggregate and intent dispatcher are removed, and `/api/session`
+now serves only shared shell and sign-in state. The dashboard/calendar summary
+remains because those pages share its selected-date reads. No compatibility
+query parameter was introduced. Preserve selected-date navigation and
+achievement refresh behavior on reads until equivalent write/streak coverage
+exists. Do not run write tests against the normal app database.
 
-### 6. Python CRUD learning equivalent
+The session-shell cleanup replaced `GET /api/planner` with `GET /api/session`,
+removed the unused server intent dispatcher and its action adapters, and moved
+database integration writes onto resource routes. Verification: 45 focused
+profile/action tests, server/action validation tests, typecheck, production
+build, integration-test syntax check, and `git diff --check` passed. The
+database integration suite was not run because `TEST_DATABASE_URL` is unset.
 
-- [ ] Implement the same journal CRUD contracts in the Python backend once the
-  Node/React slice is complete and Python work is requested.
-- [ ] Keep equivalent authentication, CSRF, database behavior, and error
-  responses rather than connecting an unprotected Python API to the real UI.
-- [ ] Use an isolated database and compare CRUD responses with the Node API.
+### 6. Python backend migration roadmap
+
+This is a backend migration with the React UI and PostgreSQL schema retained
+unless a later decision expands the scope. `cyberServer/` is an experimental
+FastAPI service, not a replacement: it currently has separate `/api/v1` task
+and points routes, direct SQL, and no authentication or CSRF protection. Keep
+the UI on Node until the Python service passes the gates below.
+
+#### Migration constraints
+
+- Keep Prisma migrations as the sole schema-change authority during the port.
+  Python reads and writes the existing schema; do not introduce a second
+  migration history or change the schema as a shortcut.
+- Migrate one resource at a time and preserve the Node URL, HTTP method,
+  request/response shape, status codes, date rules, authorization, CSRF, cache
+  behavior, transaction boundaries, and business invariants.
+- Do not dual-write or send the same write to both backends. Both implementations
+  may be compared against the same disposable database, but production traffic
+  must have one write owner per route.
+- Keep OAuth callback/token handling in Node until an explicit, tested Python
+  design preserves the allowed-account check, cookie/session behavior, token
+  encryption, and provider error handling.
+- Run all Python persistence tests against a separately configured disposable
+  database. Never point experimental writes at the app database.
+
+#### 6a. Refactor exit and Python entry
+
+The resource extraction and page-read implementation are in place. Milestone 5
+is not fully verified: its page-loader/revalidation checklist and the latest
+disposable-database run are still open. Do not label them complete without
+running those checks. They do not block an isolated Python learning slice.
+
+- [ ] Close the loader fixtures for therapy, journal, quest log, quest board,
+  rewards, profile, dashboard/calendar, and the session shell. Check selected
+  dates, errors, cancellation, revalidation after writes, and unrelated reads.
+- [ ] Run the migrated Node database integration suite against the disposable
+  test database and preserve the Node journal response baseline.
+- [ ] Verify the matching Node API is running before checking React in Chrome.
+  The shared dashboard inspection currently shows "Reload planner", with
+  recorded `404` responses for `/api/session` and `/api/planner/calendar` and
+  `400` for `/api/journals/markers`. This is not a passed live UI check; confirm
+  the server build/routes and then recheck the shell and selected-date pages.
+- [ ] Keep the existing achievement refresh on shell/profile/calendar reads.
+  A later read-only redesign is separate from the Python port.
+
+#### 6b. Reuse the disposable database and copy one feature at a time
+
+Python does not require a different database engine: both backends use
+PostgreSQL. Start with the existing Node `TEST_DATABASE_URL`; this avoids a
+second database setup and preserves the exact schema Python's SQL expects.
+Keep the app's `DATABASE_URL` unchanged in `.env`. The Python launcher must
+override it only in its child process.
+
+- [ ] Follow [the Python learning setup](../cyberServer/README.md#next-step-isolated-journal-crud)
+  to validate the test URL, apply committed migrations without resetting the
+  database, check the `journals` table, and run Python on loopback.
+- [ ] Use the test database sequentially. Stop the Python API before running
+  `npm run test:database`: that command resets the public schema and deletes
+  learning rows. Do not run Node and Python persistence suites concurrently.
+- [ ] Copy the journal *behavior* first, not the entire Node codebase or a
+  production database dump. Reimplement a single operation in Python, compare
+  it with Node, then add the next operation.
+- [ ] Start with fictional journal content. Existing Prisma migrations create
+  the full schema and seed definitions; only `journals` receives new learning
+  data in the first slice. Do not import OAuth tokens, mail, personal journals,
+  or book files for this exercise.
+- [ ] If learning data needs to survive Node test resets, create a separate
+  `cyberplanner_python_test` database with the same test-user permissions and
+  migrations. Change only the launcher's test URL, not the app URL.
+- [ ] Before any later selected-row copy, define source and target, selected
+  dates/IDs, conflict policy, dependency rows, and transaction rollback.
+  Preserve business identifiers, dates, and relations; if numeric primary keys
+  are copied, advance their sequences. Verify counts and content before using
+  the copy. No broad import or delete is part of the first slice.
+
+#### 6c. First implementation: Journals (`Journal` / `journals`)
+
+Use [Node journal routes](../server/journals/routes.ts),
+[Node journal operations](../server/journals/service.ts), and the
+[journal API contract](api.md#journals) side by side with the Python code.
+Keep feature operations direct and small, following the existing FastAPI,
+psycopg, and pytest patterns; do not add an ORM or generic CRUD framework.
+
+- [ ] Add a journal router and explicit SQL operations under `cyberServer/app/`,
+  mounted from `app/main.py`. Implement one operation at a time:
+  Create (`POST`), Read (item and collection `GET`), Update (`PUT`), Delete
+  (`DELETE`), then non-empty calendar marker reads.
+- [ ] Match the existing URLs: `/api/journals`, `/api/journals/{date}`, and
+  `/api/journals/markers`. Register `markers` before the dated item route.
+- [ ] Create returns `201`; duplicate dates return `409`. Omitted create
+  content uses the database's empty-string default.
+- [ ] Read returns `{date, content}`; missing entries return `404`. Browser
+  dates include empty entries and are newest first; markers exclude empty
+  and whitespace-only content, matching Node's trimmed-content check.
+- [ ] Update retains Node's `PUT` upsert contract: create when missing, replace
+  when present. Preserve an existing row's ID. This is not a partial update.
+- [ ] Delete returns bodyless `204`, or `404` when missing. It must not change
+  completion records, point awards, achievements, or any other resource.
+- [ ] Treat BlockNote content as its stored string, not a new Python document
+  schema. Round-trip empty text, JSON text, Unicode, and large content without
+  trimming or changing it. Keep the calendar date independent of time zones.
+- [ ] Use bound SQL parameters, database uniqueness, explicit commits or
+  transactions, and logged database errors. Match Node's `{error: ...}` body
+  and documented status codes instead of silently inheriting FastAPI's
+  different `detail` / `422` responses.
+- [ ] Add focused API tests with fake connections, then real persistence
+  coverage on `TEST_DATABASE_URL`: duplicate creation, missing reads/deletes,
+  replacement, empty content, list/marker ordering, and unchanged points.
+  Read saved rows through an independent connection to prove commit behavior.
+- [ ] Use Chrome with FastAPI's `/docs` against the loopback test API to execute
+  Create, Read, Update, and confirmed Delete on fictional dates. Inspect
+  actual response statuses/bodies, repeat/conflict behavior, and persistence
+  after rereading. Follow [the Chrome walkthrough](../cyberServer/README.md#5-verify-the-learning-slice-in-chrome);
+  the React journal remains on Node until authentication/CSRF parity passes.
+- [ ] Compare Node and Python on separate, equivalent fixture dates, or reset
+  only the owned journal fixture rows between runs. Never mirror a write to
+  both APIs against the same date and call the second result a parity test.
+- [ ] Document the authenticated Node contract separately from the initial
+  loopback-only learning API. No React proxy or real-data connection changes
+  belong in this slice.
+
+#### 6d. Subsequent resource slices
+
+Each row is its own bounded implementation task, not one large port. Existing
+experimental task and point handlers are prior art, not finished equivalents.
+Port point-award primitives and achievement refresh with the first completion
+write that needs them; do not switch a completion route before those dependent
+effects are equivalent. Only Journals is a full simple CRUD learning exercise;
+do not invent definition editing or ledger CRUD the Node API does not expose.
+
+| Resource | Existing Node API to reproduce | Storage / dependency | Additional acceptance checks |
+| --- | --- | --- | --- |
+| Routine definitions and weekday groups | `GET /api/routines`, `PATCH /api/routines/{id}` | `routine_tasks`, `routine_groups`, `routine_task_groups`; `server/routines/` | Integer IDs remain stable; group order and weekdays match; kind determines server-owned points. |
+| Routine completions | `GET /api/routines/completions?date=...`, `PUT /api/routines/{id}/completions/{date}` | `routine_task_completions`, point awards, achievement refresh | Reject non-assigned weekdays; concurrent/repeated checks award once; uncheck removes the check, not the award; preserve newly earned milestones. |
+| Therapy exercises, sessions, and assignments | `GET /api/therapy/sessions?date=...` | `therapy_exercises`, `therapy_sessions`, `therapy_session_exercises`; `server/therapy/` | Preserve session/exercise ordering, instructions, assignment points, completion states, and earned totals. No new definition CRUD. |
+| Therapy completions | `PUT /api/therapy/sessions/{sessionId}/exercises/{exerciseId}/completions/{date}` | `therapy_completions`, point awards, achievement refresh | Validate assignment; preserve `pt:` award keys and completion/award transactions; retry and uncheck never duplicate or reverse points. |
+| Quests | Collection/item `GET`, collection `POST`, item `PATCH`/`DELETE`, `POST /api/quests/{id}/complete` | `quests`, point awards; `server/gamification/` | Soft delete preserves awards; patch only supplied fields; completed quests retain original awarded value; repeated completion is `409`. |
+| Quest templates and historical acceptance | `GET /api/quest-templates`, `GET /api/quest-templates/accepted`, `POST /api/quest-templates/{id}/accept` | `quest_templates`, `quests.template_id` | Seeded tracks/order match; acceptance is unique and remains visible after quest deletion; repeat acceptance is `409`. |
+| Point ledger and point summaries | `GET /api/points?date=...`; internal award operations | `point_ledger`; `server/points/` | Append-only awards, unique earn keys, task-date attribution, selected visible task keys, repeatable-read summaries, and timestamp formatting match. No arbitrary ledger edit endpoint. |
+| Rewards and redemptions | `GET /api/rewards`, `POST /api/rewards/{id}/redemptions` | Server-defined reward catalogue, `point_ledger` spend entries | Catalogue/costs match; unknown reward is `404`, insufficient funds `409`, success `201`; serializable concurrent spending cannot overdraw; spending does not reduce lifetime XP. |
+| Achievements and milestone refresh | `GET /api/achievements`, `POST /api/achievements`; internal refresh operations | `achievements`, routine definitions/history, earned ledger | Points/streak tracking, backfilled milestones, awarded XP, deleted-achievement XP retention, routine eligibility, and concurrent refresh match. No new achievement editing endpoint. |
+| Profile summary | `GET /api/profile` | Routine definitions/history, achievements, earned XP | Exact `checks`, `routines`, `routineGroups`, `achievements`, `totalXp`, `newlyEarned` shape; no quests/calendar requests; future dates do not extend streaks. |
+| Session shell and authentication | `GET /api/session`, `/auth/google`, `/auth/callback`, `/auth/logout` | `server/session/`, `server/auth/`, Google connection | Preserve configuration/sign-in states, date fallback, balance/XP, cookie attributes/signature, allowed-account validation, OAuth state, logout, and callback failures. |
+| Stored Google connection | Internal connection read/save operations | `google_connections`; `server/google/connection.ts` | Singleton semantics and existing token encryption format match; no token-returning public endpoint; do not copy real tokens into test fixtures. |
+| Synced Google Tasks and Gmail follow-up persistence | `GET /api/external-tasks?date=...`, `PUT /api/external-tasks/{source}/{id}/completion` | `external_tasks`, point awards; `server/external-tasks/` and Google orchestration | Source/ID uniqueness, undated visibility, deleted records, completion timestamps, retained award keys, and remote-before-local update behavior match. |
+| Google Tasks synchronization | `POST /api/google/tasks/sync/{date}` | Google Tasks client, stored connection, external-task persistence | Page through remote lists, import idempotently, preserve deletion/completion attribution, count/message and failure behavior; use provider mocks first. |
+| Gmail search and import | `GET /api/google/gmail/messages?query=...`, `POST /api/google/gmail/messages/{id}/tasks/{date}` | Gmail client, connection, external-task persistence | Search validation and result shape match; import returns `201` or `200` if already present; do not store message bodies or create duplicate tasks. |
+| Google Calendar lists and events | `GET /api/calendar?start=...&end=...`, event collection `POST`, event item `PATCH` | Google Calendar client; `server/google/calendar.ts`; events are not local DB rows | Preserve writable calendars, unavailable-calendar reporting, event ordering, all-day exclusive end, time zones, recurrence occurrence edits, etags/`If-Match`, and `409` conflicts. |
+| Dashboard/calendar summary | `GET /api/planner/calendar?date=...` | Profile summary, external tasks, points; `server/planner/` | Preserve selected-date response, achievement-refresh side effects, reusable task reads, and auth/no-store behavior; markers stay journal-owned. |
+| Book library, metadata, and covers | `/api/books`, `/api/books/details`, `/api/books/cover` | `books`, local libraries; `server/books/` | Stable book UUIDs and storage paths match; preserve licensed reference data and validated cover bytes/MIME; do not fetch/import references automatically. |
+| Bookmarks | `GET`/`POST`/`DELETE /api/books/bookmarks` with existing query/body IDs | `bookmarks`, book foreign key | Preserve UUIDs, labels, positions, ordering, ownership/path matching, and delete response. Keep existing API paths instead of redesigning them. |
+| Reading/listening progress | `GET`/`PUT /api/books/progress` | `books.progress`, revision | Preserve EPUB CFI/audio position rules, revision conflicts and returned current state; leave the React save/recovery queue intact. |
+| Book files, chapters, and rename | `/api/books/file`, `/api/books/chapters`, `POST /api/books/rename` | Local ebook/audiobook folders and stable book records | Use fixture files only; preserve range streaming, `206`/`416`, path traversal/symlink boundaries, chapter extraction, and rename consistency across file and DB. |
+
+#### 6e. Common parity, copy, and cutover gates
+
+- [ ] Maintain a parity checklist per resource: URLs/methods, camelCase JSON
+  names, nullability, date/timestamp serialization, numeric status, error body,
+  ordering, and bodyless responses. Preserve domain errors rather than adding
+  success-shaped fallbacks.
+- [ ] Compare SQL constraints, foreign keys, unique/partial indexes, transaction
+  isolation and retry behavior with the existing Prisma implementation.
+  Preserve UUIDs and integer IDs; do not add a second schema migration tool.
+- [ ] Add authentication, same-origin CSRF, no-store, explicit error logging,
+  and unknown-route behavior before any real UI cutover. Confirm missing
+  configuration, expired/wrong-account cookies, and cross-origin requests.
+- [ ] Use mocked Google clients and small fixture books before any external
+  integration checks. Obtain a separate decision before writing remote events,
+  importing real mail, renaming real books, or moving account credentials.
+- [ ] Expand data-copy experiments by resource only after its CRUD/domain
+  operations pass: Journals first, then routine definitions/groups before
+  completions, therapy definitions/assignments before completions, templates
+  before accepted quests, and Books before Bookmarks. Ledger/achievement
+  histories require a consistent snapshot; never reconstruct them by replaying
+  completion writes because that can award points again.
+- [ ] Keep one write owner per route. Switch only a verified resource at a
+  same-origin deployment proxy; do not rewrite all React actions or use
+  permanent per-request Node fallback. Keep unported resources on Node.
+- [ ] Test startup/configuration failures, migrations, health/readiness,
+  shutdown/connection cleanup, and file serving in the intended deployment.
+  `/health` currently proves only that the Python process responds, not DB readiness.
+- [ ] Validate the complete app against staging/disposable data, including
+  rollback to Node without schema divergence. Remove a Node route/service only
+  after its Python replacement, dependent effects, and UI revalidation pass.
+  Update setup, deployment, API, and architecture docs with each cutover.
+
+**Next bounded implementation task:** Journals CRUD in FastAPI, using the
+guarded Node test database and fictional fixture dates. Start with POST, verify
+the committed row through GET/SQL, then add PUT and DELETE. The remaining
+milestone 5 verification is tracked separately; no React or OAuth switch is
+required to begin this learning exercise.
 
 ## Verification for each milestone
 
@@ -380,20 +575,24 @@ an empty, disposable database.
 
 Milestone 4 is complete, including the retroactive resource-consumer audit.
 All UI writes are resource-owned and use numeric statuses. The obsolete planner
-write API and adapters should be removed as follow-up work. No schema or Python
-changes were made.
+write API and adapters have been removed. No schema changes were made, and
+Python API behavior is unchanged.
 Reader progress retains its direct resource requests and intentional save queue.
 
 Milestone 5 now includes page-owned reads for therapy, journal, quest log,
 profile, dashboard and calendar. Dashboard/calendar share one nested route
 loader for completion history, routines, synced tasks, points, and achievement
 preview data. Their controller owns task writes and selected-date state while
-the root response supplies shell data and the remaining quest/reward consumers.
-The next bounded task is to move quest-board and rewards reads out of the root
-planner response, then remove obsolete planner adapters after their final UI
-consumers move.
+the root session response supplies only shared shell state. Quest-board and
+rewards reads have also moved to their feature-owned loaders. The old planner
+aggregate and write dispatcher are removed; the active calendar summary
+remains purpose-built. The remaining loader-level fixture checklist and latest
+Node disposable-database run must pass before milestone 5 is marked complete.
+The next implementation task is the isolated Python Journals CRUD slice in
+section 6c, using the guarded setup in the Python README. It can begin while
+that refactor verification remains tracked separately.
 The quest-log route owns reads for routines, templates, and historical template
-acceptance; the root planner response no longer returns those fields or the
+acceptance; the root session response no longer returns those fields or the
 dashboard/calendar resources. The profile route now owns
 completion history, routine definitions needed by achievement creation, current
 achievement progress, and lifetime XP without loading quests or calendar tasks.

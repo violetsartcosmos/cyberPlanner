@@ -1,6 +1,6 @@
 """Experiment with Node's point ledger and rewards using the same tables.
 
-This mirrors parts of server/points/service.ts and server/points/actions.ts.
+This mirrors parts of server/points/service.ts and server/points/routes.ts.
 The original Node code still serves the app; these /api/v1 routes are separate.
 """
 
@@ -165,7 +165,7 @@ def redeem_reward(
     _redeem_reward attempts the purchase and this function returns an ok flag
     with either a confirmation message or an insufficient-points error.
 
-    This parallels the redeem_reward action in server/points/actions.ts, but
+    This parallels the reward redemption route in server/points/routes.ts, but
     uses a separate Python URL instead of Node's /api/planner form action.
     """
     reward = REWARDS.get(reward_id)

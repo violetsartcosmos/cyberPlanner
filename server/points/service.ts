@@ -60,10 +60,10 @@ export async function getPointsSummary(date: string, tasks?: readonly ExternalTa
 }
 
 /**
- * Loads the balance and recent redemptions needed by the shared planner shell.
- * @returns The current balance and the ten most recent reward redemptions.
+ * Loads the current balance needed by the shared app shell.
+ * @returns The current balance.
  */
-export async function getPlannerBalance() {
+export async function getSessionBalance() {
   const db = getDatabase();
   const total = await db.pointLedger.aggregate({ _sum: { amount: true } });
   return { balance: total._sum.amount ?? 0 };

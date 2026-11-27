@@ -24,19 +24,6 @@ export type AchievementActionResult = {
   earnedAchievements?: string[];
 };
 
-export type PlannerActionResult = {
-  ok: boolean;
-  message?: string;
-  error?: string;
-  earnedAchievements?: string[];
-  emails?: Array<{
-    id: string;
-    subject: string;
-    from: string;
-    snippet: string;
-  }>;
-};
-
 export type ExternalTask = {
   source: "google" | "gmail";
   externalId: string;
@@ -112,8 +99,8 @@ export type PlannerCalendarData = ProfileSummary & {
   todayPoints: number;
 };
 
-/** Shared shell and sign-in state returned by the root planner loader. */
-export type PlannerPage =
+/** Shared app-shell and sign-in state returned by the session loader. */
+export type SessionPage =
   | {
       authenticated: false;
       missingConfiguration: readonly string[];

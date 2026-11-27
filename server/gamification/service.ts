@@ -172,7 +172,7 @@ export async function saveAchievement(id: string | null, input: AchievementInput
  * @param today - The date used to refresh date-dependent achievement progress.
  * @returns The XP total and milestones earned during this read.
  */
-export async function getPlannerHeaderSummary(today: string) {
+export async function getSessionHeaderSummary(today: string) {
   return serializableTransaction(async (client) => {
     const completions = await client.routineTaskCompletion.findMany({
       orderBy: [{ day: "asc" }, { taskId: "asc" }],

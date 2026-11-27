@@ -93,6 +93,11 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       apiSession.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
       const apiCookie = await sessionStorage.commitSession(apiSession);
       const journalHeaders = { Cookie: apiCookie, Origin: "http://localhost", "Content-Type": "application/json" };
+      const questRequest = (url, method = "GET", body) => app.request(url, {
+        method,
+        headers: journalHeaders,
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
       const journalUrl = `http://localhost/api/journals/${date}`;
       assert.deepEqual(await (await app.request(journalUrl, { headers: journalHeaders })).json(), { date, content: journal });
       const missingJournal = await app.request("http://localhost/api/journals/2026-11-20", { headers: journalHeaders });
@@ -154,55 +159,6 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         email: "user@example.test", encrypted_refresh_token: "encrypted",
       });
 
-      const extraDate = "2026-11-22";
-      const actions = await vite.ssrLoadModule("/server/planner/dispatch.ts");
-      const storage = createCookieSessionStorage({
-        cookie: {
-          name: "cyberplanner_session", httpOnly: true, path: "/", sameSite: "lax",
-          secure: process.env.NODE_ENV === "production", secrets: [process.env.SESSION_SECRET],
-        },
-      });
-      const session = await storage.getSession();
-      session.set("email", process.env.GOOGLE_ALLOWED_EMAIL);
-      const cookie = await storage.commitSession(session);
-      async function submit(values, signedIn = true) {
-        const body = new FormData();
-        for (const [key, value] of Object.entries(values)) body.set(key, value);
-        return actions.handlePlannerAction(new Request("http://localhost/", {
-          method: "POST",
-          headers: signedIn ? { Cookie: cookie } : {},
-          body,
-        }));
-      }
-      assert.equal((await submit({ intent: "save_journal" }, false)).ok, false);
-      assert.deepEqual(await submit({ intent: "__proto__" }), {
-        ok: false, error: "Unknown planner action.",
-      });
-      assert.deepEqual(await submit({ intent: "save_journal", date: "bad", journal: "x" }), {
-        ok: false, error: "That planner date is invalid.",
-      });
-      assert.deepEqual(await submit({ intent: "toggle_builtin", date: extraDate, taskId: "bad", completed: "true" }), {
-        ok: false, error: "That planner task is invalid.",
-      });
-      assert.deepEqual(await submit({ intent: "search_gmail", query: " " }), {
-        ok: false, error: "Enter a Gmail search query.",
-      });
-      assert.deepEqual(await submit({ intent: "redeem_reward", rewardId: "missing" }), {
-        ok: false, error: "That reward is not available.",
-      });
-      assert.equal((await submit({ intent: "save_journal", date: extraDate, journal })).ok, true);
-      assert.equal((await journals.getJournal(extraDate)).content, journal);
-      for (const fields of [{}, { journal: new File(["entry"], "journal.txt") }]) {
-        assert.equal((await submit({ intent: "save_journal", date: extraDate, ...fields })).ok, false);
-        assert.equal((await journals.getJournal(extraDate)).content, journal);
-      }
-      assert.equal((await submit({
-        intent: "toggle_builtin", date: extraDate, taskId: new File(["1"], "task.txt"), completed: "true",
-      })).ok, false);
-      assert.equal((await submit({ intent: "save_journal", date: extraDate, journal: "" })).ok, true);
-      assert.equal((await journals.getJournal(extraDate)).content, "");
-      assert.ok(!(await journals.listJournalMarkers()).some((item) => item.day.toISOString().startsWith(extraDate)));
-
       const gamification = await vite.ssrLoadModule("/server/gamification/service.ts");
       const utils = await vite.ssrLoadModule("/shared/planner/utils.ts");
       const today = utils.dateKey(new Date());
@@ -244,7 +200,6 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.ok(streak.earnedAt);
       assert.equal(streak.awardedXp, 40);
 
-      const routine = { taskId: morning2 };
       assert.equal((await db.routineTask.findUniqueOrThrow({ where: { id: Number(morning2) } })).title, "Water");
       assert.ok(await routineId("morning", null, "Workout"));
       assert.equal(initial.questTemplates.length, 16);
@@ -253,36 +208,38 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const nextDate = "2026-10-02";
       await routines.setRoutineCompletion(firstDate, morning2, true);
       assert.equal((await points.getPointsSummary(firstDate)).todayPoints, 10);
-      assert.equal((await submit({ intent: "update_routine_kind", ...routine, kind: "main" })).ok, true);
+      assert.equal((await questRequest(`http://localhost/api/routines/${morning2}`, "PATCH", { kind: "main" })).status, 200);
       await routines.setRoutineCompletion(firstDate, morning2, false);
       await routines.setRoutineCompletion(firstDate, morning2, true);
       assert.equal((await points.getPointsSummary(firstDate)).todayPoints, 10);
       await routines.setRoutineCompletion(nextDate, morning2, true);
       assert.equal((await points.getPointsSummary(nextDate)).todayPoints, 50);
-      assert.equal((await submit({ intent: "toggle_builtin", date: "2026-11-23", taskId: saturday4, completed: "true" })).ok, false);
-      assert.equal((await submit({ intent: "toggle_builtin", date: "2026-11-28", taskId: saturday4, completed: "true" })).ok, true);
-      assert.equal((await submit({ intent: "update_routine_kind", ...routine, kind: "invalid" })).ok, false);
+      assert.equal((await questRequest(`http://localhost/api/routines/${saturday4}/completions/2026-11-23`, "PUT", { completed: true })).status, 404);
+      assert.equal((await questRequest(`http://localhost/api/routines/${saturday4}/completions/2026-11-28`, "PUT", { completed: true })).status, 200);
+      assert.equal((await questRequest(`http://localhost/api/routines/${morning2}`, "PATCH", { kind: "invalid" })).status, 400);
 
       const templateId = "cyber-certification";
-      assert.equal((await submit({ intent: "accept_template", templateId })).ok, true);
-      assert.equal((await submit({ intent: "accept_template", templateId })).ok, false);
+      const templateUrl = `http://localhost/api/quest-templates/${templateId}/accept`;
+      assert.equal((await questRequest(templateUrl, "POST")).status, 201);
+      assert.equal((await questRequest(templateUrl, "POST")).status, 409);
       const accepted = await db.quest.findUniqueOrThrow({ where: { templateId } });
       assert.equal(accepted.kind, "boss");
-      const update = { intent: "update_quest", id: accepted.id, title: "Edited boss", description: "Updated",
-        kind: "main", tier: "Legendary", points: "70" };
-      assert.equal((await submit(update)).ok, true);
+      const acceptedUrl = `http://localhost/api/quests/${accepted.id}`;
+      const update = { title: "Edited boss", description: "Updated",
+        kind: "main", tier: "Legendary", points: 70 };
+      assert.equal((await questRequest(acceptedUrl, "PATCH", update)).status, 200);
       await gamification.completeQuest(accepted.id);
       const award = await db.pointLedger.findFirstOrThrow({ where: { taskKey: `quest:${accepted.id}` } });
       assert.equal(award.amount, 70);
-      assert.equal((await submit({ ...update, kind: "side", points: "20" })).ok, true);
+      assert.equal((await questRequest(acceptedUrl, "PATCH", { ...update, kind: "side", points: 20 })).status, 200);
       assert.equal((await db.pointLedger.findFirstOrThrow({ where: { taskKey: `quest:${accepted.id}` } })).amount, 70);
       assert.equal((await gamification.getGamification(today)).quests.find((quest) => quest.id === accepted.id).kind, "side");
       await gamification.deleteQuest(accepted.id);
       const afterDelete = await gamification.getGamification(today);
       assert.ok(!afterDelete.quests.some((quest) => quest.id === accepted.id));
       assert.ok(afterDelete.acceptedTemplateIds.includes(templateId));
-      assert.equal((await submit({ intent: "accept_template", templateId })).ok, false);
-      assert.equal((await submit(update)).ok, false);
+      assert.equal((await questRequest(templateUrl, "POST")).status, 409);
+      assert.equal((await questRequest(acceptedUrl, "PATCH", update)).status, 404);
 
       const therapy = await vite.ssrLoadModule("/server/therapy/service.ts");
       const therapyDate = "2026-09-10";
@@ -295,34 +252,37 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
         title: "Therapy points milestone", description: "Earn points", category: "Health & Mind",
         tier: "Common", xp: 25, target: basePoints + 10, tracking: "points", taskId: null, reward: "",
       });
-      const therapyAction = {
-        intent: "toggle_physical_therapy", date: therapyDate, sessionId: "am",
-        exerciseId: "glute", completed: "true", points: "9999",
-      };
-      assert.equal((await submit({ ...therapyAction, exerciseId: "side" })).ok, false);
-      const results = await Promise.all([submit(therapyAction), submit(therapyAction)]);
-      assert.ok(results.every((result) => result.ok));
-      assert.ok(results.some((result) => result.earnedAchievements.includes("Therapy points milestone")));
+      const therapyCompletionUrl = `http://localhost/api/therapy/sessions/am/exercises/glute/completions/${therapyDate}`;
+      const invalidTherapyUrl = `http://localhost/api/therapy/sessions/am/exercises/side/completions/${therapyDate}`;
+      assert.equal((await questRequest(invalidTherapyUrl, "PUT", { completed: true })).status, 404);
+      const therapyResponses = await Promise.all([
+        questRequest(therapyCompletionUrl, "PUT", { completed: true }),
+        questRequest(therapyCompletionUrl, "PUT", { completed: true }),
+      ]);
+      assert.ok(therapyResponses.every((response) => response.status === 200));
+      const therapyResults = await Promise.all(therapyResponses.map((response) => response.json()));
+      assert.ok(therapyResults.some((result) => result.earnedAchievements.includes("Therapy points milestone")));
       let plan = await therapy.getTherapyPlan(therapyDate);
       assert.equal(plan.therapySessions[0].exercises.find((exercise) => exercise.id === "glute").completed, true);
       assert.equal(plan.earnedPoints, 10);
       assert.equal((await points.getPointsSummary(therapyDate)).todayPoints, 10);
       const therapyAchievement = await db.achievement.findFirstOrThrow({ where: { title: "Therapy points milestone" } });
       assert.equal(therapyAchievement.awardedXp, 25);
-      assert.equal((await submit({ ...therapyAction, completed: "false" })).ok, true);
+      assert.equal((await questRequest(therapyCompletionUrl, "PUT", { completed: false })).status, 200);
       plan = await therapy.getTherapyPlan(therapyDate);
       assert.equal(plan.therapySessions[0].exercises.find((exercise) => exercise.id === "glute").completed, false);
       assert.equal(plan.earnedPoints, 10);
-      assert.equal((await submit(therapyAction)).ok, true);
-      assert.equal((await submit({ ...therapyAction, sessionId: "mid" })).ok, true);
-      assert.equal((await submit({ ...therapyAction, date: nextTherapyDate })).ok, true);
+      assert.equal((await questRequest(therapyCompletionUrl, "PUT", { completed: true })).status, 200);
+      assert.equal((await questRequest(`http://localhost/api/therapy/sessions/mid/exercises/glute/completions/${therapyDate}`, "PUT", { completed: true })).status, 200);
+      assert.equal((await questRequest(`http://localhost/api/therapy/sessions/am/exercises/glute/completions/${nextTherapyDate}`, "PUT", { completed: true })).status, 200);
       assert.equal((await therapy.getTherapyPlan(therapyDate)).earnedPoints, 20);
       assert.equal((await therapy.getTherapyPlan(nextTherapyDate)).earnedPoints, 10);
       assert.equal(await db.pointLedger.count({ where: { taskKey: `pt:${therapyDate}:am:glute` } }), 1);
       assert.equal((await db.pointLedger.findFirstOrThrow({ where: { taskKey: `pt:${therapyDate}:am:glute` } })).amount, 10);
-      const { getPlannerPage, getPlannerCalendarPage } = await vite.ssrLoadModule("/server/planner/page.ts");
-      const loaded = await getPlannerPage(new Request(`http://localhost/api/planner?date=${therapyDate}`, {
-        headers: { Cookie: cookie },
+      const { getPlannerCalendarPage } = await vite.ssrLoadModule("/server/planner/page.ts");
+      const { getSessionPage } = await vite.ssrLoadModule("/server/session/page.ts");
+      const loaded = await getSessionPage(new Request(`http://localhost/api/session?date=${therapyDate}`, {
+        headers: { Cookie: apiCookie },
       }));
       assert.equal(loaded.selected, therapyDate);
       assert.ok(!("therapy" in loaded));
@@ -343,9 +303,6 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal((await calendarResponse.json()).todayPoints, 20);
 
       const questUrl = "http://localhost/api/quests";
-      const questRequest = (url, method, body) => app.request(url, {
-        method, headers: journalHeaders, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
       const crudDate = "2026-06-01";
       const crudUrl = `http://localhost/api/journals/${crudDate}`;
       const balanceBeforeJournal = (await points.getPointsSummary(crudDate)).balance;
@@ -414,7 +371,6 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.deepEqual((await (await questRequest(completionQuery, "GET")).json()).taskIds, [morning2]);
       assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: false })).status, 200);
       assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: true })).status, 200);
-      assert.equal((await submit({ intent: "toggle_builtin", date: resourceDate, taskId: morning2, completed: "true" })).ok, true);
       assert.equal(await db.pointLedger.count({ where: { taskKey: `builtin:${resourceDate}:${morning2}` } }), 1);
       assert.equal((await questRequest("http://localhost/api/routines/2147483647", "PATCH", { kind: "side" })).status, 404);
       assert.equal((await questRequest(`http://localhost/api/routines/${morning2}`, "PATCH", { kind: "side", points: 9999 })).status, 200);
@@ -424,9 +380,6 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.equal((await questRequest(therapyUrl, "PUT", { completed: true, points: 9999 })).status, 200);
       assert.equal((await questRequest(therapyUrl, "PUT", { completed: false })).status, 200);
       assert.equal((await questRequest(therapyUrl, "PUT", { completed: true })).status, 200);
-      assert.equal((await submit({
-        intent: "toggle_physical_therapy", date: resourceDate, sessionId: "am", exerciseId: "glute", completed: "true",
-      })).ok, true);
       assert.equal(await db.pointLedger.count({ where: { taskKey: `pt:${resourceDate}:am:glute` } }), 1);
       assert.equal((await db.pointLedger.findFirstOrThrow({ where: { taskKey: `pt:${resourceDate}:am:glute` } })).amount, 10);
       const resourcePlan = await (await questRequest(`http://localhost/api/therapy/sessions?date=${resourceDate}`, "GET")).json();
@@ -454,9 +407,6 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.ok((await taskResponse.json()).some((item) => item.source === "gmail" && item.externalId === "message"));
       const externalUrl = "http://localhost/api/external-tasks/gmail/message/completion";
       assert.equal((await questRequest(externalUrl, "PUT", { date, completed: true })).status, 200);
-      assert.equal((await submit({
-        intent: "toggle_external", source: "gmail", externalId: "message", date, completed: "true",
-      })).ok, true);
       assert.equal((await questRequest(externalUrl, "PUT", { date, completed: false })).status, 200);
       assert.equal((await questRequest(externalUrl, "PUT", { date, completed: true })).status, 200);
       assert.equal(await db.pointLedger.count({ where: { taskKey: "external:gmail:message" } }), 1);
@@ -479,20 +429,8 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const longJournalDate = "2026-07-01";
       assert.equal((await questRequest(`http://localhost/api/journals/${longJournalDate}`, "PUT", { content: longJournal })).status, 200);
       assert.equal((await journals.getJournal(longJournalDate)).content, longJournal);
-      assert.equal((await submit({ intent: "save_journal", date: longJournalDate, journal: longJournal })).ok, true);
-      assert.equal((await journals.getJournal(longJournalDate)).content, longJournal);
       assert.equal((await questRequest(`http://localhost/api/journals/${longJournalDate}`, "PUT", { content: 123 })).status, 500);
       assert.equal((await journals.getJournal(longJournalDate)).content, longJournal);
-
-      assert.equal((await submit({
-        intent: "create_quest", title: " Form quest ", description: "", kind: "side", tier: "Common", points: " 25 ",
-      })).ok, true);
-      assert.equal((await db.quest.findFirstOrThrow({ where: { title: "Form quest" } })).points, 25);
-      assert.equal((await submit({
-        intent: "save_achievement", id: "", title: "Form achievement", description: "Earn points",
-        category: "Daily & Routine", tier: "Common", xp: " 25 ", target: "3", tracking: "points", reward: "",
-      })).ok, true);
-      assert.equal((await db.achievement.findFirstOrThrow({ where: { title: "Form achievement" } })).xp, 25);
 
       const largeQuest = await questRequest(questUrl, "POST", {
         title: "Large quest", description: "", kind: "side", tier: "Common", points: 100001,

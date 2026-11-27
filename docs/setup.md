@@ -277,3 +277,9 @@ all five tests passed. Other unexpected errors still need investigation.
 The separate `npm run test:book-data` suite instead expects a disposable
 database with migrations already applied. Do not confuse that prerequisite
 with `npm run test:database`, which resets and migrates the database itself.
+
+The experimental Python backend can reuse this disposable database
+sequentially. Follow [the isolated Python journal setup](../cyberServer/README.md#next-step-isolated-journal-crud)
+for a guarded launcher that supplies `TEST_DATABASE_URL` to Python without
+changing the app connection. Stop Python before `npm run test:database`,
+because that command deletes the learning data and recreates the schema.

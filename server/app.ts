@@ -3,26 +3,24 @@ import { csrf } from "hono/csrf";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { redirect } from "react-router";
 import { beginGoogleAuthorization, completeGoogleAuthorization, endSession } from "./auth/service";
-import { getPlannerPage } from "./planner/page";
 import { googleRoutes } from "./google/routes";
 import { bookRoutes } from "./books/routes";
 import { gamificationRoutes } from "./gamification/routes";
 import { pointsRoutes } from "./points/routes";
-import { noStore, requireSignIn } from "./http";
 import { journalRoutes } from "./journals/routes";
 import { routineRoutes } from "./routines/routes";
 import { therapyRoutes } from "./therapy/routes";
 import { externalTaskRoutes } from "./external-tasks/routes";
 import { plannerRoutes } from "./planner/routes";
+import { sessionRoutes } from "./session/routes";
 
 export const app = new Hono();
 
 app.use("/api/*", csrf());
 app.use("/auth/*", csrf());
 
-// Resource routes below are separate from /api/planner, but use the same data
-// and services. `noStore` prevents caching; `requireSignIn` checks the session.
-// The /api/* CSRF middleware above also applies to requests that change data.
+// Resource routes share the same data and services. The /api/* CSRF middleware
+// above also applies to requests that change data.
 
 app.route("/api/journals", journalRoutes);
 app.route("/api/routines", routineRoutes);
@@ -33,11 +31,7 @@ app.route("/api", gamificationRoutes);
 app.route("/api", pointsRoutes);
 app.route("/api", googleRoutes);
 app.route("/api", plannerRoutes);
-
-// Loads planner data for the current request.
-app.get("/api/planner", noStore, async (context) => {
-  return context.json(await getPlannerPage(context.req.raw));
-});
+app.route("/api", sessionRoutes);
 
 // Starts the configured Google OAuth flow.
 app.get("/auth/google", () => beginGoogleAuthorization());

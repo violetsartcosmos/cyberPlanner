@@ -39,7 +39,7 @@ test("API routes preserve authentication and reject cross-origin submissions", a
   });
   try {
     const { app } = await vite.ssrLoadModule("/server/app.ts");
-    const page = await app.request("http://localhost/api/planner?authError=denied");
+    const page = await app.request("http://localhost/api/session?authError=denied");
     assert.equal(page.status, 200);
     assert.equal(page.headers.get("cache-control"), "no-store");
     assert.deepEqual(await page.json(), {
@@ -108,7 +108,7 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     const sessionSecret = process.env.SESSION_SECRET;
     delete process.env.SESSION_SECRET;
     try {
-      const shell = await app.request("http://localhost/api/planner?authError=denied");
+      const shell = await app.request("http://localhost/api/session?authError=denied");
       assert.deepEqual(await shell.json(), {
         authenticated: false, missingConfiguration: ["SESSION_SECRET"], authError: "denied",
       });
@@ -369,6 +369,11 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.match(callback.headers.get("location"), /^\/\?authError=/);
     assert.equal((await app.request("http://localhost/api/not-found")).status, 404);
     assert.equal((await app.request("http://localhost/api/books/not-found")).status, 404);
+    assert.equal((await app.request("http://localhost/api/planner")).status, 404);
+    assert.equal((await app.request("http://localhost/api/planner", {
+      method: "POST",
+      headers: { Origin: "http://localhost" },
+    })).status, 404);
 
     const api = serve({ fetch: app.fetch, port: 0 });
     await once(api, "listening");
@@ -389,7 +394,7 @@ test("API routes preserve authentication and reject cross-origin submissions", a
       const html = await fetch(origin);
       assert.equal(html.status, 200);
       assert.match(await html.text(), /CyberPlanner/);
-      const proxied = await fetch(`${origin}/api/planner`);
+      const proxied = await fetch(`${origin}/api/session`);
       assert.equal((await proxied.json()).authenticated, false);
       const login = await fetch(`${origin}/auth/google`, { redirect: "manual" });
       assert.equal(login.status, 302);

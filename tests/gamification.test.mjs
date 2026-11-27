@@ -7,7 +7,7 @@ import { refreshAchievements } from "../server/gamification/service.ts";
 import { Achievements } from "../src/features/planner/components/achievements.tsx";
 import { QuestLog } from "../src/features/planner/components/quest-log.tsx";
 import { plannerCalendarLoader } from "../src/features/planner/services/planner-calendar-route.ts";
-import { plannerLoader } from "../src/features/planner/services/planner-route.ts";
+import { sessionLoader } from "../src/features/planner/services/session-route.ts";
 import { questLogLoader } from "../src/features/planner/services/quest-log-route.ts";
 import { profileLoader } from "../src/features/planner/services/profile-route.ts";
 import { questBoardLoader } from "../src/features/planner/services/quest-actions.ts";
@@ -31,24 +31,35 @@ function fixture(achievements, days = [], points = 0) {
   return { client, state };
 }
 
-test("the planner shell loader preserves the selected date without task-read flags", async (t) => {
+test("the session loader preserves the selected date without task-read flags", async (t) => {
   let url;
   t.mock.method(globalThis, "fetch", async (input) => {
     url = input;
     return Response.json({ authenticated: false, missingConfiguration: [], authError: "" });
   });
-  await plannerLoader({ request: new Request("http://localhost/profile?date=2026-11-21") });
-  assert.equal(url, "/api/planner?date=2026-11-21");
+  await sessionLoader({ request: new Request("http://localhost/profile?date=2026-11-21") });
+  assert.equal(url, "/api/session?date=2026-11-21");
 });
 
-test("the planner shell loader accepts the reduced shared response", async (t) => {
+test("the session loader accepts the reduced app-shell response", async (t) => {
   const page = {
     authenticated: true, email: "planner@example.test", today: "2026-11-21",
     selected: "2026-11-21", balance: 12,
     newlyEarned: [], totalXp: 0,
   };
   t.mock.method(globalThis, "fetch", async () => Response.json(page));
-  assert.deepEqual(await plannerLoader({ request: new Request("http://localhost/physical-therapy") }), page);
+  assert.deepEqual(await sessionLoader({ request: new Request("http://localhost/physical-therapy") }), page);
+});
+
+test("the session loader forwards cancellation and reports API errors", async (t) => {
+  let fetchOptions;
+  t.mock.method(globalThis, "fetch", async (_input, options) => {
+    fetchOptions = options;
+    return new Response(null, { status: 503 });
+  });
+  const request = new Request("http://localhost/profile?date=2026-11-21");
+  await assert.rejects(sessionLoader({ request }), /Could not load the session \(503\)/);
+  assert.equal(fetchOptions.signal, request.signal);
 });
 
 test("the quest-board loader reads only quests", async (t) => {

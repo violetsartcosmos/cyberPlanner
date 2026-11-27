@@ -32,7 +32,8 @@ In development, Vite serves the browser app and proxies `/api` and `/auth` to th
 | [`src/features/`](../src/features/) | Domain-specific UI, hooks, and services organized by feature. |
 | [`src/assets/`](../src/assets/) | Global styles and browser images. |
 | [`server/index.ts`](../server/index.ts), [`server/app.ts`](../server/app.ts) | HTTP entry point, middleware installation, router mounting, authentication, and static serving. |
-| [`server/planner/`](../server/planner/) | Combined page assembly and thin legacy action dispatch. |
+| [`server/planner/`](../server/planner/) | Dashboard/calendar read summary. |
+| [`server/session/`](../server/session/) | Shared app-shell and sign-in state. |
 | [`server/books/`](../server/books/) | Book library, metadata, bookmarks, saved references, and book API routes. |
 | [`server/gamification/`](../server/gamification/) | Quest and achievement operations and routes. |
 | [`server/points/`](../server/points/) | Points ledger, reward redemption, and points/reward routes. |
@@ -49,27 +50,27 @@ The client uses browser APIs; server modules run in Node.js. The Vite configurat
 
 ## Typical request flow
 
-1. React Router's shared loader requests `/api/planner` for resources that
-   have not yet moved to page-owned loaders.
-2. The Hono route calls `getPlannerPage`, which checks configuration and the signed-in session.
-3. Planner, points, and gamification services assemble the response from PostgreSQL.
+1. React Router's root loader requests `/api/session` for sign-in/configuration
+   state and the small set of values shared by the app shell.
+2. The Hono route calls `getSessionPage`, which checks configuration and the
+   signed-in session.
+3. Points and gamification services assemble the shell summary from PostgreSQL.
 4. Feature-owned React Router actions submit form writes to resource endpoints
    and return numeric HTTP statuses. Forms use actual HTTP methods and URL
-   parameters rather than hidden operation intents. The obsolete
-   `/api/planner` write adapter remains temporarily for migration cleanup.
+   parameters rather than hidden operation intents.
 
 The therapy page reads sessions through `/api/therapy/sessions?date=...` in its
 own loader. The journal page reads saved dates and selected entry content
 through its own loader, while dashboard and calendar routes read non-empty
-journal marker dates separately. `/api/planner` no longer returns therapy or
-journal data. The shared planner shell still uses the combined loader for
-remaining resources. See
+journal marker dates separately. The removed `/api/planner` aggregate no longer
+returns feature resources; the root shell uses `/api/session`, while dashboard
+and calendar share a purpose-built summary. See
 the [refactor plan](planner-refactor-plan.md) for the CRUD learning slice and
 remaining migrations.
 
-Journal, book and calendar resource loaders support the already-migrated
-consumers; they do not replace the combined planner shell loader. Journals have
-an explicit new-entry creation state. Existing entries autosave by date ID;
+Journal, book and calendar resource loaders support their page-owned
+consumers. Journals have an explicit new-entry creation state. Existing entries
+autosave by date ID;
 deletion uses a separate fetcher. Journal writes have no retry controls or
 session-storage draft recovery. Book metadata updates
 retain local cache updates and do not reread obsolete paths during rename.
