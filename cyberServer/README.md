@@ -281,6 +281,8 @@ and resource parity are implemented and tested.
 routine completions. The router is not mounted, so this work does not change
 the running API. Implement one handler at a time using the Node routines code
 and `shared/planner/routines.ts` as the contract.
+`tests/test_routines.py` is the isolated starting point for routine definition
+ordering and kind updates; it mounts the router only in its test app.
 The existing `/api/v1/tasks` routes are a separate experiment, not a parity
 implementation.
 
