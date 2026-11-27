@@ -106,7 +106,7 @@ These endpoints require a signed-in session. Dates use `YYYY-MM-DD`.
 | `GET /api/routines` | Returns routine definitions and weekday groups. |
 | `GET /api/routines/completions?date=...` | Returns the date and checked task IDs for that day. |
 | `PATCH /api/routines/{id}` | Changes a routine's kind with `{"kind":"main"}`; its point value is set by the server. |
-| `PUT /api/routines/{id}/completions/{date}` | Sets a task's check state with `{"completed":true}`. Returns the day's checks and newly earned achievements. |
+| `PUT /api/routines/{id}/completions/{date}` | Sets a task's check state with `{"completed":true}`. Returns the day's checked task IDs as `checkedTaskIds` and newly earned achievements. |
 | `GET /api/therapy/sessions?date=...` | Returns the therapy plan and completion states for that day. |
 | `PUT /api/therapy/sessions/{sessionId}/exercises/{exerciseId}/completions/{date}` | Sets an exercise's check state with `{"completed":true}` and returns newly earned achievements. |
 

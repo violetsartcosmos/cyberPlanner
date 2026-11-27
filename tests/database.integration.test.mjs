@@ -370,9 +370,15 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       const routineCompletionUrl = `http://localhost/api/routines/${morning2}/completions/${resourceDate}`;
       const completionQuery = `http://localhost/api/routines/completions?date=${resourceDate}`;
       assert.deepEqual((await (await questRequest(completionQuery, "GET")).json()).taskIds, []);
-      assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: true, points: 9999 })).status, 200);
+      const routineCompleted = await questRequest(routineCompletionUrl, "PUT", { completed: true, points: 9999 });
+      assert.equal(routineCompleted.status, 200);
+      const routineCompletedBody = await routineCompleted.json();
+      assert.deepEqual(routineCompletedBody.checkedTaskIds, [morning2]);
+      assert.ok(!("checks" in routineCompletedBody));
       assert.deepEqual((await (await questRequest(completionQuery, "GET")).json()).taskIds, [morning2]);
-      assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: false })).status, 200);
+      const routineUnchecked = await questRequest(routineCompletionUrl, "PUT", { completed: false });
+      assert.equal(routineUnchecked.status, 200);
+      assert.deepEqual((await routineUnchecked.json()).checkedTaskIds, []);
       assert.equal((await questRequest(routineCompletionUrl, "PUT", { completed: true })).status, 200);
       assert.equal(await db.pointLedger.count({ where: { taskKey: `builtin:${resourceDate}:${morning2}` } }), 1);
       assert.equal((await questRequest("http://localhost/api/routines/2147483647", "PATCH", { kind: "side" })).status, 404);

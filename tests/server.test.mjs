@@ -7,6 +7,58 @@ import { createCookieSessionStorage } from "react-router";
 import { createServer } from "vite";
 import { Common } from "googleapis";
 
+test("routine completion returns checked task IDs", async () => {
+  const checkedTaskIds = new Set([2]);
+  const client = {
+    routineTaskCompletion: {
+      upsert: async () => { checkedTaskIds.add(5); },
+      deleteMany: async () => { checkedTaskIds.delete(5); },
+      findMany: async () => [...checkedTaskIds].sort((first, second) => first - second)
+        .map((taskId) => ({ taskId })),
+    },
+  };
+  globalThis.routineCompletionTest = { client };
+  const vite = await createServer({
+    configFile: false,
+    appType: "custom",
+    plugins: [{
+      name: "isolated-routine-completion",
+      transform(_code, id) {
+        const path = id.replaceAll("\\", "/");
+        if (path.endsWith("/server/db/client.ts")) {
+          return `
+            export const databaseDate = (date) => date;
+            export const getDatabase = () => globalThis.routineCompletionTest.client;
+            export const serializableTransaction = (work) => work(globalThis.routineCompletionTest.client);
+          `;
+        }
+        if (path.endsWith("/server/routines/definitions.ts")) {
+          return `export const findRoutine = async () => ({ id: 5, points: 10 });`;
+        }
+        if (path.endsWith("/server/points/service.ts")) {
+          return `export const awardTaskPoints = async () => {};`;
+        }
+        if (path.endsWith("/server/gamification/service.ts")) {
+          return `export const refreshAchievements = async () => ["Milestone"];`;
+        }
+      },
+    }],
+    server: { middlewareMode: true, hmr: false, ws: false },
+  });
+  try {
+    const { setRoutineCompletion } = await vite.ssrLoadModule("/server/routines/service.ts");
+    assert.deepEqual(await setRoutineCompletion("2026-11-23", "5", true), {
+      checkedTaskIds: ["2", "5"], earnedAchievements: ["Milestone"],
+    });
+    assert.deepEqual(await setRoutineCompletion("2026-11-23", "5", false), {
+      checkedTaskIds: ["2"], earnedAchievements: ["Milestone"],
+    });
+  } finally {
+    await vite.close();
+    delete globalThis.routineCompletionTest;
+  }
+});
+
 test("API routes preserve authentication and reject cross-origin submissions", async (t) => {
   Object.assign(process.env, {
     NODE_ENV: "test",

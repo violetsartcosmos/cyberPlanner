@@ -19,6 +19,8 @@ learning and validating the Python code.
 | `app/main.py` | Creates the FastAPI app, connects the routers, and exposes a process health check. | `server/app.ts` and `server/index.ts` |
 | `app/database.py` | Loads configuration and opens/closes a PostgreSQL connection for a request. | `server/db/client.ts`, which uses Prisma rather than psycopg |
 | `app/journals.py` | Provides experimental journal CRUD and marker reads. | `server/journals/routes.ts` and `server/journals/service.ts` |
+| `app/routines.py` | Unmounted starting point for routine definitions and weekday groups. | `server/routines/routes.ts`, `server/routines/definitions.ts`, and `server/routines/service.ts` |
+| `app/therapy.py` | Unmounted starting point for reading therapy sessions. | `server/therapy/routes.ts` and `server/therapy/service.ts` |
 | `app/tasks.py` | Lists built-in routines by numeric ID and records a check and its point award. | `server/routines/definitions.ts`, `server/routines/service.ts`, and `server/points/service.ts` |
 | `app/points.py` | Reads the ledger and allows redemption of a predefined reward. | `server/points/service.ts`, `server/points/routes.ts`, and `shared/planner/definitions.ts` |
 | `app/__init__.py` | Marks `app` as a Python package. | No direct Node equivalent |
@@ -271,3 +273,28 @@ Do not use the test-database launcher for this command: the test needs the
 original `DATABASE_URL` as well as `TEST_DATABASE_URL` to compare them.
 Do not connect React to Python until session authentication, same-origin CSRF,
 and resource parity are implemented and tested.
+
+## Routines starting point
+
+`app/routines.py` contains work-in-progress `GET /api/routines` and
+`PATCH /api/routines/{id}` handlers, plus skeletons for reading and updating
+routine completions. The router is not mounted, so this work does not change
+the running API. Implement one handler at a time using the Node routines code
+and `shared/planner/routines.ts` as the contract.
+The existing `/api/v1/tasks` routes are a separate experiment, not a parity
+implementation.
+
+Check response fields and ordering, stable IDs, weekday groups, and
+server-assigned points with focused tests. Check invalid IDs and kinds, missing
+routines, and committed updates as well. Completion updates also depend on
+one-time point awards and achievement refresh; they are not ready to switch
+until those effects match Node. Mount the router only after the handlers are
+ready; keep React on Node and use the disposable database for persistence tests.
+
+## Therapy sessions starting point
+
+`app/therapy.py` contains an unmounted skeleton for `GET /api/therapy/sessions`.
+Use the Node therapy route and service as the contract, including exercise
+ordering, completion states, and earned points. This slice reads existing
+assignments; it does not add therapy definition editing. Verify it with
+focused tests before mounting the router.

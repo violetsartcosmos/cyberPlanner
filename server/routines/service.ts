@@ -10,10 +10,10 @@ export async function listRoutineCompletions() {
 }
 
 export async function getRoutineCompletions(date: string) {
-  const checks = await getDatabase().routineTaskCompletion.findMany({
+  const completions = await getDatabase().routineTaskCompletion.findMany({
     where: { day: databaseDate(date) }, orderBy: { taskId: "asc" }, select: { taskId: true },
   });
-  return checks.map((check) => String(check.taskId));
+  return completions.map((completion) => String(completion.taskId));
 }
 
 export async function setRoutineCompletion(date: string, taskId: string, completed: boolean) {
@@ -30,14 +30,14 @@ export async function setRoutineCompletion(date: string, taskId: string, complet
     } else {
       await client.routineTaskCompletion.deleteMany({ where: { day, taskId: routine.id } });
     }
-    const checks = (await client.routineTaskCompletion.findMany({
+    const checkedTaskIds = (await client.routineTaskCompletion.findMany({
       where: { day }, orderBy: { taskId: "asc" }, select: { taskId: true },
-    })).map((check) => String(check.taskId));
+    })).map((completion) => String(completion.taskId));
     if (completed) {
       await awardTaskPoints(client, `builtin:${date}:${taskId}`, date, routine.points);
     }
     const earnedAchievements = await refreshAchievements(client, dateKey(new Date()));
-    return { checks, earnedAchievements };
+    return { checkedTaskIds, earnedAchievements };
   });
 }
 

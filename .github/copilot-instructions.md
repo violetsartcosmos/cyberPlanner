@@ -20,10 +20,12 @@
   operation by request.method; do not add shared submission wrappers.
 - Return HTTP statuses from new resource form actions rather than custom
   ok booleans. Keep authentication and business-rule validation.
-- Use purpose-first JSDoc comments for function definitions added or changed.
+- Use purpose-first JSDoc comments for TypeScript function definitions added or changed.
   Explain what the function does in plain language, then document each input
   with `@param` and its output with `@returns`. Do not repeat TypeScript types.
-- For type and router definitions, use a short JSDoc purpose description;
+- For Python, use `#` comments above functions rather than docstrings inside
+  them. Describe the purpose, inputs, and output using `@param` and `@returns`.
+- For type and router definitions, use a short purpose description;
   do not add parameter or return tags where they do not apply.
 - For HTTP handlers, describe the operation, request inputs, and response
   output. Keep storage details and failure cases out of the purpose summary.
