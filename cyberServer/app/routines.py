@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel, StrictBool
 from app.tasks import parse_id
 from app.database import get_connection
-
+from app.tasks import WEEKDAYS
 
 # Describe the requested routine kind.
 class RoutineKindUpdate(BaseModel):
@@ -33,8 +33,29 @@ router = APIRouter(prefix="/api/routines", tags=["routines"])
 def list_routines(
     connection: psycopg.Connection = Depends(get_connection),
 ) -> dict[str, object]:
-    rows = connection.execute("SELECT * FROM routines").fetchall()
-    return {"routines": [dict(row) for row in rows], "routineGroups": []}
+    routines = connection.execute("""
+    SELECT routine.id, routine.list, routine.title, routine.kind, routine.points,
+        (
+            SELECT routine_group.weekday
+            FROM routine_task_groups AS assignment
+            JOIN routine_groups AS routine_group
+                ON routine_group.id = assignment.group_id
+            WHERE assignment.task_id = routine.id
+            ORDER BY assignment.group_id
+            LIMIT 1
+        ) AS weekday
+    FROM routine_tasks AS routine
+    """).fetchall()
+    weekday_positions = {weekday: i for i, weekday in enumerate(WEEKDAYS)}
+    routines.sort(key=lambda routine: (
+        routine["list"],       # alphabetical: daily, morning, night
+        -1 if routine["weekday"] is None else weekday_positions[routine["weekday"]],      # -1 for None; otherwise WEEKDAYS.index(...)
+        routine["id"],
+    ))
+    groups = connection.execute("SELECT id, weekday, title, message FROM routine_groups ORDER BY weekday, id").fetchall()
+    groups.sort(key=lambda group: weekday_positions[group["weekday"]])
+    # Return the routines and routine groups as dictionaries.
+    return {"routines": [dict(row) for row in routines], "routineGroups": [dict(row) for row in groups]}
 
 
 # Change a routine's kind and its server-owned point value.
@@ -56,9 +77,12 @@ def update_routine_kind(
     if body.kind not in kind_to_points:
         raise HTTPException(status_code=400, detail="Invalid kind")
     points = kind_to_points[body.kind]
+    id = parse_id(routine_id)
+    if id is None:
+        raise HTTPException(status_code=400, detail="Invalid routine ID")
     result = connection.execute(
-        "UPDATE routines SET kind = %s, points = %s WHERE id = %s RETURNING id, kind",
-        (body.kind, points, routine_id),
+        "UPDATE routine_tasks SET kind = %s, points = %s WHERE id = %s RETURNING id, kind",
+        (body.kind, points, id),
     ).fetchone()
     if not result:
         raise HTTPException(status_code=404, detail="Routine not found")
