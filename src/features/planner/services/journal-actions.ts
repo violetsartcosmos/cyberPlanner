@@ -27,20 +27,14 @@ export type JournalMarkerResult = {
 export async function journalLoader({ request }: LoaderFunctionArgs): Promise<JournalReadResult> {
   const requestedDate = new URL(request.url).searchParams.get("date");
   const selected = requestedDate && isValidDateKey(requestedDate) ? requestedDate : dateKey(new Date());
-  const [listResponse, entryResponse] = await Promise.all([
-    fetch("/api/journals", { signal: request.signal }),
-    fetch(`/api/journals/${encodeURIComponent(selected)}`, { signal: request.signal }),
-  ]);
-  if (!listResponse.ok) return { status: listResponse.status, error: (await listResponse.json() as { error: string }).error };
-  if (!entryResponse.ok && entryResponse.status !== 404) {
-    return { status: entryResponse.status, error: (await entryResponse.json() as { error: string }).error };
-  }
-  const dates = await listResponse.json() as { date: string }[];
-  const entry = entryResponse.status === 404 ? null : await entryResponse.json() as { content: string };
+  const response = await fetch("/api/journals", { signal: request.signal });
+  if (!response.ok) return { status: response.status, error: (await response.json() as { error: string }).error };
+  const journals = await response.json() as { date: string; content: string }[];
+  const entry = journals.find((journal) => journal.date === selected);
   return {
     status: 200,
-    dates: dates.map((item) => item.date),
-    entry: { date: selected, content: entry?.content ?? "", exists: entry !== null },
+    dates: journals.map((journal) => journal.date),
+    entry: { date: selected, content: entry?.content ?? "", exists: entry !== undefined },
   };
 }
 

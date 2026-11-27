@@ -7,9 +7,10 @@ continues to use Node until the Python API has enough feature parity to switch.
 
 ## What is duplicated so far?
 
-Nothing has been removed from or switched away from the Node server. The Python
-endpoints use different URLs and response shapes, and the current React app
-still calls the Node API. Both servers can access the same tables, so
+Nothing has been removed from or switched away from the Node server. Python's
+journal endpoints use the same URLs as Node; its task and point endpoints
+use different URLs and response shapes. The React app still calls Node.
+Both servers can access the same tables, so
 Python writes can change what Node sees. Use a disposable database copy while
 learning and validating the Python code.
 
@@ -17,6 +18,7 @@ learning and validating the Python code.
 | --- | --- | --- |
 | `app/main.py` | Creates the FastAPI app, connects the routers, and exposes a process health check. | `server/app.ts` and `server/index.ts` |
 | `app/database.py` | Loads configuration and opens/closes a PostgreSQL connection for a request. | `server/db/client.ts`, which uses Prisma rather than psycopg |
+| `app/journals.py` | Provides experimental journal CRUD and marker reads. | `server/journals/routes.ts` and `server/journals/service.ts` |
 | `app/tasks.py` | Lists built-in routines by numeric ID and records a check and its point award. | `server/routines/definitions.ts`, `server/routines/service.ts`, and `server/points/service.ts` |
 | `app/points.py` | Reads the ledger and allows redemption of a predefined reward. | `server/points/service.ts`, `server/points/routes.ts`, and `shared/planner/definitions.ts` |
 | `app/__init__.py` | Marks `app` as a Python package. | No direct Node equivalent |
@@ -60,6 +62,8 @@ for the child command and leaves `.env` and the running Node app unchanged.
 Available first-slice endpoints:
 
 - `GET /health`
+- `GET /api/journals` and `GET /api/journals/markers`
+- `POST /api/journals`, `GET`/`PUT`/`DELETE /api/journals/{date}`
 - `GET /api/v1/tasks?date=YYYY-MM-DD`
 - `PUT /api/v1/tasks/{task_id}` with `{"date":"YYYY-MM-DD","completed":true}`
 - `GET /api/v1/points?date=YYYY-MM-DD`
@@ -92,17 +96,17 @@ with_test_database 'cyberServer\.venv\Scripts\python.exe' \
 That existing integration check writes routine completions on `2098-01-06`
 and leaves them behind. It requires unused fixture data; a rerun is not
 automatically idempotent. Do not reset the whole database to repeat a journal
-exercise. Future journal persistence tests must own and clean up only their
-fixture dates.
+exercise. The journal persistence test below owns and cleans up its fixtures.
 
-## Next step: isolated journal CRUD
+## Isolated journal CRUD
 
 The resource refactor implementation is in place; milestone 5 still has
 verification work tracked in the
 [refactor plan](../docs/planner-refactor-plan.md#6a-refactor-exit-and-python-entry).
-The first Python learning slice can begin independently. **Journal endpoints
-are not implemented yet.** The commands below prepare the existing Python
-service and test schema, not a completed journal API.
+The experimental journal endpoints now implement the Node CRUD response shapes
+against the existing schema, but do not provide Node's authentication or CSRF
+protection. They are for fictional data on loopback only; React remains on Node.
+The setup and verification below use the disposable database.
 
 ### 1. Reuse the Node disposable database
 
@@ -223,55 +227,47 @@ learning entries across Node test runs, use a separate
 
 ### 4. Implement and verify one journal operation at a time
 
-Next implementation order, against fictional fixture dates:
+The operations below can be exercised against fictional fixture dates:
 
 1. **Create:** `POST /api/journals` with `{"date":"2099-01-01","content":"Learning CRUD"}`.
    Expect `201`, and `409` when the same date is submitted again.
 2. **Read:** `GET /api/journals/2099-01-01` returns that date and exact content.
-   Add collection dates and missing-entry `404`; verify persistence through
+   Check collection entries and missing-entry `404`; verify persistence through
    an independent SQL connection.
 3. **Update:** `PUT /api/journals/2099-01-01` replaces content and retains the
    row ID. Empty content is valid; a missing date is created by the upsert.
 4. **Delete:** `DELETE /api/journals/2099-01-01` returns bodyless `204`, then
    `404` when repeated. Points and routine/therapy completions remain unchanged.
-5. **Markers:** `GET /api/journals/markers` excludes empty or whitespace-only
-   content; collection dates include those entries. Both are newest first.
+5. **Markers:** `GET /api/journals/markers` excludes empty content, but
+   includes whitespace-only content. The collection includes empty entries.
+   Both lists are newest first.
 
 Use the [Node journal operations](../server/journals/service.ts) and
 [journal API reference](../docs/api.md#journals) as the comparison, not the
-experimental `/api/v1/tasks` response format. Keep Node's `{error: ...}` bodies
-and numeric HTTP statuses. Use explicit SQL commits/transactions; closing a
-psycopg connection without committing is not a successful persistent write.
+experimental `/api/v1/tasks` response format. Python uses `{"detail": ...}`
+for journal errors and `422` with a validation detail array for invalid bodies.
+Node uses `{"error": ...}` for journal and authentication errors, `400` for
+malformed JSON or a missing date, and `422` for invalid content. Python does
+not yet authenticate.
+Use explicit SQL commits/transactions; closing a psycopg connection without
+committing is not a successful persistent write. Python reports a missing or
+unavailable database as `503`; Node reports database failures as `500`.
+Unexpected database failures are logged and return a generic `500` response.
+Both APIs accept real calendar dates in `YYYY-MM-DD` format.
 
-Add fake-connection API tests and a separate journal database test using
-`TEST_DATABASE_URL`, with fixture-date ownership and cleanup. Do not connect
-React to Python until session authentication, same-origin CSRF, and resource
-parity are implemented and tested.
+Journal response annotations describe string-valued JSON objects. The exact
+`date` and `content` fields are documented in the Node journal API reference.
 
-### 5. Verify the learning slice in Chrome
+Fake-connection tests run with the normal Python suite. The separate journal
+persistence test reads both URLs from the environment or `.env`, validates that
+the test database is distinct and ends in `_test`, refuses occupied fixture
+dates, and removes only rows it created. Run it with the Python API stopped:
 
-Once journal routes have been implemented and the guarded Python API is
-running, open [FastAPI's interactive docs](http://127.0.0.1:8000/docs) in Chrome.
-This lets you exercise Python directly without changing the React proxy.
-Until then, only the existing task/point routes and health route are available.
+```bash
+'cyberServer/.venv/Scripts/python.exe' -m pytest 'cyberServer/tests/journal_database_integration.py'
+```
 
-1. Expand `POST /api/journals`, select **Try it out**, enter the fictional
-   create body above, and **Execute**. Verify `201`, then execute it again and
-   verify `409` without replacing the original content.
-2. Execute the dated GET and collection GET. Verify the exact saved content,
-   date format, and newest-first browser dates.
-3. Execute the dated PUT with changed content, then reread it. Repeat with
-   empty content and check that collection dates include the entry while
-   markers exclude it. Also test whitespace-only marker behavior.
-4. Confirm the fixture date before executing DELETE. Verify `204` with no
-   response body; subsequent GET and DELETE must be `404`.
-5. Use the independent SQL persistence check and focused tests as well.
-   Swagger displaying a successful response is not enough to prove a commit.
-   Never execute these learning writes against the Node app database.
-
-Chrome verification of the current React app remains a separate refactor
-gate. The shared dashboard currently records `404` for `/api/session` and
-`/api/planner/calendar`, so it is not a verified live instance of the new
-routes. Ensure the Node API on the Vite proxy target is running the matching
-source/build before rechecking it. Do not change the Google account, OAuth
-configuration, or Python routing to work around that mismatch.
+Do not use the test-database launcher for this command: the test needs the
+original `DATABASE_URL` as well as `TEST_DATABASE_URL` to compare them.
+Do not connect React to Python until session authentication, same-origin CSRF,
+and resource parity are implemented and tested.

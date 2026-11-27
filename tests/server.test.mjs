@@ -22,8 +22,18 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     configFile: false,
     appType: "custom",
     plugins: [{
-      name: "isolated-google-clients",
+      name: "isolated-resource-services",
       transform(_code, id) {
+        if (id.replaceAll("\\", "/").endsWith("/server/journals/service.ts")) {
+          return `
+            export const getJournal = (...args) => globalThis.journalRouteTest.getJournal(...args);
+            export const createJournal = (...args) => globalThis.journalRouteTest.createJournal(...args);
+            export const saveJournal = (...args) => globalThis.journalRouteTest.saveJournal(...args);
+            export const deleteJournal = (...args) => globalThis.journalRouteTest.deleteJournal(...args);
+            export const listJournals = (...args) => globalThis.journalRouteTest.listJournals(...args);
+            export const listJournalDatesWithContent = (...args) => globalThis.journalRouteTest.listJournalDatesWithContent(...args);
+          `;
+        }
         if (!id.replaceAll("\\", "/").endsWith("/server/google/service.ts")) return;
         return `
           export { decryptRefreshToken } from "../auth/service";
@@ -63,7 +73,9 @@ test("API routes preserve authentication and reject cross-origin submissions", a
     assert.equal((await app.request("http://localhost/api/books/details?path=test.epub")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/progress?path=test.epub")).status, 401);
     assert.equal((await app.request("http://localhost/api/books/progress", { method: "PUT", headers: { Origin: "http://localhost" } })).status, 401);
-    assert.equal((await app.request("http://localhost/api/journals/2026-11-21")).status, 401);
+    const anonymousJournal = await app.request("http://localhost/api/journals/2026-11-21");
+    assert.equal(anonymousJournal.status, 401);
+    assert.deepEqual(await anonymousJournal.json(), { error: "Sign in with your configured Google account first." });
     for (const [method, path] of [
       ["GET", "/api/journals"],
       ["GET", "/api/journals/markers"],
@@ -231,28 +243,114 @@ test("API routes preserve authentication and reject cross-origin submissions", a
       assert.deepEqual(await invalidBookmark.json(), { error: "Invalid bookmark." });
     }
     assert.equal((await app.request("http://localhost/api/journals/2026-02-30", { headers: journalHeaders })).status, 400);
-    assert.equal((await app.request("http://localhost/api/journals/2026-11-21", {
+    const rejectedJournal = await app.request("http://localhost/api/journals/2026-11-21", {
       method: "PUT", headers: { ...journalHeaders, Origin: "http://attacker.example", "Content-Type": "text/plain" },
       body: JSON.stringify({ content: "test" }),
-    })).status, 403);
+    });
+    assert.equal(rejectedJournal.status, 403);
+    assert.deepEqual(await rejectedJournal.json(), { error: "Forbidden" });
     for (const [method, path, body] of [
       ["POST", "/api/journals", { date: "2026-11-21", content: "test" }],
       ["DELETE", "/api/journals/2026-11-21"],
       ["PATCH", "/api/routines/1", { kind: "main" }],
       ["PUT", "/api/routines/1/completions/2026-11-21", { completed: true }],
     ]) {
-      assert.equal((await app.request(`http://localhost${path}`, {
+      const response = await app.request(`http://localhost${path}`, {
         method, headers: { ...journalHeaders, Origin: "http://attacker.example", "Content-Type": "text/plain" },
         ...(body ? { body: JSON.stringify(body) } : {}),
-      })).status, 403);
+      });
+      assert.equal(response.status, 403);
+      if (!path.startsWith("/api/journals")) assert.equal(await response.text(), "Forbidden");
     }
     for (const [method, path, body] of [
       ["POST", "/api/journals", { date: "2026-02-30", content: "test" }],
+      ["POST", "/api/journals", { date: "20260228", content: "test" }],
+      ["GET", "/api/journals/2020-W01-1"],
       ["DELETE", "/api/journals/2026-02-30"],
     ]) {
-      assert.equal((await app.request(`http://localhost${path}`, {
+      const response = await app.request(`http://localhost${path}`, {
         method, headers: journalHeaders, ...(body ? { body: JSON.stringify(body) } : {}),
-      })).status, 400);
+      });
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: "That planner date is invalid." });
+    }
+    for (const [method, path, body, status, message] of [
+      ["POST", "/api/journals", {}, 400, "That planner date is invalid."],
+      ["POST", "/api/journals", { date: 23 }, 400, "That planner date is invalid."],
+      ["POST", "/api/journals", { date: "2026-11-21", content: null }, 422, "Journal content must be a string."],
+      ["PUT", "/api/journals/2026-11-21", {}, 422, "Journal content must be a string."],
+      ["PUT", "/api/journals/2026-11-21", { content: null }, 422, "Journal content must be a string."],
+    ]) {
+      const response = await app.request(`http://localhost${path}`, {
+        method, headers: journalHeaders, body: JSON.stringify(body),
+      });
+      assert.equal(response.status, status);
+      assert.deepEqual(await response.json(), { error: message });
+    }
+    for (const body of ["", "{"]) {
+      const response = await app.request("http://localhost/api/journals", {
+        method: "POST", headers: journalHeaders, body,
+      });
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: "Malformed JSON in request body" });
+    }
+    const journalWrites = [];
+    globalThis.journalRouteTest = {
+      createJournal: async (date, content) => {
+        journalWrites.push(["create", date, content]);
+        return { content: content ?? "" };
+      },
+      saveJournal: async (date, content) => { journalWrites.push(["save", date, content]); },
+      getJournal: async () => null,
+      listJournals: async () => [
+        { day: new Date("2020-01-02T00:00:00Z"), content: "" },
+        { day: new Date("2020-01-01T00:00:00Z"), content: "entry" },
+      ],
+      listJournalDatesWithContent: async () => [{ day: new Date("2020-01-01T00:00:00Z") }],
+    };
+    t.after(() => { delete globalThis.journalRouteTest; });
+    const journalList = await app.request("http://localhost/api/journals", { headers: journalHeaders });
+    assert.deepEqual(await journalList.json(), [
+      { date: "2020-01-02", content: "" },
+      { date: "2020-01-01", content: "entry" },
+    ]);
+    const journalMarkers = await app.request("http://localhost/api/journals/markers", { headers: journalHeaders });
+    assert.deepEqual(await journalMarkers.json(), [{ date: "2020-01-01" }]);
+    const createdJournal = await app.request("http://localhost/api/journals", {
+      method: "POST", headers: journalHeaders, body: JSON.stringify({ date: "2020-01-01" }),
+    });
+    assert.equal(createdJournal.status, 201);
+    assert.deepEqual(await createdJournal.json(), { date: "2020-01-01", content: "" });
+    const createJournal = globalThis.journalRouteTest.createJournal;
+    const { Prisma } = await vite.ssrLoadModule("/server/generated/prisma/client.ts");
+    globalThis.journalRouteTest.createJournal = async () => {
+      throw new Prisma.PrismaClientKnownRequestError("duplicate", { code: "P2002", clientVersion: "test" });
+    };
+    const duplicateJournal = await app.request("http://localhost/api/journals", {
+      method: "POST", headers: journalHeaders, body: JSON.stringify({ date: "2020-01-01" }),
+    });
+    assert.equal(duplicateJournal.status, 409);
+    assert.deepEqual(await duplicateJournal.json(), { error: "A journal entry already exists for that date." });
+    globalThis.journalRouteTest.createJournal = createJournal;
+    const savedJournal = await app.request("http://localhost/api/journals/2019-12-30", {
+      method: "PUT", headers: journalHeaders, body: JSON.stringify({ content: "entry" }),
+    });
+    assert.deepEqual(await savedJournal.json(), { date: "2019-12-30", content: "entry" });
+    assert.deepEqual(journalWrites, [
+      ["create", "2020-01-01", undefined], ["save", "2019-12-30", "entry"],
+    ]);
+    const missingJournal = await app.request("http://localhost/api/journals/2020-01-01", { headers: journalHeaders });
+    assert.equal(missingJournal.status, 404);
+    assert.deepEqual(await missingJournal.json(), { error: "Journal not found." });
+    globalThis.journalRouteTest.getJournal = async () => { throw new Error("simulated journal failure"); };
+    const logged = t.mock.method(console, "error", () => {});
+    try {
+      const failedJournal = await app.request("http://localhost/api/journals/2020-01-01", { headers: journalHeaders });
+      assert.equal(failedJournal.status, 500);
+      assert.deepEqual(await failedJournal.json(), { error: "Internal Server Error" });
+      assert.match(String(logged.mock.calls[0].arguments[0]), /simulated journal failure/);
+    } finally {
+      logged.mock.restore();
     }
     for (const [method, path, body] of [
       ["PATCH", "/api/quests/example", {}],

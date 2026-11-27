@@ -60,7 +60,7 @@ The client uses browser APIs; server modules run in Node.js. The Vite configurat
    parameters rather than hidden operation intents.
 
 The therapy page reads sessions through `/api/therapy/sessions?date=...` in its
-own loader. The journal page reads saved dates and selected entry content
+own loader. The journal page reads saved entries and selects one by date
 through its own loader, while dashboard and calendar routes read non-empty
 journal marker dates separately. The removed `/api/planner` aggregate no longer
 returns feature resources; the root shell uses `/api/session`, while dashboard

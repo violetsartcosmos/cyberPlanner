@@ -314,12 +314,15 @@ test("Prisma preserves planner, points, and Google database behavior", async () 
       assert.deepEqual(await journalCreates.find((response) => response.status === 201).json(), { date: crudDate, content: "" });
       const journalList = await questRequest("http://localhost/api/journals", "GET");
       assert.equal(journalList.headers.get("cache-control"), null);
-      const journalDates = await journalList.json();
-      assert.ok(journalDates.some((item) => item.date === crudDate));
-      assert.deepEqual(journalDates, [...journalDates].sort((a, b) => b.date.localeCompare(a.date)));
+      const journalEntries = await journalList.json();
+      assert.deepEqual(journalEntries.find((item) => item.date === crudDate), { date: crudDate, content: "" });
+      assert.deepEqual(journalEntries, [...journalEntries].sort((a, b) => b.date.localeCompare(a.date)));
       assert.ok(!(await (await questRequest("http://localhost/api/journals/markers", "GET")).json())
         .some((item) => item.date === crudDate));
       assert.deepEqual(await (await questRequest(crudUrl, "GET")).json(), { date: crudDate, content: "" });
+      assert.equal((await questRequest(crudUrl, "PUT", { content: " \n" })).status, 200);
+      assert.ok((await (await questRequest("http://localhost/api/journals/markers", "GET")).json())
+        .some((item) => item.date === crudDate));
       assert.equal((await questRequest(crudUrl, "PUT", { content: "CRUD example" })).status, 200);
       assert.deepEqual(await (await questRequest(crudUrl, "GET")).json(), { date: crudDate, content: "CRUD example" });
       assert.ok((await (await questRequest("http://localhost/api/journals/markers", "GET")).json())

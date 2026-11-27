@@ -14,6 +14,9 @@ to preserve. Follow [the coding instructions](../.github/copilot-instructions.md
 Python implementation is a later learning milestone. Database redesign and
 further book API changes are outside this plan.
 
+A TanStack Query migration is a separate frontend phase after the Python
+backend cutover; it is not part of the backend port.
+
 ## Learning approach
 
 Follow one operation end to end before generalizing: React form, feature-owned
@@ -157,7 +160,7 @@ Read these files together to follow each operation:
 | CRUD operation | React behavior                                       | HTTP route                                          | Service/database operation                                          |
 | -------------- | ---------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
 | Create         | Create entry button; opens the editor after creation | `POST /api/journals`                              | `createJournal` / `journal.create`                              |
-| Read           | Browse saved dates and open an entry                 | `GET /api/journals`, `GET /api/journals/{date}` | `listJournalDates`, `getJournal` / `findMany`, `findUnique` |
+| Read           | Browse and select entries from the journal list      | `GET /api/journals`; `GET /api/journals/{date}` also reads one entry | `listJournals`, `getJournal` / `findMany`, `findUnique` |
 | Update         | Edit an entry; autosave                              | `PUT /api/journals/{date}`                        | `saveJournal` / `upsert`                                        |
 | Delete         | Confirm Delete entry                                 | `DELETE /api/journals/{date}`                     | `deleteJournal` / `deleteMany`                                  |
 
@@ -331,6 +334,7 @@ combined planner request merely because the shared layout is convenient.
 - [ ] Define loader-level fixtures and tests for every page: selected date, API
   error, request cancellation, revalidation after that page's writes, and no
   request for unrelated page resources.
+  Therapy now has focused coverage for these cases; other pages remain open.
 - [X] Do not add query flags such as `include...` or `without...` to hide resources
   from `/api/planner`. Move the read, remove that field from the planner
   contract, and let tests enforce the smaller response.
@@ -410,7 +414,7 @@ second database setup and preserves the exact schema Python's SQL expects.
 Keep the app's `DATABASE_URL` unchanged in `.env`. The Python launcher must
 override it only in its child process.
 
-- [ ] Follow [the Python learning setup](../cyberServer/README.md#next-step-isolated-journal-crud)
+- [ ] Follow [the Python learning setup](../cyberServer/README.md#isolated-journal-crud)
   to validate the test URL, apply committed migrations without resetting the
   database, check the `journals` table, and run Python on loopback.
 - [ ] Use the test database sequentially. Stop the Python API before running
@@ -440,41 +444,40 @@ Use [Node journal routes](../server/journals/routes.ts),
 Keep feature operations direct and small, following the existing FastAPI,
 psycopg, and pytest patterns; do not add an ORM or generic CRUD framework.
 
-- [ ] Add a journal router and explicit SQL operations under `cyberServer/app/`,
+- [X] Add a journal router and explicit SQL operations under `cyberServer/app/`,
   mounted from `app/main.py`. Implement one operation at a time:
   Create (`POST`), Read (item and collection `GET`), Update (`PUT`), Delete
   (`DELETE`), then non-empty calendar marker reads.
-- [ ] Match the existing URLs: `/api/journals`, `/api/journals/{date}`, and
+- [X] Match the existing URLs: `/api/journals`, `/api/journals/{date}`, and
   `/api/journals/markers`. Register `markers` before the dated item route.
-- [ ] Create returns `201`; duplicate dates return `409`. Omitted create
-  content uses the database's empty-string default.
-- [ ] Read returns `{date, content}`; missing entries return `404`. Browser
-  dates include empty entries and are newest first; markers exclude empty
-  and whitespace-only content, matching Node's trimmed-content check.
-- [ ] Update retains Node's `PUT` upsert contract: create when missing, replace
+- [X] Create returns `201`; duplicate dates return `409`. Omitted create
+  content starts as an empty string.
+- [X] Collection reads return `{date, content}` entries; item reads return
+  `404` when missing. Entries include empty content and are newest first; markers exclude only
+  empty content. Both Node and Python include whitespace-only entries.
+- [X] Update retains Node's `PUT` upsert contract: create when missing, replace
   when present. Preserve an existing row's ID. This is not a partial update.
-- [ ] Delete returns bodyless `204`, or `404` when missing. It must not change
+- [X] Delete returns bodyless `204`, or `404` when missing. It must not change
   completion records, point awards, achievements, or any other resource.
-- [ ] Treat BlockNote content as its stored string, not a new Python document
+- [X] Treat BlockNote content as its stored string, not a new Python document
   schema. Round-trip empty text, JSON text, Unicode, and large content without
   trimming or changing it. Keep the calendar date independent of time zones.
-- [ ] Use bound SQL parameters, database uniqueness, explicit commits or
-  transactions, and logged database errors. Match Node's `{error: ...}` body
-  and documented status codes instead of silently inheriting FastAPI's
-  different `detail` / `422` responses.
-- [ ] Add focused API tests with fake connections, then real persistence
+- [X] Use bound SQL parameters, database uniqueness, explicit commits or
+  transactions, and logged database errors. The learning API uses standard
+  FastAPI `detail` errors and `422` for invalid request bodies.
+- [ ] Resolve journal error-body and request-validation differences between
+  Node and Python before cutover; both require real `YYYY-MM-DD` dates.
+- [X] Add focused API tests with fake connections, then real persistence
   coverage on `TEST_DATABASE_URL`: duplicate creation, missing reads/deletes,
   replacement, empty content, list/marker ordering, and unchanged points.
   Read saved rows through an independent connection to prove commit behavior.
-- [ ] Use Chrome with FastAPI's `/docs` against the loopback test API to execute
-  Create, Read, Update, and confirmed Delete on fictional dates. Inspect
-  actual response statuses/bodies, repeat/conflict behavior, and persistence
-  after rereading. Follow [the Chrome walkthrough](../cyberServer/README.md#5-verify-the-learning-slice-in-chrome);
-  the React journal remains on Node until authentication/CSRF parity passes.
+- [ ] Verify React journal creation, editing, markers, and deletion against
+  the authenticated Node API on disposable data. Keep React on Node until
+  Python authentication and CSRF parity pass.
 - [ ] Compare Node and Python on separate, equivalent fixture dates, or reset
   only the owned journal fixture rows between runs. Never mirror a write to
   both APIs against the same date and call the second result a parity test.
-- [ ] Document the authenticated Node contract separately from the initial
+- [X] Document the authenticated Node contract separately from the initial
   loopback-only learning API. No React proxy or real-data connection changes
   belong in this slice.
 
@@ -543,11 +546,48 @@ do not invent definition editing or ledger CRUD the Node API does not expose.
   after its Python replacement, dependent effects, and UI revalidation pass.
   Update setup, deployment, API, and architecture docs with each cutover.
 
-**Next bounded implementation task:** Journals CRUD in FastAPI, using the
-guarded Node test database and fictional fixture dates. Start with POST, verify
-the committed row through GET/SQL, then add PUT and DELETE. The remaining
-milestone 5 verification is tracked separately; no React or OAuth switch is
-required to begin this learning exercise.
+**Journal implementation status:** The loopback-only Python journal routes and
+focused fake-connection tests are implemented. An isolated persistence test
+passed against the guarded disposable database, checking independent reads,
+ID-preserving replacement, markers, deletion, and unchanged related counts.
+Therapy loader tests also cover cancellation and revalidation after writes.
+Node/Python comparison and React verification on disposable data remain open;
+no backend or OAuth switch has been made.
+
+### 7. Migrate UI server state to TanStack Query
+
+This is a deferred frontend migration, to begin only after the Python backend
+cutover is complete and stable. Keep React Router for route composition,
+navigation, and URL state; use TanStack Query as the single client-side owner
+of remote server state. Do not combine this work with backend resource cutovers
+or keep duplicate loader/query caches for the same data.
+
+- [ ] Before implementation, decide which existing React Router loader/action
+  responsibilities move to queries and mutations, and which remain route
+  concerns. Preserve URL-driven selected dates and route error handling.
+- [ ] Add one application-level `QueryClient` and provider, with explicit
+  freshness, refetch, and retry defaults. Keep error presentation feature-owned;
+  do not add a second cache per feature or silently retry non-idempotent writes.
+- [ ] Define typed, resource-owned query keys, including every variable that
+  affects a response (especially selected dates, ranges, and resource IDs).
+  Keep query functions on the existing authenticated same-origin API.
+- [ ] Migrate one page/resource at a time. Avoid fetching the same resource in
+  both a route loader and a query; retain loader data only where the chosen
+  React Router integration explicitly hydrates the query cache.
+- [ ] Move writes to mutations only where they improve the existing feature
+  flow. Preserve numeric HTTP statuses, API errors, bodyless responses,
+  cancellation, confirmation/busy states, and route-boundary handling.
+- [ ] Define targeted invalidation or cache updates for each mutation, including
+  cross-page effects, selected-date changes, achievement refreshes, and
+  session/logout transitions. Never show stale user data after authentication
+  changes.
+- [ ] Preserve journal autosave and the revisioned book-progress queue; do not
+  replace their sequencing/conflict behavior with generic mutation defaults.
+- [ ] Add focused tests for query-key isolation, loading/error states,
+  cancellation, mutation errors, invalidation/revalidation, and no duplicate
+  requests. Verify date navigation and representative writes in the UI.
+- [ ] Remove superseded loader/action fetch glue only after the corresponding
+  query/mutation behavior and tests pass. Update UI architecture documentation.
 
 ## Verification for each milestone
 
@@ -588,9 +628,9 @@ rewards reads have also moved to their feature-owned loaders. The old planner
 aggregate and write dispatcher are removed; the active calendar summary
 remains purpose-built. The remaining loader-level fixture checklist and latest
 Node disposable-database run must pass before milestone 5 is marked complete.
-The next implementation task is the isolated Python Journals CRUD slice in
-section 6c, using the guarded setup in the Python README. It can begin while
-that refactor verification remains tracked separately.
+The isolated Python Journals CRUD slice in section 6c is implemented and has
+disposable-database persistence coverage; the Node comparison and React
+verification remain open. The remaining refactor verification is tracked separately.
 The quest-log route owns reads for routines, templates, and historical template
 acceptance; the root session response no longer returns those fields or the
 dashboard/calendar resources. The profile route now owns

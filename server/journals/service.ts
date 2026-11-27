@@ -28,26 +28,26 @@ export async function getJournal(date: string) {
 }
 
 /**
- * Lists saved journal dates, including explicitly created empty entries.
- * @returns Journal dates in newest-first order.
+ * Lists saved journals, including explicitly created empty entries.
+ * @returns Journal dates and content in newest-first order.
  */
-export async function listJournalDates() {
+export async function listJournals() {
   return getDatabase().journal.findMany({
-    select: { day: true },
+    select: { day: true, content: true },
     orderBy: { day: "desc" },
   });
 }
 
 /**
- * Lists dates whose journal contains visible entry content.
+ * Lists dates whose journal contains non-empty entry content.
  * @returns Newest-first non-empty journal dates for calendar markers.
  */
-export async function listJournalMarkers() {
-  const journals = await getDatabase().journal.findMany({
-    select: { day: true, content: true },
+export async function listJournalDatesWithContent() {
+  return getDatabase().journal.findMany({
+    where: { content: { not: "" } },
+    select: { day: true },
     orderBy: { day: "desc" },
   });
-  return journals.filter((journal) => journal.content.trim());
 }
 
 /**

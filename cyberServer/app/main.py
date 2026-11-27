@@ -3,10 +3,12 @@
 from fastapi import FastAPI
 
 # Routers collect related endpoints, similar to grouping Hono routes by feature.
+from app.journals import router as journals_router
 from app.points import router as points_router
 from app.tasks import router as tasks_router
 
 app = FastAPI(title="CyberPlanner API")
+app.include_router(journals_router)
 app.include_router(tasks_router)
 app.include_router(points_router)
 

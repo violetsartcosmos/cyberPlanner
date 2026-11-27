@@ -100,6 +100,72 @@ test("therapy loader uses planner date fallback and propagates request failures"
   }), { message: "Network unavailable" });
 });
 
+test("therapy loader propagates request cancellation", async (t) => {
+  const controller = new AbortController();
+  const request = new Request("http://localhost/physical-therapy?date=2026-11-21", {
+    signal: controller.signal,
+  });
+  const fetch = t.mock.method(globalThis, "fetch", async (_url, options) => {
+    assert.equal(options.signal, request.signal);
+    controller.abort();
+    assert.equal(options.signal.aborted, true);
+    throw new DOMException("Aborted", "AbortError");
+  });
+  await assert.rejects(therapyLoader({ request, params: {} }), { name: "AbortError" });
+  assert.equal(fetch.mock.callCount(), 1);
+});
+
+test("therapy exercise writes revalidate the selected therapy plan only", async (t) => {
+  const calls = [];
+  let completed = false;
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    calls.push([url, options.method ?? "GET"]);
+    if (url === "/api/therapy/sessions?date=2026-11-21") {
+      return Response.json({
+        therapySessions: [{ id: "am", exercises: [{ id: "glute", completed }] }],
+        earnedPoints: completed ? 25 : 20,
+      });
+    }
+    assert.equal(url, "/api/therapy/sessions/am/exercises/glute/completions/2026-11-21");
+    assert.equal(options.method, "PUT");
+    completed = true;
+    return Response.json({ earnedAchievements: [] });
+  });
+
+  const router = createMemoryRouter([
+    { id: "empty", path: "/empty" },
+    { id: "therapy-page", path: "/physical-therapy", loader: therapyLoader },
+    {
+      id: "therapy-write",
+      path: "/therapy/sessions/:sessionId/exercises/:exerciseId/completions/:date",
+      action: therapyCompletionAction,
+    },
+  ], { initialEntries: ["/empty"] });
+  try {
+    await router.navigate("/physical-therapy?date=2026-11-21");
+    const formData = new FormData();
+    formData.set("completed", "true");
+    await router.fetch(
+      "therapy-write",
+      "therapy-page",
+      "/therapy/sessions/am/exercises/glute/completions/2026-11-21",
+      { formMethod: "put", formData },
+    );
+
+    assert.deepEqual(router.state.loaderData["therapy-page"], {
+      therapySessions: [{ id: "am", exercises: [{ id: "glute", completed: true }] }],
+      earnedPoints: 25,
+    });
+    assert.deepEqual(calls, [
+      ["/api/therapy/sessions?date=2026-11-21", "GET"],
+      ["/api/therapy/sessions/am/exercises/glute/completions/2026-11-21", "PUT"],
+      ["/api/therapy/sessions?date=2026-11-21", "GET"],
+    ]);
+  } finally {
+    router.dispose();
+  }
+});
+
 test("resource actions report server errors without retrying the legacy API", async (t) => {
   const fetch = t.mock.method(globalThis, "fetch", async () =>
     Response.json({ error: "That planner task is invalid." }, { status: 404 }));
@@ -377,19 +443,18 @@ test("journal actions create empty entries and route saves and deletes on the sa
 test("journal page loader reads the selected entry and distinguishes empty entries and API errors", async (t) => {
   const fetch = t.mock.method(globalThis, "fetch", async (url, options) => {
     assert.equal(options.signal, request.signal);
-    return url === "/api/journals"
-      ? Response.json([{ date: "2026-11-21" }])
-      : Response.json({ error: "Not found." }, { status: 404 });
+    assert.equal(url, "/api/journals");
+    return Response.json([{ date: "2026-11-20", content: "Earlier" }]);
   });
   const request = new Request("http://localhost/journal?date=2026-11-21");
   const args = { request, params: {} };
   assert.deepEqual(await journalLoader(args), {
-    status: 200, dates: ["2026-11-21"], entry: { date: "2026-11-21", content: "", exists: false },
+    status: 200, dates: ["2026-11-20"], entry: { date: "2026-11-21", content: "", exists: false },
   });
-  fetch.mock.mockImplementation(async (url) => url === "/api/journals"
-    ? Response.json([{ date: "2026-11-21" }])
-    : Response.json({ content: "" }));
-  assert.equal((await journalLoader(args)).entry.exists, true);
+  fetch.mock.mockImplementation(async () => Response.json([{ date: "2026-11-21", content: "" }]));
+  assert.deepEqual((await journalLoader(args)).entry, { date: "2026-11-21", content: "", exists: true });
+  fetch.mock.mockImplementation(async () => Response.json([{ date: "2026-11-21", content: "Saved" }]));
+  assert.deepEqual((await journalLoader(args)).entry, { date: "2026-11-21", content: "Saved", exists: true });
   fetch.mock.mockImplementation(async () => Response.json({ error: "Sign in first." }, { status: 401 }));
   assert.deepEqual(await journalLoader(args), { status: 401, error: "Sign in first." });
 });
@@ -407,6 +472,29 @@ test("journal markers use their own resource read and return API errors", async 
   fetch.mock.mockImplementation(async () => Response.json({ error: "Could not load markers." }, { status: 500 }));
   assert.deepEqual(await journalMarkersLoader({ request }), {
     status: 500, error: "Could not load markers.",
+  });
+});
+
+test("journal actions display domain, validation, and server errors", async (t) => {
+  const fetch = t.mock.method(globalThis, "fetch", async () =>
+    Response.json({ error: "A journal entry already exists for that date." }, { status: 409 }));
+  const makeRequest = () => {
+    const form = new FormData();
+    form.set("date", "2026-11-21");
+    form.set("content", "");
+    return new Request("http://localhost/journal/entries", { method: "POST", body: form });
+  };
+  assert.deepEqual(await createJournalAction({ request: makeRequest(), params: {} }), {
+    status: 409, error: "A journal entry already exists for that date.",
+  });
+  fetch.mock.mockImplementation(async () =>
+    Response.json({ error: "Journal content must be a string." }, { status: 422 }));
+  assert.deepEqual(await createJournalAction({ request: makeRequest(), params: {} }), {
+    status: 422, error: "Journal content must be a string.",
+  });
+  fetch.mock.mockImplementation(async () => Response.json({ error: "Internal Server Error" }, { status: 500 }));
+  assert.deepEqual(await createJournalAction({ request: makeRequest(), params: {} }), {
+    status: 500, error: "Internal Server Error",
   });
 });
 

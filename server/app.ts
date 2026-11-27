@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { csrf } from "hono/csrf";
+import { HTTPException } from "hono/http-exception";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { redirect } from "react-router";
 import { beginGoogleAuthorization, completeGoogleAuthorization, endSession } from "./auth/service";
@@ -15,6 +16,19 @@ import { plannerRoutes } from "./planner/routes";
 import { sessionRoutes } from "./session/routes";
 
 export const app = new Hono();
+
+/** Returns journal errors as JSON while preserving other routes' error responses. */
+app.onError(async (error, context) => {
+  const isJournal = context.req.path === "/api/journals" || context.req.path.startsWith("/api/journals/");
+  if (error instanceof HTTPException) {
+    const response = error.getResponse();
+    return isJournal ? context.json({ error: await response.text() }, error.status) : response;
+  }
+  console.error(error);
+  return isJournal
+    ? context.json({ error: "Internal Server Error" }, 500)
+    : context.text("Internal Server Error", 500);
+});
 
 app.use("/api/*", csrf());
 app.use("/auth/*", csrf());
